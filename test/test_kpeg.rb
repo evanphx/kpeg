@@ -137,7 +137,7 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m.matches[1], "hello"
   end
 
-  def test_andp
+  def test_notp
     node = KPeg.layout do |l|
       l.seq l.notp(l.str("g")), l.str("hello")
     end
@@ -174,12 +174,12 @@ class TestKPeg < Test::Unit::TestCase
     two = nil
 
     node = KPeg.layout do |l|
-      one = l.str("1")
-      two = l.str("2")
+      l.one = one = l.str("1")
+      l.two = two = l.str("2")
 
       l.any(
-        l.seq(one, l.str("-"), two),
-        l.seq(one, l.str("+"), two)
+        l.seq(l.ref("one"), l.str("-"), l.ref("two")),
+        l.seq(l.ref("one"), l.str("+"), l.ref("two"))
       )
     end
 
@@ -202,13 +202,21 @@ class TestKPeg < Test::Unit::TestCase
     node = KPeg.layout do |l|
       l.num  = l.reg(/[0-9]/)
       l.expr = l.any(
-                      l.seq(l.ref("expr"), "-", l.ref("num")),
+                      l.seq(l.ref("expr"), l.str("-"), l.ref("num")),
                       l.ref("num"))
     end
 
-    parser = KPeg::Parser.new "1"
+    parser = KPeg::Parser.new "1-2-3"
 
     m = parser.apply(node)
-    assert_equal 2, m.matches.size
+    assert_equal 3, m.matches.size
+
+    left = m.matches[0]
+    assert_equal 3, left.matches.size
+    assert_match left.matches[0], "1"
+    assert_match left.matches[1], "-"
+    assert_match left.matches[2], "2"
+    assert_match m.matches[1], "-"
+    assert_match m.matches[2], "3"
   end
 end

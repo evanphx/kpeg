@@ -1,6 +1,8 @@
 require 'strscan'
 
 module KPeg
+  class ParseFailure < RuntimeError; end
+
   class Parser < StringScanner
     def initialize(str)
       super str
@@ -9,6 +11,14 @@ module KPeg
     end
 
     attr_reader :memoizations
+
+    class LeftRecursive
+      def initialize(detected=false)
+        @detected = detected
+      end
+
+      attr_accessor :detected
+    end
 
     class MemoEntry
       def initialize(ans, pos)
@@ -27,27 +37,55 @@ module KPeg
         @ans = ans
         @pos = pos
       end
-
-      def fail?
-        @ans.nil?
-      end
     end
 
     def apply(rule)
       if m = @memoizations[rule][pos]
         m.inc!
+
+        if m.ans.kind_of? LeftRecursive
+          m.ans.detected = true
+          raise ParseFailure
+        end
+
         self.pos = m.pos
         return m.ans
       else
-        m = MemoEntry.new(nil, pos)
+        lr = LeftRecursive.new(false)
+        m = MemoEntry.new(lr, pos)
         @memoizations[rule][pos] = m
+        start_pos = pos
 
         ans = rule.match(self)
 
         m.move! ans, pos
 
+        if lr.detected
+          return grow_lr(rule, start_pos, m)
+        else
+          return ans
+        end
+
         return ans
       end
+    end
+
+    def grow_lr(rule, start_pos, m)
+      while true
+        self.pos = start_pos
+        begin
+          ans = rule.match(self)
+        rescue ParseFailure
+          break
+        end
+
+        break if pos <= m.pos
+
+        m.move! ans, pos
+      end
+
+      self.pos = m.pos
+      return m.ans
     end
   end
 
@@ -69,34 +107,76 @@ module KPeg
       return @matches if @matches
       return []
     end
-  end
 
-  class LiteralString
-    def initialize(str)
-      @str = Regexp.new Regexp.quote(str)
-    end
-
-    def match(x)
-      if str = x.scan(@str)
-        Match.new(self, str)
+    def explain(indent="")
+      puts "#{indent}KPeg::Match:#{object_id.to_s(16)}"
+      puts "#{indent}  node: #{@node.inspect}"
+      if @string
+        puts "#{indent}  string: #{@string.inspect}"
+      else
+        puts "#{indent}  matches:"
+        @matches.each do |m|
+          m.explain("#{indent}    ")
+        end
       end
     end
   end
 
-  class LiteralRegexp
+  class Rule
+    def initialize
+      @name = nil
+    end
+
+    attr_accessor :name
+
+    def inspect_type(tag, body)
+      return "#<#{tag} #{body}>" unless @name
+      "#<#{tag}:#{@name} #{body}>"
+    end
+  end
+
+  class LiteralString < Rule
+    def initialize(str)
+      super()
+      @string = str
+      @reg = Regexp.new Regexp.quote(str)
+    end
+
+    def match(x)
+      if str = x.scan(@reg)
+        Match.new(self, str)
+      else
+        raise ParseFailure
+      end
+    end
+
+    def inspect
+      inspect_type 'str', @string.inspect
+    end
+  end
+
+  class LiteralRegexp < Rule
     def initialize(reg)
+      super()
       @reg = reg
     end
 
     def match(x)
       if str = x.scan(@reg)
         Match.new(self, str)
+      else
+        raise ParseFailure
       end
+    end
+
+    def inspect
+      inspect_type 'reg', @reg.inspect
     end
   end
 
-  class Choice
+  class Choice < Rule
     def initialize(*many)
+      super()
       @choices = many
     end
 
@@ -104,19 +184,25 @@ module KPeg
       @choices.each do |c|
         pos = x.pos
 
-        if m = x.apply(c)
-          return m
+        begin
+          return c.match(x)
+        rescue ParseFailure
         end
 
         x.pos = pos
       end
 
-      return nil
+      raise ParseFailure
+    end
+
+    def inspect
+      inspect_type "any", @choices.map { |i| i.inspect }.join(' | ')
     end
   end
 
-  class Multiple
+  class Multiple < Rule
     def initialize(node, min, max)
+      super()
       @node = node
       @min = min
       @max = max
@@ -127,9 +213,9 @@ module KPeg
       matches = []
 
       while true
-        if m = x.apply(@node)
-          matches << m
-        else
+        begin
+          matches << @node.match(x)
+        rescue ParseFailure
           break
         end
 
@@ -141,64 +227,95 @@ module KPeg
       if n >= @min
         return Match.new(self, matches)
       end
+
+      raise ParseFailure
     end
   end
 
-  class Sequence
+  class Sequence < Rule
     def initialize(*nodes)
+      super()
       @nodes = nodes
     end
 
     def match(x)
-      matches = @nodes.map do |n|
-        if m = x.apply(n)
-          m
-        else
-          return nil
-        end
-      end
-
+      matches = @nodes.map { |n| n.match(x) }
       Match.new(self, matches)
     end
+
+    def inspect
+      inspect_type "seq", @nodes.map { |i| i.inspect }.join(' ')
+    end
   end
 
-  class AndPredicate
+  class AndPredicate < Rule
     def initialize(node)
+      super()
       @node = node
     end
 
     def match(x)
       pos = x.pos
-      matched = x.apply(@node)
-      x.pos = pos
-      return matched ? Match.new(self, "") : nil
+
+      begin
+        @node.match(x)
+      ensure
+        x.pos = pos
+      end
+
+      return Match.new(self, "")
+    end
+
+    def inspect
+      inspect_type "andp", @node.inspect
     end
   end
 
-  class NotPredicate
+  class NotPredicate < Rule
     def initialize(node)
+      super()
       @node = node
     end
 
     def match(x)
       pos = x.pos
-      matched = x.apply(@node)
-      x.pos = pos
+
+      begin
+        @node.match(x)
+        matched = true
+      rescue ParseFailure
+        matched = false
+      ensure
+        x.pos = pos
+      end
 
       return matched ? nil : Match.new(self, "")
     end
+
+    def inspect
+      inspect_type "notp", @node.inspect
+    end
   end
 
-  class RuleReference
+  class RuleReference < Rule
     def initialize(layout, name)
+      super()
       @layout = layout
-      @name = name
+      @rule_name = name
+    end
+
+    def resolve
+      rule = @layout.find(@rule_name)
+      raise "Unknown rule: '#{@name}'" unless rule
+      rule
     end
 
     def match(x)
-      rule = @layout.find(@name)
-      raise "Unknown rule: '#{@name}'" unless rule
-      x.apply(rule)
+      x.apply(resolve)
+    end
+
+    def inspect
+      inspect_type "ref", @rule_name
     end
   end
 
@@ -211,6 +328,8 @@ module KPeg
       if @rules.key? name
         raise "Already set rule named '#{name}'"
       end
+
+      rule.name = name
 
       @rules[name] = rule
     end
@@ -285,6 +404,13 @@ module KPeg
 
   def self.match(str, node)
     scan = Parser.new(str)
-    scan.apply(node)
+
+    begin
+      m = scan.apply(node)
+    rescue ParseFailure
+      m = nil
+    end
+
+    return m
   end
 end
