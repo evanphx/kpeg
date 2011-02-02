@@ -4,13 +4,15 @@ module KPeg
   class ParseFailure < RuntimeError; end
 
   class Parser < StringScanner
-    def initialize(str)
+    def initialize(str, grammar)
       super str
+
+      @grammar = grammar
       # A 2 level hash.
       @memoizations = Hash.new { |h,k| h[k] = {} }
     end
 
-    attr_reader :memoizations
+    attr_reader :grammar, :memoizations
 
     class LeftRecursive
       def initialize(detected=false)
@@ -132,6 +134,10 @@ module KPeg
       return "#<#{tag} #{body}>" unless @name
       "#<#{tag}:#{@name} #{body}>"
     end
+
+    def |(other)
+      Choice.new(self, Grammar.resolve(other))
+    end
   end
 
   class LiteralString < Rule
@@ -180,6 +186,11 @@ module KPeg
     end
 
     attr_reader :rules
+
+    def |(other)
+      @rules << Grammar.resolve(other)
+      self
+    end
 
     def match(x)
       @rules.each do |c|
@@ -299,22 +310,21 @@ module KPeg
   end
 
   class RuleReference < Rule
-    def initialize(grammar, name)
+    def initialize(name)
       super()
-      @grammar = grammar
       @rule_name = name
     end
 
     attr_reader :rule_name
 
-    def resolve
-      rule = @grammar.find(@rule_name)
+    def resolve(x)
+      rule = x.grammar.find(@rule_name)
       raise "Unknown rule: '#{@rule_name}'" unless rule
       rule
     end
 
     def match(x)
-      x.apply(resolve)
+      x.apply resolve(x)
     end
 
     def inspect
@@ -349,16 +359,17 @@ module KPeg
       @rules[name]
     end
 
-    def resolve(rule)
+    def self.resolve(rule)
       case rule
       when Rule
         return rule
       when Symbol
-        return ref(rule.to_s)
+        return RuleReference.new(rule.to_s)
       when String
-        return str(rule)
+        return LiteralString.new(rule)
       when Array
-        return seq(*rule)
+        rules = rule.map { |x| resolve(x) }
+        return Sequence.new(*rules)
       else
         raise "Unknown rule type - #{rule.inspect}"
       end
@@ -386,41 +397,41 @@ module KPeg
     end
 
     def any(*nodes)
-      nodes.map! { |x| resolve(x) }
+      nodes.map! { |x| Grammar.resolve(x) }
       Choice.new(*nodes)
     end
 
     def multiple(node, min, max)
-      Multiple.new resolve(node), min, max
+      Multiple.new Grammar.resolve(node), min, max
     end
 
     def maybe(node)
-      multiple resolve(node), 0, 1
+      multiple Grammar.resolve(node), 0, 1
     end
 
     def many(node)
-      multiple resolve(node), 1, nil
+      multiple Grammar.resolve(node), 1, nil
     end
 
     def kleene(node)
-      multiple resolve(node), 0, nil
+      multiple Grammar.resolve(node), 0, nil
     end
 
     def seq(*nodes)
-      nodes.map! { |x| resolve(x) }
+      nodes.map! { |x| Grammar.resolve(x) }
       Sequence.new(*nodes)
     end
 
     def andp(node)
-      AndPredicate.new resolve(node)
+      AndPredicate.new Grammar.resolve(node)
     end
 
     def notp(node)
-      NotPredicate.new resolve(node)
+      NotPredicate.new Grammar.resolve(node)
     end
 
     def ref(name)
-      RuleReference.new self, name.to_s
+      RuleReference.new name.to_s
     end
   end
 
@@ -498,7 +509,7 @@ module KPeg
   end
 
   def self.match(str, gram)
-    scan = Parser.new(str)
+    scan = Parser.new(str, gram)
     scan.apply(gram.root)
   end
 end

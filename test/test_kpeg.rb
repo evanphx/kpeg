@@ -181,7 +181,7 @@ class TestKPeg < Test::Unit::TestCase
         )
     end
 
-    parser = KPeg::Parser.new "1+2"
+    parser = KPeg::Parser.new "1+2", gram
     m = parser.apply(gram.root)
 
     assert_equal 3, m.matches.size
@@ -207,7 +207,7 @@ class TestKPeg < Test::Unit::TestCase
       g.root = g.expr
     end
 
-    parser = KPeg::Parser.new "1-2-3"
+    parser = KPeg::Parser.new "1-2-3", gram
 
     m = parser.apply(gram.root)
     assert_equal 3, m.matches.size
@@ -220,7 +220,7 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m.matches[1], "-"
     assert_match m.matches[2], "3"
 
-    parser = KPeg::Parser.new "hello"
+    parser = KPeg::Parser.new "hello", gram
     m = parser.apply(gram.root)
 
     assert_equal nil, m
@@ -229,15 +229,14 @@ class TestKPeg < Test::Unit::TestCase
   def test_math_grammar
     gram = KPeg.grammar do |g|
       g.num = g.reg(/[0-9]/)
-      g.term = g.any(
-                 [:term, "+", :term],
-                 [:term, "-", :term],
-                 :fact)
-      g.fact = g.any(
-                 [:fact, "*", :fact],
-                 [:fact, "/", :fact],
-                 :num
-               )
+      g.term = g.seq(:term, "+", :term) \
+             | g.seq(:term, "-", :term) \
+             | :fact
+
+      g.fact = g.seq(:fact, "*", :fact) \
+             | g.seq(:fact, "/", :fact) \
+             | :num
+
       g.root = g.term
     end
 
