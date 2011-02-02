@@ -205,13 +205,13 @@ module KPeg
     end
 
     def method_missing(meth, *args)
-      meth = meth.to_s
+      meth_s = meth.to_s
 
-      if meth[-1,1] == "="
+      if meth_s[-1,1] == "="
         rule = args.first
-        set(meth[0..-2], rule)
+        set(meth_s[0..-2], rule)
         return rule
-      elsif rule = @rules[meth]
+      elsif rule = @rules[meth_s]
         return rule
       end
 
