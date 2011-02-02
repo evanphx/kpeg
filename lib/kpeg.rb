@@ -570,7 +570,19 @@ module KPeg
         io.print ")"
       when Multiple
         render_rule io, rule.rule
-        io.print "[#{rule.min}, #{rule.max}]"
+        if rule.max
+          if rule.min == 0 and rule.max == 1
+            io.print "?"
+          else
+            io.print "[#{rule.min}, #{rule.max}]"
+          end
+        elsif rule.min == 0
+          io.print "*"
+        elsif rule.min == 1
+          io.print "+"
+        else
+          io.print "[>=#{rule.min}]"
+        end
       when AndPredicate
         io.print "&"
         render_rule io, rule.rule
