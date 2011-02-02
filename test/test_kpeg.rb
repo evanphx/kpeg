@@ -12,9 +12,16 @@ class TestKPeg < Test::Unit::TestCase
       l.str("hello")
     end
 
-    m = KPeg.match("hello", node)
     assert_match KPeg.match("hello", node), "hello"
     assert_equal nil, KPeg.match("vador", node)
+  end
+
+  def test_reg
+    node = KPeg.layout do |l|
+      l.reg(/[0-9]/)
+    end
+
+    assert_match KPeg.match("3", node), "3"
   end
 
   def test_any
@@ -189,5 +196,19 @@ class TestKPeg < Test::Unit::TestCase
 
     # but we only get as far as 2 once
     assert_equal 1, parser.memoizations[two][2].uses
+  end
+
+  def test_left_recursion
+    node = KPeg.layout do |l|
+      l.num  = l.reg(/[0-9]/)
+      l.expr = l.any(
+                      l.seq(l.ref("expr"), "-", l.ref("num")),
+                      l.ref("num"))
+    end
+
+    parser = KPeg::Parser.new "1"
+
+    m = parser.apply(node)
+    assert_equal 2, m.matches.size
   end
 end
