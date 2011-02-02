@@ -60,7 +60,9 @@ module KPeg
 
         m.move! ans, pos
 
-        if lr.detected
+        # Don't bother trying to grow the left recursion
+        # if it's failing straight away (thus there is no seed)
+        if ans and lr.detected
           return grow_lr(rule, start_pos, m)
         else
           return ans
