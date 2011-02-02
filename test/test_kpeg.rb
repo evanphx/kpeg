@@ -334,4 +334,39 @@ root = term
 
     assert_equal expected, io.string
   end
+
+  def test_calc
+    vars = {}
+    gram = KPeg.grammar do |g|
+      g.spaces = /\s*/
+      g.var = 'a'..'z'
+      g.num = g.lit(/[0-9]+/) { |i| i.to_i }
+
+      g.pri = g.seq(:spaces, :var)   { |s,v| vars[v] } \
+            | g.seq(:spaces, :num)   { |s,n| n }       \
+            | g.seq('(', :expr, ')') { |_,e,_| e }
+
+      g.mul = g.seq(:mul, "*", :pri) { |x,_,y| x * y } \
+            | g.seq(:mul, "/", :pri) { |x,_,y| x / y } \
+            | :pri
+
+      g.add = g.seq(:add, "+", :mul) { |x,_,y| x + y } \
+            | g.seq(:add, "-", :mul) { |x,_,y| x - y } \
+            | :mul
+
+      g.expr = g.seq(:var, "=", :expr) { |v,_,e| vars[v] = e } \
+             | :add
+
+      g.root = g.seq(g.kleene(:expr), :spaces) { |e,_| e }
+    end
+
+    m = KPeg.match "3+4*5", gram
+    assert_equal 23, m.value
+
+    m = KPeg.match "x=2", gram
+    assert_equal 2, m.value
+
+    m = KPeg.match "x=x*7", gram
+    assert_equal 14, m.value
+  end
 end

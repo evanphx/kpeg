@@ -91,8 +91,8 @@ module KPeg
   end
 
   class Match
-    def initialize(node, arg)
-      @node = node
+    def initialize(rule, arg)
+      @rule = rule
       if arg.kind_of? String
         @matches = nil
         @string = arg
@@ -102,7 +102,7 @@ module KPeg
       end
     end
 
-    attr_reader :node, :string
+    attr_reader :rule, :string
 
     def matches
       return @matches if @matches
@@ -111,7 +111,7 @@ module KPeg
 
     def explain(indent="")
       puts "#{indent}KPeg::Match:#{object_id.to_s(16)}"
-      puts "#{indent}  node: #{@node.inspect}"
+      puts "#{indent}  rule: #{@rule.inspect}"
       if @string
         puts "#{indent}  string: #{@string.inspect}"
       else
@@ -121,14 +121,35 @@ module KPeg
         end
       end
     end
+
+    def value
+      if @string
+        return @string unless @rule.action
+        @rule.action.call(@string)
+      else
+        values = @matches.map { |m| m.value }
+
+        unless @rule.action
+          return values.first if values.size == 1
+          return values
+        end
+
+        @rule.action.call(*values)
+      end
+    end
   end
 
   class Rule
     def initialize
       @name = nil
+      @action = nil
     end
 
-    attr_accessor :name
+    attr_accessor :name, :action
+
+    def set_action(act)
+      @action = act
+    end
 
     def inspect_type(tag, body)
       return "#<#{tag} #{body}>" unless @name
@@ -395,9 +416,20 @@ module KPeg
         return Sequence.new(*rules)
       when Range
         return CharRange.new(rule.begin.to_s, rule.end.to_s)
+      when Regexp
+        return LiteralRegexp.new(rule)
       else
         raise "Unknown rule type - #{rule.inspect}"
       end
+    end
+
+    # Use these to access the rules unambigiously
+    def [](rule)
+      ref(rule.to_s)
+    end
+
+    def []=(name, rule)
+      set(name, rule)
     end
 
     def method_missing(meth, *args)
@@ -413,42 +445,60 @@ module KPeg
       return ref(meth.to_s)
     end
 
-    def str(str)
-      LiteralString.new str
+    def lit(obj, &b)
+      rule = Grammar.resolve(obj)
+      rule.set_action(b) if b
+      rule
     end
 
-    def reg(reg)
-      LiteralRegexp.new reg
+    def str(str, &b)
+      rule = LiteralString.new str
+      rule.set_action(b) if b
+      rule
     end
 
-    def range(start, fin)
-      CharRange.new(start, fin)
+    def reg(reg, &b)
+      rule = LiteralRegexp.new reg
+      rule.set_action(b) if b
+      rule
     end
 
-    def any(*nodes)
+    def range(start, fin, &b)
+      rule = CharRange.new(start, fin)
+      rule.set_action(b) if b
+      rule
+    end
+
+    def any(*nodes, &b)
       nodes.map! { |x| Grammar.resolve(x) }
-      Choice.new(*nodes)
+      rule = Choice.new(*nodes)
+      rule.set_action(b) if b
+      rule
     end
 
-    def multiple(node, min, max)
-      Multiple.new Grammar.resolve(node), min, max
+    def multiple(node, min, max, &b)
+      rule = Multiple.new Grammar.resolve(node), min, max
+      rule.set_action(b) if b
+      rule
     end
 
-    def maybe(node)
-      multiple Grammar.resolve(node), 0, 1
+    def maybe(node, &b)
+      rule = multiple Grammar.resolve(node), 0, 1, &b
     end
 
-    def many(node)
-      multiple Grammar.resolve(node), 1, nil
+    def many(node, &b)
+      multiple Grammar.resolve(node), 1, nil, &b
     end
 
-    def kleene(node)
-      multiple Grammar.resolve(node), 0, nil
+    def kleene(node, &b)
+      multiple Grammar.resolve(node), 0, nil, &b
     end
 
-    def seq(*nodes)
+    def seq(*nodes, &b)
       nodes.map! { |x| Grammar.resolve(x) }
-      Sequence.new(*nodes)
+      rule = Sequence.new(*nodes)
+      rule.set_action(b) if b
+      rule
     end
 
     def andp(node)
