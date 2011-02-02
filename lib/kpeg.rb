@@ -68,6 +68,18 @@ module KPeg
     end
   end
 
+  class LiteralRegexp
+    def initialize(reg)
+      @reg = reg
+    end
+
+    def match(x)
+      if str = x.scan(@reg)
+        Match.new(self, str)
+      end
+    end
+  end
+
   class Choice
     def initialize(*many)
       @choices = many
@@ -208,6 +220,10 @@ module KPeg
 
     def str(str)
       LiteralString.new(str)
+    end
+
+    def reg(reg)
+      LiteralRegexp.new(reg)
     end
 
     def any(*nodes)
