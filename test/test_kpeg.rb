@@ -25,6 +25,14 @@ class TestKPeg < Test::Unit::TestCase
     assert_match KPeg.match("3", gram), "3"
   end
 
+  def test_char_range
+    gram = KPeg.grammar do |g|
+      g.root = g.range('0', '9')
+    end
+
+    assert_match KPeg.match("3", gram), "3"
+  end
+
   def test_any
     gram = KPeg.grammar do |g|
       g.root = g.any g.str("hello"), g.str("chicken")
@@ -228,7 +236,7 @@ class TestKPeg < Test::Unit::TestCase
 
   def test_math_grammar
     gram = KPeg.grammar do |g|
-      g.num = g.reg(/[0-9]/)
+      g.num = '0'..'9'
       g.term = g.seq(:term, "+", :term) \
              | g.seq(:term, "-", :term) \
              | :fact
@@ -257,6 +265,7 @@ class TestKPeg < Test::Unit::TestCase
 
   def test_grammar_renderer
     gram = KPeg.grammar do |g|
+      g.some = g.range('0', '9')
       g.num = g.reg(/[0-9]/)
       g.term = g.any(
                  [:term, "+", :term],
@@ -277,6 +286,7 @@ class TestKPeg < Test::Unit::TestCase
     gr.render(io)
 
     expected = <<-GRAM
+some = [0-9]
  num = /[0-9]/
 term = term "+" term 
      | term "-" term 

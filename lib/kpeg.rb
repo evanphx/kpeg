@@ -179,6 +179,27 @@ module KPeg
     end
   end
 
+  class CharRange < Rule
+    def initialize(start, fin)
+      super()
+      @start = start
+      @fin = fin
+      @regexp = Regexp.new "[#{Regexp.quote start}-#{Regexp.quote fin}]"
+    end
+
+    attr_reader :start, :fin
+
+    def match(x)
+      if str = x.scan(@regexp)
+        Match.new(self, str)
+      end
+    end
+
+    def inspect
+      inspect_type 'range', "#{@start}-#{@fin}"
+    end
+  end
+
   class Choice < Rule
     def initialize(*many)
       super()
@@ -349,6 +370,8 @@ module KPeg
         raise "Already set rule named '#{name}'"
       end
 
+      rule = Grammar.resolve(rule)
+
       @rule_order << name
       rule.name = name
 
@@ -370,6 +393,8 @@ module KPeg
       when Array
         rules = rule.map { |x| resolve(x) }
         return Sequence.new(*rules)
+      when Range
+        return CharRange.new(rule.begin.to_s, rule.end.to_s)
       else
         raise "Unknown rule type - #{rule.inspect}"
       end
@@ -394,6 +419,10 @@ module KPeg
 
     def reg(reg)
       LiteralRegexp.new reg
+    end
+
+    def range(start, fin)
+      CharRange.new(start, fin)
     end
 
     def any(*nodes)
@@ -472,6 +501,8 @@ module KPeg
         io.print rule.string.inspect
       when LiteralRegexp
         io.print rule.regexp.inspect
+      when CharRange
+        io.print "[#{rule.start}-#{rule.fin}]"
       when Sequence
         rule.rules.each do |r|
           render_rule io, r
