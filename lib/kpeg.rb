@@ -47,13 +47,20 @@ module KPeg
     def initialize(node, arg)
       @node = node
       if arg.kind_of? String
+        @matches = nil
         @string = arg
       else
         @matches = arg
+        @string = nil
       end
     end
 
-    attr_reader :node, :string, :matches
+    attr_reader :node, :string
+
+    def matches
+      return @matches if @matches
+      return []
+    end
   end
 
   class LiteralString
