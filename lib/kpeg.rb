@@ -45,7 +45,7 @@ module KPeg
 
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
-          raise ParseFailure
+          return nil
         end
 
         self.pos = m.pos
@@ -73,11 +73,8 @@ module KPeg
     def grow_lr(rule, start_pos, m)
       while true
         self.pos = start_pos
-        begin
-          ans = rule.match(self)
-        rescue ParseFailure
-          break
-        end
+        ans = rule.match(self)
+        return nil unless ans
 
         break if pos <= m.pos
 
@@ -145,8 +142,6 @@ module KPeg
     def match(x)
       if str = x.scan(@reg)
         Match.new(self, str)
-      else
-        raise ParseFailure
       end
     end
 
@@ -164,8 +159,6 @@ module KPeg
     def match(x)
       if str = x.scan(@reg)
         Match.new(self, str)
-      else
-        raise ParseFailure
       end
     end
 
@@ -184,15 +177,14 @@ module KPeg
       @choices.each do |c|
         pos = x.pos
 
-        begin
-          return c.match(x)
-        rescue ParseFailure
+        if m = c.match(x)
+          return m
         end
 
         x.pos = pos
       end
 
-      raise ParseFailure
+      return nil
     end
 
     def inspect
@@ -213,9 +205,9 @@ module KPeg
       matches = []
 
       while true
-        begin
-          matches << @node.match(x)
-        rescue ParseFailure
+        if m = @node.match(x)
+          matches << m
+        else
           break
         end
 
@@ -228,7 +220,7 @@ module KPeg
         return Match.new(self, matches)
       end
 
-      raise ParseFailure
+      return nil
     end
   end
 
@@ -239,7 +231,11 @@ module KPeg
     end
 
     def match(x)
-      matches = @nodes.map { |n| n.match(x) }
+      matches = @nodes.map do |n|
+        m = n.match(x)
+        return nil unless m
+        m
+      end
       Match.new(self, matches)
     end
 
@@ -256,14 +252,10 @@ module KPeg
 
     def match(x)
       pos = x.pos
+      m = @node.match(x)
+      x.pos = pos
 
-      begin
-        @node.match(x)
-      ensure
-        x.pos = pos
-      end
-
-      return Match.new(self, "")
+      return m ? Match.new(self, "") : nil
     end
 
     def inspect
@@ -279,17 +271,10 @@ module KPeg
 
     def match(x)
       pos = x.pos
+      m = @node.match(x)
+      x.pos = pos
 
-      begin
-        @node.match(x)
-        matched = true
-      rescue ParseFailure
-        matched = false
-      ensure
-        x.pos = pos
-      end
-
-      return matched ? nil : Match.new(self, "")
+      return m ? nil : Match.new(self, "")
     end
 
     def inspect
@@ -404,13 +389,6 @@ module KPeg
 
   def self.match(str, node)
     scan = Parser.new(str)
-
-    begin
-      m = scan.apply(node)
-    rescue ParseFailure
-      m = nil
-    end
-
-    return m
+    scan.apply(node)
   end
 end
