@@ -141,6 +141,8 @@ module KPeg
       @reg = Regexp.new Regexp.quote(str)
     end
 
+    attr_reader :string
+
     def match(x)
       if str = x.scan(@reg)
         Match.new(self, str)
@@ -155,28 +157,32 @@ module KPeg
   class LiteralRegexp < Rule
     def initialize(reg)
       super()
-      @reg = reg
+      @regexp = reg
     end
 
+    attr_reader :regexp
+
     def match(x)
-      if str = x.scan(@reg)
+      if str = x.scan(@regexp)
         Match.new(self, str)
       end
     end
 
     def inspect
-      inspect_type 'reg', @reg.inspect
+      inspect_type 'reg', @regexp.inspect
     end
   end
 
   class Choice < Rule
     def initialize(*many)
       super()
-      @choices = many
+      @rules = many
     end
 
+    attr_reader :rules
+
     def match(x)
-      @choices.each do |c|
+      @rules.each do |c|
         pos = x.pos
 
         if m = c.match(x)
@@ -190,24 +196,26 @@ module KPeg
     end
 
     def inspect
-      inspect_type "any", @choices.map { |i| i.inspect }.join(' | ')
+      inspect_type "any", @rules.map { |i| i.inspect }.join(' | ')
     end
   end
 
   class Multiple < Rule
-    def initialize(node, min, max)
+    def initialize(rule, min, max)
       super()
-      @node = node
+      @rule = rule
       @min = min
       @max = max
     end
+
+    attr_reader :rule, :min, :max
 
     def match(x)
       n = 0
       matches = []
 
       while true
-        if m = @node.match(x)
+        if m = @rule.match(x)
           matches << m
         else
           break
@@ -227,13 +235,15 @@ module KPeg
   end
 
   class Sequence < Rule
-    def initialize(*nodes)
+    def initialize(*rules)
       super()
-      @nodes = nodes
+      @rules = rules
     end
 
+    attr_reader :rules
+
     def match(x)
-      matches = @nodes.map do |n|
+      matches = @rules.map do |n|
         m = n.match(x)
         return nil unless m
         m
@@ -242,58 +252,64 @@ module KPeg
     end
 
     def inspect
-      inspect_type "seq", @nodes.map { |i| i.inspect }.join(' ')
+      inspect_type "seq", @rules.map { |i| i.inspect }.join(' ')
     end
   end
 
   class AndPredicate < Rule
-    def initialize(node)
+    def initialize(rule)
       super()
-      @node = node
+      @rule = rule
     end
+
+    attr_reader :rule
 
     def match(x)
       pos = x.pos
-      m = @node.match(x)
+      m = @rule.match(x)
       x.pos = pos
 
       return m ? Match.new(self, "") : nil
     end
 
     def inspect
-      inspect_type "andp", @node.inspect
+      inspect_type "andp", @rule.inspect
     end
   end
 
   class NotPredicate < Rule
-    def initialize(node)
+    def initialize(rule)
       super()
-      @node = node
+      @rule = rule
     end
+
+    attr_reader :rule
 
     def match(x)
       pos = x.pos
-      m = @node.match(x)
+      m = @rule.match(x)
       x.pos = pos
 
       return m ? nil : Match.new(self, "")
     end
 
     def inspect
-      inspect_type "notp", @node.inspect
+      inspect_type "notp", @rule.inspect
     end
   end
 
   class RuleReference < Rule
-    def initialize(layout, name)
+    def initialize(grammar, name)
       super()
-      @layout = layout
+      @grammar = grammar
       @rule_name = name
     end
 
+    attr_reader :rule_name
+
     def resolve
-      rule = @layout.find(@rule_name)
-      raise "Unknown rule: '#{@name}'" unless rule
+      rule = @grammar.find(@rule_name)
+      raise "Unknown rule: '#{@rule_name}'" unless rule
       rule
     end
 
@@ -306,9 +322,16 @@ module KPeg
     end
   end
 
-  class Layout
+  class Grammar
     def initialize
       @rules = {}
+      @rule_order = []
+    end
+
+    attr_reader :rules, :rule_order
+
+    def root
+      @rules["root"]
     end
 
     def set(name, rule)
@@ -316,6 +339,7 @@ module KPeg
         raise "Already set rule named '#{name}'"
       end
 
+      @rule_order << name
       rule.name = name
 
       @rules[name] = rule
@@ -325,6 +349,21 @@ module KPeg
       @rules[name]
     end
 
+    def resolve(rule)
+      case rule
+      when Rule
+        return rule
+      when Symbol
+        return ref(rule.to_s)
+      when String
+        return str(rule)
+      when Array
+        return seq(*rule)
+      else
+        raise "Unknown rule type - #{rule.inspect}"
+      end
+    end
+
     def method_missing(meth, *args)
       meth_s = meth.to_s
 
@@ -332,65 +371,134 @@ module KPeg
         rule = args.first
         set(meth_s[0..-2], rule)
         return rule
-      elsif rule = @rules[meth_s]
-        return rule
       end
 
-      super
+      # Hm, I guess this is fine. It might end up confusing people though.
+      return ref(meth.to_s)
     end
 
     def str(str)
-      LiteralString.new(str)
+      LiteralString.new str
     end
 
     def reg(reg)
-      LiteralRegexp.new(reg)
+      LiteralRegexp.new reg
     end
 
     def any(*nodes)
+      nodes.map! { |x| resolve(x) }
       Choice.new(*nodes)
     end
 
     def multiple(node, min, max)
-      Multiple.new(node, min, max)
+      Multiple.new resolve(node), min, max
     end
 
     def maybe(node)
-      multiple(node, 0, 1)
+      multiple resolve(node), 0, 1
     end
 
     def many(node)
-      multiple(node, 1, nil)
+      multiple resolve(node), 1, nil
     end
 
     def kleene(node)
-      multiple(node, 0, nil)
+      multiple resolve(node), 0, nil
     end
 
     def seq(*nodes)
+      nodes.map! { |x| resolve(x) }
       Sequence.new(*nodes)
     end
 
     def andp(node)
-      AndPredicate.new(node)
+      AndPredicate.new resolve(node)
     end
 
     def notp(node)
-      NotPredicate.new(node)
+      NotPredicate.new resolve(node)
     end
 
     def ref(name)
-      RuleReference.new(self, name.to_s)
+      RuleReference.new self, name.to_s
     end
   end
 
-  def self.layout
-    l = Layout.new
-    yield l
+  class GrammarRenderer
+    def initialize(gram)
+      @grammar = gram
+    end
+
+    def render(io)
+      widest = @grammar.rules.keys.sort { |a,b| a.size <=> b.size }.last
+      indent = widest.size
+
+      @grammar.rule_order.each do |name|
+        rule = @grammar.find(name)
+
+        io.print(' ' * (indent - name.size))
+        io.print "#{name} = "
+
+        if rule.kind_of? Choice
+          rule.rules.each_with_index do |r,idx|
+            unless idx == 0
+              io.print "\n#{' ' * (indent+1)}| "
+            end
+
+            render_rule io, r
+          end
+        else
+          render_rule io, rule
+        end
+
+        io.puts
+      end
+    end
+
+    def render_rule(io, rule)
+      case rule
+      when LiteralString
+        io.print rule.string.inspect
+      when LiteralRegexp
+        io.print rule.regexp.inspect
+      when Sequence
+        rule.rules.each do |r|
+          render_rule io, r
+          io.print " "
+        end
+      when Choice
+        io.print "("
+        rule.rules.each_with_index do |r,idx|
+          unless idx == 0
+            io.print " | "
+          end
+
+          render_rule io, r
+        end
+        io.print ")"
+      when Multiple
+        render_rule io, rule.rule
+        io.print "[#{rule.min}, #{rule.max}]"
+      when AndPredicate
+        io.print "&"
+        render_rule io, rule.rule
+      when NotPredicate
+        io.print "!"
+        render_rule io, rule.rule
+      when RuleReference
+        io.print rule.rule_name
+      end
+    end
   end
 
-  def self.match(str, node)
+  def self.grammar
+    g = Grammar.new
+    yield g
+    g
+  end
+
+  def self.match(str, gram)
     scan = Parser.new(str)
-    scan.apply(node)
+    scan.apply(gram.root)
   end
 end
