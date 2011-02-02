@@ -22,6 +22,15 @@ module KPeg
       def inc!
         @uses += 1
       end
+
+      def move!(ans, pos)
+        @ans = ans
+        @pos = pos
+      end
+
+      def fail?
+        @ans.nil?
+      end
     end
 
     def apply(rule)
@@ -30,14 +39,13 @@ module KPeg
         self.pos = m.pos
         return m.ans
       else
-        # Save the current position to use below
-        start_pos = pos
+        m = MemoEntry.new(nil, pos)
+        @memoizations[rule][pos] = m
+
         ans = rule.match(self)
 
-        # Be sure the MemoEntry has the post eval position
-        # so we reset it properly later
-        m = MemoEntry.new(ans, pos)
-        @memoizations[rule][start_pos] = m
+        m.move! ans, pos
+
         return ans
       end
     end
