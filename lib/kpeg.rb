@@ -611,18 +611,38 @@ module KPeg
       end
     end
 
+    def parens?(rule)
+      case rule
+      when Sequence, Multiple, AndPredicate, NotPredicate
+        return true
+      end
+
+      false
+    end
+
     def render_rule(io, rule)
       case rule
       when LiteralString
-        io.print rule.string.inspect
+        subd = rule.string.gsub(/[\n]/, '\n')
+        if subd.index('"')
+          io.print "'"
+          io.print subd
+          io.print "'"
+        else
+          io.print '"'
+          io.print subd
+          io.print '"'
+        end
       when LiteralRegexp
         io.print rule.regexp.inspect
       when CharRange
         io.print "[#{rule.start}-#{rule.fin}]"
       when Sequence
-        rule.rules.each do |r|
+        rule.rules.each_with_index do |r,idx|
+          unless idx == 0
+            io.print " "
+          end
           render_rule io, r
-          io.print " "
         end
       when Choice
         io.print "("
@@ -635,7 +655,14 @@ module KPeg
         end
         io.print ")"
       when Multiple
-        render_rule io, rule.rule
+        if parens?(rule.rule)
+          io.print "("
+          render_rule io, rule.rule
+          io.print ")"
+        else
+          render_rule io, rule.rule
+        end
+
         if rule.max
           if rule.min == 0 and rule.max == 1
             io.print "?"
@@ -651,10 +678,22 @@ module KPeg
         end
       when AndPredicate
         io.print "&"
-        render_rule io, rule.rule
+        if parens?(rule.rule)
+          io.print "("
+          render_rule io, rule.rule
+          io.print ")"
+        else
+          render_rule io, rule.rule
+        end
       when NotPredicate
         io.print "!"
-        render_rule io, rule.rule
+        if parens?(rule.rule)
+          io.print "("
+          render_rule io, rule.rule
+          io.print ")"
+        else
+          render_rule io, rule.rule
+        end
       when RuleReference
         io.print rule.rule_name
       end
