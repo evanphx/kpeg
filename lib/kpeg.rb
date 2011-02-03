@@ -933,45 +933,4 @@ module KPeg
     scan = Parser.new(str, gram)
     scan.parse
   end
-
-      # g.pattern     = g.alternative + (pattern("/") + g.sp + g.alternative) * 0
-      # g.alternative = ((+g.predicate + g.predicate + g.sp + g.suffix) /
-                      # (g.sp + g.suffix)) * 1
-      # g.predicate   = ["!&"]
-      # g.suffix      = g.primary + (pattern(["*+?"]) + g.sp) * 0
-      # g.primary     = (pattern("(") + g.sp + g.pattern + ")" + g.sp) / (pattern(1) + g.sp) /
-                      # g.literal / g.char_class / (g.nonterminal + -pattern("="))
-      # g.literal     = pattern("'") + (-pattern("'") + 1) * 0 + "'" + g.sp
-      # g.char_class  = (pattern("[") + (-pattern("]") +
-                      # ((pattern(1) + "-" + 1) / 1)) * 0) + "]" + g.sp
-      # g.nonterminal = (pattern("_") / ["a".."z"] / ["A".."Z"]) * 1 + g.sp
-      # g.sp          = pattern([" \t\n"]) * 0
-
-
-  # NativeFormat = KPeg.grammar do |g|
-
-    # g.root = g.many :assigment
-    # g.assignment = [:var, "=", :spaces, :choice]
-    # g.choice = [:sequence, g.kleene("|", :spaces, :sequence)]
-    # g.sequence = [g.notp(:predicate), :predicate 
-
-     # g.space = /[\s\t\n]/
-    # g.spaces = g.many(:space)
-       # g.var = /[a-zA-Z][a-zA-Z0-9]*/
-     # g.alnum = /[a-zA-Z0-9/
-      # g.make = [:var, :spaces, "=", :spaces, :expr]
-
-    # g.string = /"[^"]*"/
-    # g.non_slash = g.any("\/", %r![^/]!)
-    # g.regexp = ["/", :non_slash, "/"]
-    # g.char_range = ["[", :alnum, '-', :alnum, "]"]
-
-    # g.sequence = g.many :multiple
-    # g.multiple
-    # g.pick_any  = [:expr, "*"]
-    # g.maybe_one = [:expr, "?"]
-    # g.one_plus =  [:expr, "+"]
-
-    # g.expr = g.string | g.regexp | g.sequence | g.choice | g.pick_any \
-           # | g.maybe_one | g.one_plus
 end
