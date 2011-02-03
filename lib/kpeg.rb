@@ -191,6 +191,11 @@ module KPeg
       end
     end
 
+    def total_string
+      return @string if @string
+      @matches.map { |m| m.total_string }.join
+    end
+
     def value(obj=nil)
       if @string
         return @string unless @rule.action
