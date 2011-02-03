@@ -908,7 +908,14 @@ module KPeg
       when RuleReference
         io.print rule.rule_name
       when Tag
-        render_rule io, rule.rule
+        if parens?(rule.rule)
+          io.print "("
+          render_rule io, rule.rule
+          io.print ")"
+        else
+          render_rule io, rule.rule
+        end
+
         if rule.tag_name
           io.print ":#{rule.tag_name}"
         end
