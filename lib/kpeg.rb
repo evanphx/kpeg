@@ -144,6 +144,19 @@ module KPeg
       self.pos = m.pos
       return m.ans
     end
+
+    def failed?
+      !!@failing_rule
+    end
+
+    def parse
+      match = apply(@grammar.root)
+      if pos == string.size
+        @failing_rule = nil
+      end
+
+      return match
+    end
   end
 
   class Match
@@ -708,7 +721,7 @@ module KPeg
 
   def self.match(str, gram)
     scan = Parser.new(str, gram)
-    scan.apply(gram.root)
+    scan.parse
   end
 
       # g.pattern     = g.alternative + (pattern("/") + g.sp + g.alternative) * 0
