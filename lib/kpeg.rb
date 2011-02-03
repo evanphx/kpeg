@@ -45,12 +45,12 @@ module KPeg
       if m = @memoizations[rule][pos]
         m.inc!
 
+        self.pos = m.pos
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
           return nil
         end
 
-        self.pos = m.pos
         return m.ans
       else
         lr = LeftRecursive.new(false)
@@ -235,9 +235,9 @@ module KPeg
     end
 
     def match(x)
-      @rules.each do |c|
-        pos = x.pos
+      pos = x.pos
 
+      @rules.each do |c|
         if m = c.match(x)
           return m
         end
@@ -267,6 +267,8 @@ module KPeg
       n = 0
       matches = []
 
+      start = x.pos
+
       while true
         if m = @rule.match(x)
           matches << m
@@ -276,13 +278,17 @@ module KPeg
 
         n += 1
 
-        return nil if @max and n > @max
+        if @max and n > @max
+          x.pos = start
+          return nil
+        end
       end
 
       if n >= @min
         return Match.new(self, matches)
       end
 
+      x.pos = start
       return nil
     end
   end
@@ -296,9 +302,13 @@ module KPeg
     attr_reader :rules
 
     def match(x)
+      start = x.pos
       matches = @rules.map do |n|
         m = n.match(x)
-        return nil unless m
+        unless m
+          x.pos = start
+          return nil
+        end
         m
       end
       Match.new(self, matches)
