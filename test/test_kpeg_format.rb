@@ -6,8 +6,8 @@ require 'rubygems'
 class TestKPegFormat < Test::Unit::TestCase
   G = KPeg.grammar do |g|
     g.sp = g.kleene " "
-    g.var = /[a-zA-Z][_a-zA-Z0-9]*/
-    g.var_ref = g.reg(/[a-zA-Z][_a-zA-Z0-9]*/) { |x| ref(x) }
+    g.var = g.any("-", /[a-zA-Z][-_a-zA-Z0-9]*/)
+    g.var_ref = g.seq(:var) { |x| ref(x) }
 
     g.dbl_escape_quote = g.str('\"') { '"' }
     g.dbl_not_quote = g.many(g.any(:dbl_escape_quote, /[^"]/)) { |*a| a.join }
@@ -30,21 +30,26 @@ class TestKPegFormat < Test::Unit::TestCase
     g.range_elem = /([1-9][0-9]*)|\*/
     g.mult_range = g.seq('[', :sp, g.t(:range_elem), :sp, ',', 
                               :sp, g.t(:range_elem), :sp, ']') {
-                                  |a,b| 
+                                  |a,b|
                                   [a == "*" ? nil : a.to_i,
                                    b == "*" ? nil : b.to_i]
                    }
 
+    g.curly_block = g.seq(:curly) { |a| Array(a[1]).join }
+    g.curly = g.seq("{", g.kleene(g.any(/[^{}]+/, :curly)), "}")
+
     g.spaces = g.kleene(" ")
 
-    g.value = g.seq(:value, "?") { |v,_| maybe(v) } \
-            | g.seq(:value, "+") { |v,_| many(v) } \
+    g.value = g.seq(:value, ":", :var) { |a,_,b| t(a,b) } \
+            | g.seq(:value, "?") { |v,_| maybe(v) }   \
+            | g.seq(:value, "+") { |v,_| many(v) }    \
             | g.seq(:value, "*") { |v,_| kleene(v)  } \
             | g.seq(:value, :mult_range) { |v,r| multiple(v, *r) } \
             | g.seq("&", :value) { |_,v| andp(v) } \
             | g.seq("!", :value) { |_,v| notp(v) } \
             | g.seq(:value, :spaces, :value) { |a,_,b| seq(a, b) } \
             | g.seq("(", g.t(:outer), ")") { |o| o } \
+            | g.seq(:curly_block) { |a| action(a) } \
             | g.char_range | g.regexp | g.string | g.var_ref
 
     g.bsp = g.kleene g.any(" ", "\n")
@@ -62,11 +67,17 @@ class TestKPegFormat < Test::Unit::TestCase
     g.assignments = g.seq(:assignment, g.maybe([:sp, "\n", :assignments])) {
                       |a,b| b.empty? ? a : [:rules, a, b.last]
                     }
-    g.root = g.seq(:assignments, g.maybe([:sp, "\n"])) { |a,_| a }
+    g.root = g.seq(:assignments, :sp, g.maybe("\n")) { |a,_,_| a }
   end
 
   def match(str, gram=nil)
-    m = KPeg.match(str, G)
+    parc = KPeg::Parser.new(str, G)
+    m = parc.parse
+
+    if parc.failed?
+      parc.show_error
+      raise "Parse failure"
+    end
 
     gram ||= KPeg::Grammar.new
     m ? m.value(gram) : nil
@@ -74,6 +85,10 @@ class TestKPegFormat < Test::Unit::TestCase
 
   def test_assignment
     assert_equal [:set, "a", G.ref("b")], match("a=b")
+  end
+
+  def test_assignment
+    assert_equal [:set, "-", G.ref("b")], match("-=b")
   end
 
   def test_assigment_sp
@@ -157,6 +172,24 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal [:set, "a", G.seq(:b, :c, :d, :e, :f)], m
   end
 
+  def test_tag
+    m = match 'a=b:x'
+    assert_equal [:set, "a", G.t(:b, "x")], m
+  end
+
+  def test_tag_parens
+    m = match 'a=(b c):x'
+    assert_equal [:set, "a", G.t([:b, :c], "x")], m
+  end
+
+  def test_tag_priority
+    m = match 'a=d (b c):x'
+    assert_equal [:set, "a", G.seq(:d, G.t([:b, :c], "x"))], m
+
+    m = match 'a=d c*:x'
+    assert_equal [:set, "a", G.seq(:d, G.t(G.kleene(:c), "x"))], m
+  end
+
   def test_parens
     m = match 'a=(b c)'
     assert_equal [:set, "a", G.seq(:b, :c)], m
@@ -165,6 +198,16 @@ class TestKPegFormat < Test::Unit::TestCase
   def test_parens_as_outer
     m = match 'a=b (c|d)'
     assert_equal [:set, "a", G.seq(:b, G.any(:c, :d))], m
+  end
+
+  def test_action
+    m = match 'a=b c { b + c }'
+    assert_equal [:set, "a", G.seq(:b, :c, G.action(" b + c "))], m
+  end
+
+  def test_action_nested_curly
+    m = match 'a=b c { b + { c + d } }'
+    assert_equal [:set, "a", G.seq(:b, :c, G.action(" b + { c + d } "))], m
   end
 
   def test_multiple_rules

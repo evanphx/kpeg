@@ -195,6 +195,43 @@ class TestKPeg < Test::Unit::TestCase
     assert_equal m.value, "hello"
   end
 
+  def test_tag_render
+    gram = KPeg.grammar do |g|
+      g.root = g.seq("+", g.t("hello", "greeting"))
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = \"+\" \"hello\":greeting\n", io.string
+  end
+
+  def test_tag_render_parens
+    gram = KPeg.grammar do |g|
+      g.root = g.t(g.seq(:b, :c), "greeting")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = (b c):greeting\n", io.string
+  end
+
+  def test_action
+    gram = KPeg.grammar do |g|
+      g.root = g.seq("hello", g.action("b + c"))
+    end
+
+    m = KPeg.match "hello", gram
+    assert_equal 2, m.matches.size
+    assert_match m.matches[0], "hello"
+
+    action = m.matches[1]
+    assert_equal action.rule.action, "b + c"
+  end
+
   def test_naming
     gram = KPeg.grammar do |g|
       g.greeting = g.str("hello")
@@ -205,6 +242,25 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m, "hello"
   end
 
+  def test_matching_curly
+    gram = KPeg.grammar do |g|
+      g.curly = g.seq("{", g.kleene(g.any(/[^{}]+/, :curly)), "}")
+      g.root = :curly
+    end
+
+    m = KPeg.match "{ hello }", gram
+    assert_match m.matches[0], "{"
+    assert_match m.matches[1].matches[0], " hello "
+    assert_match m.matches[2], "}"
+
+    parc = KPeg::Parser.new "{ foo { bar } }", gram
+    m = parc.parse
+    assert_equal "{ foo { bar } }", m.total_string
+
+    parc = KPeg::Parser.new "{ foo {\nbar }\n }", gram
+    m = parc.parse
+    assert_equal "{ foo {\nbar }\n }", m.total_string
+  end
 
   def test_memoization
     gram = KPeg.grammar do |g|
@@ -336,7 +392,7 @@ root = term
                  [:term, g.any("-", "$"), :term],
                  :fact)
       g.fact = g.any(
-                 [:fact, "*", :fact],
+                 [:fact, g.t("*", "op"), :fact],
                  [:fact, "/", :fact],
                  :num
                )
@@ -354,7 +410,7 @@ root = term
 term = term "+" term
      | term ("-" | "$") term
      | fact
-fact = fact "*" fact
+fact = fact "*":op fact
      | fact "/" fact
      | num
 root = term
