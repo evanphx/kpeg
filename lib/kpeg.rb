@@ -625,6 +625,32 @@ module KPeg
     end
   end
 
+  class Action < Rule
+    def initialize(action)
+      super()
+      @action = action
+    end
+
+    attr_reader :action
+
+    def match(x)
+      return Match.new(self, "")
+    end
+
+    def ==(obj)
+      case obj
+      when Action
+        @action == obj.action
+      else
+        super
+      end
+    end
+
+    def inspect
+      inspect_type "action", "=> #{action.inspect}"
+    end
+  end
+
   class Grammar
     def initialize
       @rules = {}
@@ -788,6 +814,10 @@ module KPeg
 
     def t(rule, name=nil)
       Tag.new Grammar.resolve(rule), name
+    end
+
+    def action(action)
+      Action.new action
     end
   end
 
