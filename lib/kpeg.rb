@@ -191,19 +191,27 @@ module KPeg
       end
     end
 
-    def value
+    def value(obj=nil)
       if @string
         return @string unless @rule.action
-        @rule.action.call(@string)
+        if obj
+          obj.instance_exec(@string, &@rule.action)
+        else
+          @rule.action.call(@string)
+        end
       else
-        values = @matches.map { |m| m.value }
+        values = @matches.map { |m| m.value(obj) }
 
         unless @rule.action
           return values.first if values.size == 1
           return values
         end
 
-        @rule.action.call(*values)
+        if obj
+          obj.instance_exec(*values, &@rule.action)
+        else
+          @rule.action.call(*values)
+        end
       end
     end
   end
