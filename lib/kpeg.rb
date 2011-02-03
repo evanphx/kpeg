@@ -250,6 +250,17 @@ module KPeg
     def match(x)
       if str = x.scan(@reg)
         Match.new(self, str)
+      else
+        x.fail(self)
+      end
+    end
+
+    def ==(obj)
+      case obj
+      when LiteralString
+        @string == obj.string
+      else
+        super
       end
     end
 
@@ -266,9 +277,24 @@ module KPeg
 
     attr_reader :regexp
 
+    def string
+      @regexp.source
+    end
+
     def match(x)
       if str = x.scan(@regexp)
         Match.new(self, str)
+      else
+        x.fail(self)
+      end
+    end
+
+    def ==(obj)
+      case obj
+      when LiteralRegexp
+        @regexp == obj.regexp
+      else
+        super
       end
     end
 
@@ -287,9 +313,24 @@ module KPeg
 
     attr_reader :start, :fin
 
+    def string
+      @regexp.source
+    end
+
     def match(x)
       if str = x.scan(@regexp)
         Match.new(self, str)
+      else
+        x.fail(self)
+      end
+    end
+
+    def ==(obj)
+      case obj
+      when CharRange
+        @start == obj.start and @fin == obj.fin
+      else
+        super
       end
     end
 
@@ -323,6 +364,15 @@ module KPeg
       end
 
       return nil
+    end
+
+    def ==(obj)
+      case obj
+      when Choice
+        @rules == obj.rules
+      else
+        super
+      end
     end
 
     def inspect
@@ -368,6 +418,19 @@ module KPeg
       x.pos = start
       return nil
     end
+
+    def ==(obj)
+      case obj
+      when Multiple
+        @rule == obj.rule and @min == obj.min and @max == obj.max
+      else
+        super
+      end
+    end
+
+    def inspect
+      inspect_type "multi", "#{@min} #{@max ? @max : "*"} #{@rule.inspect}"
+    end
   end
 
   class Sequence < Rule
@@ -391,6 +454,15 @@ module KPeg
       Match.new(self, matches)
     end
 
+    def ==(obj)
+      case obj
+      when Sequence
+        @rules == obj.rules
+      else
+        super
+      end
+    end
+
     def inspect
       inspect_type "seq", @rules.map { |i| i.inspect }.join(' ')
     end
@@ -410,6 +482,15 @@ module KPeg
       x.pos = pos
 
       return m ? Match.new(self, "") : nil
+    end
+
+    def ==(obj)
+      case obj
+      when AndPredicate
+        @rule == obj.rule
+      else
+        super
+      end
     end
 
     def inspect
@@ -433,6 +514,15 @@ module KPeg
       return m ? nil : Match.new(self, "")
     end
 
+    def ==(obj)
+      case obj
+      when NotPredicate
+        @rule == obj.rule
+      else
+        super
+      end
+    end
+
     def inspect
       inspect_type "notp", @rule.inspect
     end
@@ -454,6 +544,15 @@ module KPeg
 
     def match(x)
       x.apply resolve(x)
+    end
+
+    def ==(obj)
+      case obj
+      when RuleReference
+        @rule_name == obj.rule_name
+      else
+        super
+      end
     end
 
     def inspect
