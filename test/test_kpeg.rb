@@ -131,6 +131,8 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m.matches[0], "hello"
     assert_match m.matches[1], ", world"
 
+    assert_equal m.value, ["hello", ", world"]
+
     assert_equal nil, KPeg.match("vador", gram)
     assert_equal nil, KPeg.match("hello, vador", gram)
   end
@@ -165,6 +167,32 @@ class TestKPeg < Test::Unit::TestCase
 
     m = KPeg.match "hello", gram
     assert_match m, "hello"
+  end
+
+  def test_tag_with_name
+    gram = KPeg.grammar do |g|
+      g.root = g.seq(" ", g.t("hello", "greeting"))
+    end
+
+    m = KPeg.match " hello", gram
+
+    assert_equal 2, m.matches.size
+    tag = m.matches[1]
+    assert_kind_of KPeg::Tag, tag.rule
+    assert_equal 1, tag.matches.size
+    assert_match tag.matches[0], "hello"
+
+    # show that tag influences the value of the sequence
+    assert_equal m.value, "hello"
+  end
+
+  def test_tag_without_name
+    gram = KPeg.grammar do |g|
+      g.root = g.seq(" ", g.t("hello"))
+    end
+
+    m = KPeg.match " hello", gram
+    assert_equal m.value, "hello"
   end
 
   def test_naming
@@ -304,7 +332,7 @@ root = term
     gram = KPeg.grammar do |g|
       g.num = g.reg(/[0-9]/)
       g.term = g.any(
-                 [:term, "+", :term],
+                 [:term, g.t("+"), :term],
                  [:term, g.any("-", "$"), :term],
                  :fact)
       g.fact = g.any(

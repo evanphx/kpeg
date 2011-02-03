@@ -202,6 +202,8 @@ module KPeg
       else
         values = @matches.map { |m| m.value(obj) }
 
+        values = @rule.prune_values(values)
+
         unless @rule.action
           return values.first if values.size == 1
           return values
@@ -220,12 +222,30 @@ module KPeg
     def initialize
       @name = nil
       @action = nil
+      @has_tags = false
     end
 
     attr_accessor :name, :action
 
     def set_action(act)
       @action = act
+    end
+
+    def detect_tags(rules)
+      tags = []
+      rules.each_with_index do |r,idx|
+        if r.kind_of?(Tag)
+          @has_tags = true
+          tags << idx
+        end
+      end
+
+      @tags = tags if @has_tags
+    end
+
+    def prune_values(values)
+      return values unless @has_tags
+      return values.values_at(*@tags)
     end
 
     def inspect_type(tag, body)
@@ -437,6 +457,7 @@ module KPeg
     def initialize(*rules)
       super()
       @rules = rules
+      detect_tags rules
     end
 
     attr_reader :rules
@@ -557,6 +578,45 @@ module KPeg
 
     def inspect
       inspect_type "ref", @rule_name
+    end
+  end
+
+  class Tag < Rule
+    def initialize(rule, tag_name)
+      super()
+      @rule = rule
+      @tag_name = tag_name
+    end
+
+    attr_reader :rule, :tag_name
+
+    def match(x)
+      if m = @rule.match(x)
+        Match.new(self, [m])
+      end
+    end
+
+    def ==(obj)
+      case obj
+      when Tag
+        @rule == obj.rule and @tag_name == obj.tag_name
+      when Rule
+        @rule == obj
+      else
+        super
+      end
+    end
+
+    def inspect
+      if @tag_name
+        body = "@#{tag_name} "
+      else
+        body = ""
+      end
+
+      body << @rule.inspect
+
+      inspect_type "tag", body
     end
   end
 
@@ -720,6 +780,10 @@ module KPeg
     def ref(name)
       RuleReference.new name.to_s
     end
+
+    def t(rule, name=nil)
+      Tag.new Grammar.resolve(rule), name
+    end
   end
 
   class GrammarRenderer
@@ -816,7 +880,7 @@ module KPeg
         elsif rule.min == 1
           io.print "+"
         else
-          io.print "[>=#{rule.min}]"
+          io.print "[#{rule.min},*]"
         end
       when AndPredicate
         io.print "&"
@@ -838,6 +902,11 @@ module KPeg
         end
       when RuleReference
         io.print rule.rule_name
+      when Tag
+        render_rule io, rule.rule
+        if rule.tag_name
+          io.print ":#{rule.tag_name}"
+        end
       end
     end
   end

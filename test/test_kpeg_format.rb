@@ -11,11 +11,11 @@ class TestKPegFormat < Test::Unit::TestCase
 
     g.dbl_escape_quote = g.str('\"') { '"' }
     g.dbl_not_quote = g.many(g.any(:dbl_escape_quote, /[^"]/)) { |*a| a.join }
-    g.dbl_string = g.seq('"', :dbl_not_quote, '"') { |_,x,_| str(x) }
+    g.dbl_string = g.seq('"', g.t(:dbl_not_quote), '"') { |x| str(x) }
 
     g.sgl_escape_quote = g.str("\\'") { "'" }
     g.sgl_not_quote = g.many(g.any(:sgl_escape_quote, /[^']/)) { |*a| a.join }
-    g.sgl_string = g.seq("'", :sgl_not_quote, "'") { |_,x,_| str(x) }
+    g.sgl_string = g.seq("'", g.t(:sgl_not_quote), "'") { |x| str(x) }
 
     g.string = g.any(:dbl_string, :sgl_string)
 
@@ -23,13 +23,16 @@ class TestKPegFormat < Test::Unit::TestCase
     g.regexp = g.seq('/', :not_slash, '/') { |_,x,_| reg(Regexp.new(x)) }
 
     g.char = /[a-zA-Z0-9]/
-    g.char_range = g.seq('[', :char, '-', :char, ']') {
-                     |_,l,_,r,_| range(l, r)
+    g.char_range = g.seq('[', g.t(:char), '-', g.t(:char), ']') {
+                     |l,r| range(l, r)
                    }
 
-    g.number = /[1-9][0-9]*/
-    g.mult_range = g.seq('{', :number, ',', :number, '}') {
-                     |_,a,_,b,_| [a.to_i,b.to_i]
+    g.range_elem = /([1-9][0-9]*)|\*/
+    g.mult_range = g.seq('[', :sp, g.t(:range_elem), :sp, ',', 
+                              :sp, g.t(:range_elem), :sp, ']') {
+                                  |a,b| 
+                                  [a == "*" ? nil : a.to_i,
+                                   b == "*" ? nil : b.to_i]
                    }
 
     g.spaces = g.kleene(" ")
@@ -41,19 +44,19 @@ class TestKPegFormat < Test::Unit::TestCase
             | g.seq("&", :value) { |_,v| andp(v) } \
             | g.seq("!", :value) { |_,v| notp(v) } \
             | g.seq(:value, :spaces, :value) { |a,_,b| seq(a, b) } \
-            | g.seq("(", :outer, ")") { |_,o,_| o } \
+            | g.seq("(", g.t(:outer), ")") { |o| o } \
             | g.char_range | g.regexp | g.string | g.var_ref
 
     g.bsp = g.kleene g.any(" ", "\n")
 
-    g.choose_cont = g.seq(:bsp, "|", :bsp, :value) { |_,_,_,x| x }
+    g.choose_cont = g.seq(:bsp, "|", :bsp, g.t(:value)) { |x| x }
     g.outer = g.seq(:value, g.many(:choose_cont)) {
                 |a,b| b.kind_of?(Array) ? any(a, *b) : any(a, b)
               } \
             | g.value
 
-    g.assignment = g.seq(:sp, :var, :sp, "=", :sp, :outer) {
-                     |_,v,_,_,_,e| set(v, e); [:set, v, e]
+    g.assignment = g.seq(:sp, g.t(:var), :sp, "=", :sp, g.t(:outer)) {
+                     |v,e| set(v, e); [:set, v, e]
                    }
 
     g.assignments = g.seq(:assignment, g.maybe([:sp, "\n", :assignments])) {
@@ -107,7 +110,18 @@ class TestKPegFormat < Test::Unit::TestCase
   end
 
   def test_arbitrary_multiple
-    assert_equal [:set, "a", G.multiple(:b, 5, 9)], match('a=b{5,9}')
+    assert_equal [:set, "a", G.multiple(:b, 5, 9)], match('a=b[5,9]')
+  end
+
+  def test_no_max_multiple
+    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5,*]')
+  end
+
+  def test_no_max_multiple_sp
+    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5, *]')
+    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5, * ]')
+    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5 , * ]')
+    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[ 5 , * ]')
   end
 
   def test_andp
