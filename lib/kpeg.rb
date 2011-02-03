@@ -10,9 +10,65 @@ module KPeg
       @grammar = grammar
       # A 2 level hash.
       @memoizations = Hash.new { |h,k| h[k] = {} }
+
+      @failing_pos = nil
+      @failing_rule = nil
     end
 
     attr_reader :grammar, :memoizations
+    attr_accessor :failing_rule
+
+    def fail(rule)
+      @failing_pos = pos
+      @failing_rule = rule
+      return nil
+    end
+
+    def current_column(target=pos)
+      offset = 0
+      string.each_line do |line|
+        len = line.size
+        return (target - offset) if offset + len >= target
+        offset += len
+      end
+
+      -1
+    end
+
+    def current_line(target=pos)
+      cur_offset = 0
+      cur_line = 0
+
+      string.each_line do |line|
+        cur_line += 1
+        cur_offset += line.size
+        return cur_line if cur_offset >= target
+      end
+
+      -1
+    end
+
+    def lines
+      lines = []
+      string.each_line { |l| lines << l }
+      lines
+    end
+
+    def show_error(io=STDOUT)
+      return unless @failing_rule
+
+      error_pos = @failing_pos
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      io.puts "Expected #{@failing_rule.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
+      io.puts "Got: #{string[error_pos,1].inspect}"
+      io.puts "Rule: #{@failing_rule.inspect}"
+      line = lines[line_no-1]
+      io.puts "=> #{line}"
+      io.print(" " * (col_no + 3))
+      io.puts "^"
+    end
 
     class LeftRecursive
       def initialize(detected=false)
