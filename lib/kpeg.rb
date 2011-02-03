@@ -598,7 +598,18 @@ module KPeg
       when String
         return LiteralString.new(rule)
       when Array
-        rules = rule.map { |x| resolve(x) }
+        rules = []
+        rule.each do |x|
+          case x
+          when Sequence
+            rules.concat x.rules
+          when Rule
+            rules << x
+          else
+            rules << resolve(x)
+          end
+        end
+
         return Sequence.new(*rules)
       when Range
         return CharRange.new(rule.begin.to_s, rule.end.to_s)
@@ -681,8 +692,19 @@ module KPeg
     end
 
     def seq(*nodes, &b)
-      nodes.map! { |x| Grammar.resolve(x) }
-      rule = Sequence.new(*nodes)
+      rules = []
+      nodes.each do |x|
+        case x
+        when Sequence
+          rules.concat x.rules
+        when Rule
+          rules << x
+        else
+          rules << Grammar.resolve(x)
+        end
+      end
+
+      rule = Sequence.new(*rules)
       rule.set_action(b) if b
       rule
     end
