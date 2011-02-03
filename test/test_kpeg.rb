@@ -288,11 +288,11 @@ class TestKPeg < Test::Unit::TestCase
     expected = <<-GRAM
 some = [0-9]
  num = /[0-9]/
-term = term "+" term 
-     | term "-" term 
+term = term "+" term
+     | term "-" term
      | fact
-fact = fact "*" fact 
-     | fact "/" fact 
+fact = fact "*" fact
+     | fact "/" fact
      | num
 root = term
     GRAM
@@ -323,11 +323,11 @@ root = term
 
     expected = <<-GRAM
  num = /[0-9]/
-term = term "+" term 
-     | term ("-" | "$") term 
+term = term "+" term
+     | term ("-" | "$") term
      | fact
-fact = fact "*" fact 
-     | fact "/" fact 
+fact = fact "*" fact
+     | fact "/" fact
      | num
 root = term
     GRAM
@@ -359,10 +359,6 @@ root = term
 
       g.root = g.seq(g.kleene(:expr), :spaces) { |e,_| e }
     end
-
-    gr = KPeg::GrammarRenderer.new(gram)
-    puts
-    gr.render(STDOUT)
 
     m = KPeg.match "3+4*5", gram
     assert_equal 23, m.value
