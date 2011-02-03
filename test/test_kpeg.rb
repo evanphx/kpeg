@@ -360,6 +360,10 @@ root = term
       g.root = g.seq(g.kleene(:expr), :spaces) { |e,_| e }
     end
 
+    gr = KPeg::GrammarRenderer.new(gram)
+    puts
+    gr.render(STDOUT)
+
     m = KPeg.match "3+4*5", gram
     assert_equal 23, m.value
 
