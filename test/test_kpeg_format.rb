@@ -35,6 +35,10 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal [:set, "a", G.ref("b")], match(" a = b ")
   end
 
+  def test_dot
+    assert_equal [:set, "a", G.dot], match("a=.")
+  end
+
   def test_string
     assert_equal [:set, "a", G.str("hello")], match('a="hello"')
     assert_equal [:set, "a", G.str("h\"ello")], match('a="h\"ello"')

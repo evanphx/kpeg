@@ -263,6 +263,28 @@ module KPeg
     end
   end
 
+  class Dot < Rule
+    def match(x)
+      if str = x.get_byte
+        Match.new(self, str)
+      else
+        x.fail(self)
+      end
+    end
+
+    def ==(obj)
+      Dot === obj ? true : false
+    end
+
+    def inspect
+      if @name
+        "#<dot:#{@name}>"
+      else
+        "#<dot>"
+      end
+    end
+  end
+
   class LiteralString < Rule
     def initialize(str)
       super()
@@ -739,6 +761,12 @@ module KPeg
       rule
     end
 
+    def dot(&b)
+      rule = Dot.new
+      rule.set_action(b) if b
+      rule
+    end
+
     def str(str, &b)
       rule = LiteralString.new str
       rule.set_action(b) if b
@@ -863,6 +891,8 @@ module KPeg
 
     def render_rule(io, rule)
       case rule
+      when Dot
+        io.print "."
       when LiteralString
         subd = rule.string.gsub(/[\n]/, '\n')
         if subd.index('"')

@@ -8,6 +8,26 @@ class TestKPeg < Test::Unit::TestCase
     assert_equal str, m.string
   end
 
+  def test_dot
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+    end
+
+    assert_match KPeg.match("q", gram), "q"
+  end
+
+  def test_dot_render
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = .\n", io.string
+  end
+
   def test_str
     gram = KPeg.grammar do |g|
       g.root = g.str("hello")

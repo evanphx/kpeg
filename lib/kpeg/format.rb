@@ -47,6 +47,7 @@ module KPeg
             | g.seq(:value, :spaces, :value) { |a,_,b| seq(a, b) } \
             | g.seq("(", g.t(:outer, "o"), ")") { |o| o } \
             | g.seq(:curly_block) { |a| action(a) } \
+            | g.str(".") { dot } \
             | g.char_range | g.regexp | g.string | g.var_ref
 
     g.bsp = g.kleene g.any(" ", "\n")
