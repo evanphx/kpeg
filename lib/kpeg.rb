@@ -849,6 +849,17 @@ module KPeg
     end
   end
 
+  def self.grammar
+    g = Grammar.new
+    yield g
+    g
+  end
+
+  def self.match(str, gram)
+    scan = Parser.new(str, gram)
+    scan.parse
+  end
+
   class GrammarRenderer
     def initialize(gram)
       @grammar = gram
@@ -889,21 +900,31 @@ module KPeg
       false
     end
 
+    StringEscape = KPeg.grammar do |g|
+      g.escapes = g.str("\\") { "\\\\" } \
+                | g.str("\n") { "\\n" }  \
+                | g.str("\t") { "\\t" }  \
+                | g.str("\b") { "\\b" }  \
+                | g.str('"')  { "\\\"" }
+      g.root = g.many(g.any(:escapes, g.dot))
+    end
+
+    def self.escape(str)
+      m = KPeg.match str, StringEscape
+      val = m.value
+      val = val.join if val.kind_of?(Array)
+      val
+    end
+
     def render_rule(io, rule)
       case rule
       when Dot
         io.print "."
       when LiteralString
-        subd = rule.string.gsub(/[\n]/, '\n')
-        if subd.index('"')
-          io.print "'"
-          io.print subd
-          io.print "'"
-        else
-          io.print '"'
-          io.print subd
-          io.print '"'
-        end
+        esc = GrammarRenderer.escape rule.string
+        io.print '"'
+        io.print esc
+        io.print '"'
       when LiteralRegexp
         io.print rule.regexp.inspect
       when CharRange
@@ -979,18 +1000,9 @@ module KPeg
         if rule.tag_name
           io.print ":#{rule.tag_name}"
         end
+      else
+        raise "Unknown rule type - #{rule.class}"
       end
     end
-  end
-
-  def self.grammar
-    g = Grammar.new
-    yield g
-    g
-  end
-
-  def self.match(str, gram)
-    scan = Parser.new(str, gram)
-    scan.parse
   end
 end

@@ -6,8 +6,11 @@ module KPeg
     g.var = g.any("-", /[a-zA-Z][-_a-zA-Z0-9]*/)
     g.var_ref = g.seq(:var) { |x| ref(x) }
 
-    g.dbl_escape_quote = g.str('\"') { '"' }
-    g.dbl_not_quote = g.many(g.any(:dbl_escape_quote, /[^"]/)) { |*a| a.join }
+    g.dbl_escapes = g.str('\"') { '"'  } \
+                  | g.str('\n') { "\n" } \
+                  | g.str('\t') { "\t" } \
+                  | g.str('\\\\') { "\\" }
+    g.dbl_not_quote = g.many(g.any(:dbl_escapes, /[^"]/)) { |*a| a.join }
     g.dbl_string = g.seq('"', g.t(:dbl_not_quote, "str"), '"') { |x| str(x) }
 
     g.sgl_escape_quote = g.str("\\'") { "'" }

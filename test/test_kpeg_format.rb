@@ -47,6 +47,7 @@ class TestKPegFormat < Test::Unit::TestCase
   def test_regexp
     assert_equal [:set, "a", G.reg(/foo/)], match('a=/foo/')
     assert_equal [:set, "a", G.reg(/foo\/bar/)], match('a=/foo\/bar/')
+    assert_equal [:set, "a", G.reg(/[^"]/)], match('a=/[^"]/')
   end
 
   def test_char_range
@@ -225,7 +226,11 @@ fact = fact "*" num
 
     scan = KPeg::Parser.new io.string, G
     m = scan.parse
-    assert !scan.failed?, "parsing the grammar"
+    if scan.failed?
+      puts io.string
+      scan.show_error
+      assert !scan.failed?, "parsing the grammar"
+    end
 
     g2 = KPeg::Grammar.new
     m.value(g2)

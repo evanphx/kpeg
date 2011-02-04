@@ -473,4 +473,15 @@ root = term
     m = KPeg.match "x=x*7", gram
     assert_equal 14, m.value
   end
+
+  def test_escape
+    str = "hello\nbob"
+    assert_equal 'hello\nbob', KPeg::GrammarRenderer.escape(str)
+    str = "hello\tbob"
+    assert_equal 'hello\tbob', KPeg::GrammarRenderer.escape(str)
+    str = "\\"
+    assert_equal '\\\\', KPeg::GrammarRenderer.escape(str)
+    str = 'hello"bob"'
+    assert_equal 'hello\\"bob\\"', KPeg::GrammarRenderer.escape(str)
+  end
 end
