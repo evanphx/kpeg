@@ -169,8 +169,18 @@ module KPeg
       !!@failing_rule
     end
 
-    def parse
-      match = apply(@grammar.root)
+    def parse(name=nil)
+      if name
+        rule = @grammar.find(name)
+        unless rule
+          raise "Unknown rule - #{name}"
+        end
+
+        match = apply rule
+      else
+        match = apply @grammar.root
+      end
+
       if pos == string.size
         @failing_rule = nil
       end
