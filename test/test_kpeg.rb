@@ -189,6 +189,34 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m, "hello"
   end
 
+  def test_foreign_ref
+    g1 = KPeg.grammar do |g|
+      g.greeting = "hello"
+    end
+
+    g2 = KPeg.grammar do |g|
+      g.root = g.ref("greeting", g1)
+    end
+
+    m = KPeg.match "hello", g2
+    assert_match m, "hello"
+  end
+
+  def test_foreign_ref_with_ref
+    g1 = KPeg.grammar do |g|
+      g.name = ", evan"
+      g.greeting = g.seq("hello", :name)
+    end
+
+    g2 = KPeg.grammar do |g|
+      g.root = g.ref("greeting", g1)
+    end
+
+    m = KPeg.match "hello, evan", g2
+    assert_match m.matches[0], "hello"
+    assert_match m.matches[1], ", evan"
+  end
+
   def test_tag_with_name
     gram = KPeg.grammar do |g|
       g.root = g.seq(" ", g.t("hello", "greeting"))
