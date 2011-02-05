@@ -18,6 +18,16 @@ module KPeg
     attr_reader :grammar, :memoizations
     attr_accessor :failing_rule
 
+    def switch_grammar(gram)
+      begin
+        old = @grammar
+        @grammar = gram
+        yield
+      ensure
+        @grammar = old
+      end
+    end
+
     def fail(rule)
       @failing_pos = pos
       @failing_rule = rule
@@ -587,21 +597,26 @@ module KPeg
   end
 
   class RuleReference < Rule
-    def initialize(name)
+    def initialize(name, grammar=nil)
       super()
       @rule_name = name
+      @grammar = grammar
     end
 
     attr_reader :rule_name
 
-    def resolve(x)
-      rule = x.grammar.find(@rule_name)
-      raise "Unknown rule: '#{@rule_name}'" unless rule
-      rule
-    end
-
     def match(x)
-      x.apply resolve(x)
+      if @grammar and @grammar != x.grammar
+        x.switch_grammar(@grammar) do
+          rule = @grammar.find(@rule_name)
+          raise "Unknown rule: '#{@rule_name}'" unless rule
+          x.apply rule
+        end
+      else
+        rule = x.grammar.find(@rule_name)
+        raise "Unknown rule: '#{@rule_name}'" unless rule
+        x.apply rule
+      end
     end
 
     def ==(obj)
@@ -846,8 +861,8 @@ module KPeg
       NotPredicate.new Grammar.resolve(node)
     end
 
-    def ref(name)
-      RuleReference.new name.to_s
+    def ref(name, other_grammar=nil)
+      RuleReference.new name.to_s, other_grammar
     end
 
     def t(rule, name=nil)
