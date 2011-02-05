@@ -54,6 +54,16 @@ module KPeg
       lines
     end
 
+    def error_expectation
+      return "" unless @failing_rule
+
+      error_pos = @failing_pos
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      return "Expected #{@failing_rule.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
+    end
+
     def show_error(io=STDOUT)
       return unless @failing_rule
 
