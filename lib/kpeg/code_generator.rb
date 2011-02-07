@@ -10,17 +10,14 @@ module KPeg
       "_#{name}"
     end
 
-    def output_node(code, node, check=true)
+    def output_node(code, node)
       case node
       when Dot
         code << "    _tmp = x.get_byte\n"
-        code << "    return _tmp if _tmp\n" if check
       when LiteralString
         code << "    _tmp = x.scan(/#{Regexp.quote node.string}/)\n"
-        code << "    return _tmp if _tmp\n" if check
       when LiteralRegexp
         code << "    _tmp = x.scan(/#{node.regexp}/)\n"
-        code << "    return _tmp if _tmp\n" if check
       when CharRange
         if node.start.bytesize == 1 and node.fin.bytesize == 1
           code << "    _tmp = x.get_byte\n"
@@ -28,37 +25,45 @@ module KPeg
           left  = node.start[0]
           right = node.fin[0]
 
-          code << "    return _tmp if fix >= #{left} and fix <= #{right}\n"
+          code << "    _tmp = nil unless fix >= #{left} and fix <= #{right}\n"
         else
           raise "Unsupported char range - #{node.inspect}"
         end
       when Choice
-        node.rules.each do |n|
+        code << "\n    while true # choice\n"
+        node.rules.each_with_index do |n,idx|
           output_node code, n
+
+          if idx == node.rules.size - 1
+            code << "    break\n"
+          else
+            code << "    break if _tmp\n"
+          end
         end
+        code << "    end # end choice\n\n"
       when Multiple
         if node.min == 0 and node.max == 1
           output_node code, node.rule
-          code << "    return true\n"
+          code << "    _tmp = true unless _tmp\n"
         elsif node.min == 0 and !node.max
           code << "    ary = []\n"
           code << "    while true\n"
           code << "  "
-          output_node code, node.rule, false
+          output_node code, node.rule
           code << "      if _tmp\n"
           code << "        ary << _tmp\n"
           code << "      else\n"
           code << "        break\n"
           code << "      end\n"
           code << "    end\n"
-          code << "    return ary\n"
+          code << "    _tmp = ary\n"
         elsif node.min == 1 and !node.max
-          output_node code, node.rule, false
+          output_node code, node.rule
           code << "    if _tmp\n"
           code << "      ary = [_tmp]\n"
           code << "      while true\n"
           code << "    "
-          output_node code, node.rule, false
+          output_node code, node.rule
           code << "        if _tmp\n"
           code << "          ary << _tmp\n"
           code << "        else\n"
@@ -67,12 +72,11 @@ module KPeg
           code << "      end\n"
           code << "      _tmp = ary\n"
           code << "    end\n"
-          code << "    return _tmp if _tmp\n"
         else
           code << "    ary = []\n"
           code << "    while true\n"
           code << "  "
-          output_node code, node.rule, false
+          output_node code, node.rule
           code << "      if _tmp\n"
           code << "        ary << _tmp\n"
           code << "      else\n"
@@ -84,40 +88,44 @@ module KPeg
           code << "    else\n"
           code << "      _tmp = nil\n"
           code << "    end\n"
-          code << "    return _tmp\n"
         end
       when Sequence
+        code << "\n    while true # sequence\n"
         node.rules.each_with_index do |n, idx|
-          output_node code, n, false
+          output_node code, n
 
           if idx == node.rules.size - 1
-            code << "    return _tmp if _tmp\n"
+            code << "    break\n"
           else
-            code << "    return nil unless _tmp\n"
+            code << "    break unless _tmp\n"
           end
         end
+        code << "    end # end sequence\n\n"
       when AndPredicate
         code << "    save = x.pos\n"
-        output_node code, node.rule, false
+        output_node code, node.rule
         code << "    x.pos = save\n"
-        code << "    return _tmp if _tmp\n"
       when NotPredicate
         code << "    save = x.pos\n"
-        output_node code, node.rule, false
+        output_node code, node.rule
         code << "    x.pos = save\n"
         code << "    _tmp = !_tmp\n"
-        code << "    return _tmp if _tmp\n"
       when RuleReference
         code << "    _tmp = x.find_memo('#{node.rule_name}')\n"
         code << "    unless _tmp\n"
         code << "      _tmp = #{method_name node.rule_name}(x)\n"
         code << "      x.set_memo('#{node.rule_name}', _tmp)\n"
         code << "    end\n"
-        code << "    return _tmp if _tmp\n"
       when Tag
-        output_node code, node.rule, false
-        code << "    #{node.tag_name} = _tmp\n"
-        code << "    return _tmp if _tmp\n"
+        if node.tag_name and !node.tag_name.empty?
+          output_node code, node.rule
+          code << "    #{node.tag_name} = _tmp\n"
+        else
+          output_node code, node.rule
+        end
+      when Action
+        code << "    _tmp = begin; "
+        code << node.action << "; end\n"
       else
         raise "Unknown node - #{node.class}"
       end
@@ -130,7 +138,7 @@ module KPeg
 
       output_node code, @grammar.root
 
-      code << "    return nil\n"
+      code << "    return _tmp\n"
       code << "  end\n"
       code << "end\n"
     end
