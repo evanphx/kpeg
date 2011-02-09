@@ -25,12 +25,11 @@ module KPeg
         if node.start.bytesize == 1 and node.fin.bytesize == 1
           code << "    _tmp = get_byte\n"
           code << "    if _tmp\n"
-          code << "      fix = _tmp[0]\n"
           left  = node.start[0]
           right = node.fin[0]
 
-          code << "      unless fix >= #{left} and fix <= #{right}\n"
-          code << "        unget_byte _tmp\n"
+          code << "      unless _tmp >= #{left} and _tmp <= #{right}\n"
+          code << "        unget_one\n"
           code << "        _tmp = nil\n"
           code << "      end\n"
           code << "    end\n"

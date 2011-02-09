@@ -22,7 +22,7 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "h", cg.run("hello")
+    assert_equal ?h, cg.run("hello")
   end
 
   def test_str
@@ -79,9 +79,8 @@ class Test < KPeg::CompiledGrammar
   def _root
     _tmp = get_byte
     if _tmp
-      fix = _tmp[0]
-      unless fix >= 97 and fix <= 122
-        unget_byte _tmp
+      unless _tmp >= 97 and _tmp <= 122
+        unget_one
         _tmp = nil
       end
     end
@@ -94,8 +93,8 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "z", cg.run("z")
-    assert_equal "a", cg.run("a")
+    assert_equal ?z, cg.run("z")
+    assert_equal ?a, cg.run("a")
     assert_equal nil, cg.run("0")
   end
 
@@ -112,9 +111,8 @@ class Test < KPeg::CompiledGrammar
     while true # sequence
     _tmp = get_byte
     if _tmp
-      fix = _tmp[0]
-      unless fix >= 97 and fix <= 122
-        unget_byte _tmp
+      unless _tmp >= 97 and _tmp <= 122
+        unget_one
         _tmp = nil
       end
     end

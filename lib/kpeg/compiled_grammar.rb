@@ -33,8 +33,8 @@ module KPeg
       return nil
     end
 
-    def unget_byte(str)
-      @pos -= str.size
+    def unget_one
+      @pos -= 1
     end
 
     def scan(reg)
@@ -49,7 +49,7 @@ module KPeg
 
     def get_byte
       return nil if @pos >= @string.size
-      s = @string[@pos,1]
+      s = @string[@pos]
       @pos += 1
       s
     end
