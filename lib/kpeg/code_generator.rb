@@ -1,8 +1,11 @@
+require 'kpeg/compiled_grammar'
+
 module KPeg
   class CodeGenerator
-    def initialize(name, gram)
+    def initialize(name, gram, debug=false)
       @name = name
       @grammar = gram
+      @debug = debug
     end
 
     def method_name(name)
@@ -13,24 +16,30 @@ module KPeg
     def output_node(code, node)
       case node
       when Dot
-        code << "    _tmp = x.get_byte\n"
+        code << "    _tmp = get_byte\n"
       when LiteralString
-        code << "    _tmp = x.scan(/#{Regexp.quote node.string}/)\n"
+        code << "    _tmp = match_string(#{node.string.dump})\n"
       when LiteralRegexp
-        code << "    _tmp = x.scan(/#{node.regexp}/)\n"
+        code << "    _tmp = scan(/#{node.regexp}/)\n"
       when CharRange
         if node.start.bytesize == 1 and node.fin.bytesize == 1
-          code << "    _tmp = x.get_byte\n"
-          code << "    fix = _tmp[0]\n"
+          code << "    _tmp = get_byte\n"
+          code << "    if _tmp\n"
+          code << "      fix = _tmp[0]\n"
           left  = node.start[0]
           right = node.fin[0]
 
-          code << "    _tmp = nil unless fix >= #{left} and fix <= #{right}\n"
+          code << "      unless fix >= #{left} and fix <= #{right}\n"
+          code << "        unget_byte _tmp\n"
+          code << "        _tmp = nil\n"
+          code << "      end\n"
+          code << "    end\n"
         else
           raise "Unsupported char range - #{node.inspect}"
         end
       when Choice
-        code << "\n    while true # choice\n"
+        code << "\n    _save = self.pos\n"
+        code << "    while true # choice\n"
         node.rules.each_with_index do |n,idx|
           output_node code, n
 
@@ -38,94 +47,98 @@ module KPeg
             code << "    break\n"
           else
             code << "    break if _tmp\n"
+            code << "    self.pos = _save\n"
           end
         end
         code << "    end # end choice\n\n"
       when Multiple
         if node.min == 0 and node.max == 1
+          code << "    _save = self.pos\n"
           output_node code, node.rule
-          code << "    _tmp = true unless _tmp\n"
-        elsif node.min == 0 and !node.max
-          code << "    ary = []\n"
-          code << "    while true\n"
-          code << "  "
-          output_node code, node.rule
-          code << "      if _tmp\n"
-          code << "        ary << _tmp\n"
-          code << "      else\n"
-          code << "        break\n"
-          code << "      end\n"
+          code << "    unless _tmp\n"
+          code << "      _tmp = true\n"
+          code << "      self.pos = _save\n"
           code << "    end\n"
-          code << "    _tmp = ary\n"
+        elsif node.min == 0 and !node.max
+          code << "    while true\n"
+          output_node code, node.rule
+          code << "    break unless _tmp\n"
+          code << "    end\n"
+          code << "    _tmp = true\n"
         elsif node.min == 1 and !node.max
           output_node code, node.rule
           code << "    if _tmp\n"
-          code << "      ary = [_tmp]\n"
           code << "      while true\n"
           code << "    "
           output_node code, node.rule
-          code << "        if _tmp\n"
-          code << "          ary << _tmp\n"
-          code << "        else\n"
-          code << "          break\n"
-          code << "        end\n"
+          code << "        break unless _tmp\n"
           code << "      end\n"
-          code << "      _tmp = ary\n"
+          code << "      _tmp = true\n"
           code << "    end\n"
         else
-          code << "    ary = []\n"
+          code << "    _count = 0\n"
           code << "    while true\n"
           code << "  "
           output_node code, node.rule
           code << "      if _tmp\n"
-          code << "        ary << _tmp\n"
+          code << "        _count += 1\n"
           code << "      else\n"
           code << "        break\n"
           code << "      end\n"
           code << "    end\n"
-          code << "    if ary.size >= #{node.min} and ary.size <= #{node.max}\n"
-          code << "      _tmp = ary\n"
+          code << "    if _count >= #{node.min} and _count <= #{node.max}\n"
+          code << "      _tmp = true\n"
           code << "    else\n"
           code << "      _tmp = nil\n"
           code << "    end\n"
         end
       when Sequence
-        code << "\n    while true # sequence\n"
+        code << "\n    _save = self.pos\n"
+        code << "    while true # sequence\n"
         node.rules.each_with_index do |n, idx|
           output_node code, n
 
           if idx == node.rules.size - 1
+            code << "    unless _tmp\n"
+            code << "      self.pos = _save\n"
+            code << "    end\n"
             code << "    break\n"
           else
-            code << "    break unless _tmp\n"
+            code << "    unless _tmp\n"
+            code << "      self.pos = _save\n"
+            code << "      break\n"
+            code << "    end\n"
           end
         end
         code << "    end # end sequence\n\n"
       when AndPredicate
-        code << "    save = x.pos\n"
+        code << "    save = self.pos\n"
         output_node code, node.rule
-        code << "    x.pos = save\n"
+        code << "    self.pos = save\n"
       when NotPredicate
-        code << "    save = x.pos\n"
+        code << "    save = self.pos\n"
         output_node code, node.rule
-        code << "    x.pos = save\n"
-        code << "    _tmp = !_tmp\n"
+        code << "    self.pos = save\n"
+        code << "    _tmp = _tmp ? nil : true\n"
       when RuleReference
-        code << "    _tmp = x.find_memo('#{node.rule_name}')\n"
-        code << "    unless _tmp\n"
-        code << "      _tmp = #{method_name node.rule_name}(x)\n"
-        code << "      x.set_memo('#{node.rule_name}', _tmp)\n"
-        code << "    end\n"
+        code << "    _tmp = apply('#{node.rule_name}', :#{method_name node.rule_name})\n"
       when Tag
         if node.tag_name and !node.tag_name.empty?
           output_node code, node.rule
-          code << "    #{node.tag_name} = _tmp\n"
+          code << "    #{node.tag_name} = @result\n"
         else
           output_node code, node.rule
         end
       when Action
-        code << "    _tmp = begin; "
+        code << "    @result = begin; "
         code << node.action << "; end\n"
+        code << "    _tmp = true\n"
+      when Collect
+        code << "    _text_start = self.pos\n"
+        output_node code, node.rule
+        code << "    if _tmp\n"
+        code << "      set_text(_text_start)\n"
+        code << "    end\n"
       else
         raise "Unknown node - #{node.class}"
       end
@@ -133,14 +146,39 @@ module KPeg
     end
 
     def output
-      code =  "class #{@name}\n"
-      code << "  def root(x)\n"
+      code =  "class #{@name} < KPeg::CompiledGrammar\n"
+      @grammar.rule_order.each do |name|
+        rule = @grammar.rules[name]
+        code << "  def #{method_name name}\n"
+        if @debug
+          code << "    puts \"START #{name} @ \#{@scanner.inspect}\\n\"\n"
+        end
 
-      output_node code, @grammar.root
+        output_node code, rule
+        if @debug
+          code << "    if _tmp\n"
+          code << "      puts \"   OK #{name} @ \#{@scanner.inspect}\\n\"\n"
+          code << "    else\n"
+          code << "      puts \" FAIL #{name} @ \#{@scanner.inspect}\\n\"\n"
+          code << "    end\n"
+        end
 
-      code << "    return _tmp\n"
-      code << "  end\n"
+        code << "    return _tmp\n"
+        code << "  end\n"
+      end
       code << "end\n"
+    end
+
+    def make(str)
+      m = Module.new
+      m.module_eval output
+
+      cls = m.const_get(@name)
+      cls.new(str)
+    end
+
+    def run(str)
+      make(str).run
     end
   end
 end

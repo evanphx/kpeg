@@ -274,6 +274,15 @@ class TestKPeg < Test::Unit::TestCase
     assert_equal "{ foo {\nbar }\n }", m.total_string
   end
 
+  def test_collect
+    gram = KPeg.grammar do |g|
+      g.root = g.collect(g.many(/[a-z]/))
+    end
+
+    m = KPeg.match "hellomatch", gram
+    assert_equal "hellomatch", m.value
+  end
+
   def test_memoization
     gram = KPeg.grammar do |g|
       g.one = g.str("1")

@@ -3,7 +3,9 @@ require 'kpeg'
 module KPeg
   FORMAT = KPeg.grammar do |g|
     g.sp = g.kleene " "
-    g.var = g.any("-", /[a-zA-Z][-_a-zA-Z0-9]*/)
+    g.bsp = g.kleene g.any(" ", "\n")
+
+    g.var = g.any("-", /[a-zA-Z][\-_a-zA-Z0-9]*/)
     g.var_ref = g.seq(:var) { |x| ref(x) }
 
     g.dbl_escapes = g.str('\"') { '"'  } \
@@ -38,8 +40,6 @@ module KPeg
     g.curly_block = g.seq(:curly) { |a| Array(a[1]).join }
     g.curly = g.seq("{", g.kleene(g.any(/[^{}]+/, :curly)), "}")
 
-    g.spaces = g.kleene(" ")
-
     g.value = g.seq(:value, ":", :var) { |a,_,b| t(a,b) } \
             | g.seq(:value, "?") { |v,_| maybe(v) }   \
             | g.seq(:value, "+") { |v,_| many(v) }    \
@@ -47,25 +47,30 @@ module KPeg
             | g.seq(:value, :mult_range) { |v,r| multiple(v, *r) } \
             | g.seq("&", :value) { |_,v| andp(v) } \
             | g.seq("!", :value) { |_,v| notp(v) } \
-            | g.seq(:value, :spaces, :value) { |a,_,b| seq(a, b) } \
-            | g.seq("(", g.t(:outer, "o"), ")") { |o| o } \
+            | g.seq("(", :bsp, g.t(:expression, "o"), :bsp, ")") { |o| o } \
+            | g.seq("<", :bsp, g.t(:expression, "o"), :bsp, ">") { |o| collect(o) } \
             | g.seq(:curly_block) { |a| action(a) } \
             | g.str(".") { dot } \
-            | g.char_range | g.regexp | g.string | g.var_ref
+            | g.seq(:var_ref, g.notp([:sp, "="])) { |a,_,_| a } \
+            | g.char_range | g.regexp | g.string
 
-    g.bsp = g.kleene g.any(" ", "\n")
+    g.spaces = g.many g.any(" ", "\n")
 
-    g.choose_cont = g.seq(:bsp, "|", :bsp, g.t(:value, "v")) { |x| x }
-    g.outer = g.seq(:value, g.many(:choose_cont)) {
-                |a,b| b.kind_of?(Array) ? any(a, *b) : any(a, b)
-              } \
-            | g.value
+    g.values = g.seq(:values, :spaces, :value) { |a,_,b| seq(a,b) } \
+             | g.seq(:value, :spaces, :value)  { |a,_,b| seq(a,b) } \
+             | g.value
 
-    g.assignment = g.seq(:sp, g.t(:var, "v"), :sp, "=", :sp, g.t(:outer, "o")) {
+    g.choose_cont = g.seq(:bsp, "|", :bsp, g.t(:values, "v")) { |x| x }
+    g.expression = g.seq(:values, g.many(:choose_cont)) {
+                     |a,b| b.kind_of?(Array) ? any(a, *b) : any(a, b)
+                   } \
+                 | g.values
+
+    g.assignment = g.seq(:sp, g.t(:var, "v"), :sp, "=", :sp, g.t(:expression, "o")) {
                      |v,e| set(v, e); [:set, v, e]
                    }
 
-    g.assignments = g.seq(:assignment, g.maybe([:sp, "\n", :assignments])) {
+    g.assignments = g.seq(:assignment, g.maybe([:bsp, :assignments])) {
                       |a,b| b.empty? ? a : [:rules, a, b.last]
                     }
     g.root = g.seq(:assignments, :sp, g.maybe("\n")) { |a,_,_| a }

@@ -123,4 +123,35 @@ root = term
     assert_equal expected, io.string
   end
 
+  def test_action
+    gram = KPeg.grammar do |g|
+      g.root = g.seq("hello", g.action("3 + 4"))
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    expected = <<-GRAM
+root = "hello" {3 + 4}
+    GRAM
+
+    assert_equal expected, io.string
+  end
+
+  def test_collect
+    gram = KPeg.grammar do |g|
+      g.root = g.collect(g.many(g.range("a", "z")))
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    expected = <<-GRAM
+root = < [a-z]+ >
+    GRAM
+
+    assert_equal expected, io.string
+  end
 end

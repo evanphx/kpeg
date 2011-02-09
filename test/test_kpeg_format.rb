@@ -1,14 +1,15 @@
 require 'test/unit'
 require 'kpeg'
 require 'kpeg/format'
+require 'kpeg/grammar_renderer'
 require 'stringio'
 require 'rubygems'
 
 class TestKPegFormat < Test::Unit::TestCase
   G = KPeg::FORMAT
 
-  def match(str, gram=nil)
-    parc = KPeg::Parser.new(str, G)
+  def match(str, gram=nil, log=false)
+    parc = KPeg::Parser.new(str, G, log)
     m = parc.parse
 
     if parc.failed?
@@ -103,6 +104,62 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal expected, m
   end
 
+  def test_choice_sp2
+    str = <<-STR
+Stmt    = - Expr:e EOL
+        | ( !EOL . )* EOL
+    STR
+    m = match str
+    expected = [:set, "Stmt", G.any(
+                  [:"-", G.t(:Expr, "e"), :EOL],
+                  [G.kleene([G.notp(:EOL), G.dot]), :EOL])]
+
+    assert_equal expected, m
+  end
+
+  def test_choice_with_actions
+    str = <<-STR
+Stmt    = - Expr:e EOL                  { p e }
+        | ( !EOL . )* EOL               { puts "error" }
+    STR
+    m = match str
+    expected = [:set, "Stmt", G.any(
+                  [:"-", G.t(:Expr, "e"), :EOL, G.action(" p e ")],
+                  [G.kleene([G.notp(:EOL), G.dot]), :EOL,
+                   G.action(" puts \"error\" ")])]
+
+    assert_equal expected, m
+  end
+
+  def test_multiline_seq
+    str = <<-STR
+Sum     = Product:l
+                ( PLUS  Product:r       { l += r }
+                | MINUS Product:r       { l -= r }
+                )*                      { l }
+    STR
+    m = match str
+    expected = [:set, "Sum", G.seq(
+                  G.t(:Product, "l"),
+                  G.kleene(
+                    G.any(
+                      [:PLUS, G.t(:Product, "r"),  G.action(" l += r ")],
+                      [:MINUS, G.t(:Product, "r"), G.action(" l -= r ")]
+                    )),
+                  G.action(" l "))]
+
+    assert_equal expected, m
+  end
+
+  def test_multiline_seq2
+    str = <<-STR
+Value   = NUMBER:i                      { i }
+        | ID:i !ASSIGN                  { vars[i] }
+        | OPEN Expr:i CLOSE             { i }
+    STR
+    m = match(str)
+  end
+
   def test_seq
     m = match 'a=b c'
     assert_equal [:set, "a", G.seq(:b, :c)], m
@@ -137,6 +194,11 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal [:set, "a", G.seq(:b, :c)], m
   end
 
+  def test_parens_sp
+    m = match 'a=( b c )'
+    assert_equal [:set, "a", G.seq(:b, :c)], m
+  end
+
   def test_parens_as_outer
     m = match 'a=b (c|d)'
     assert_equal [:set, "a", G.seq(:b, G.any(:c, :d))], m
@@ -150,6 +212,11 @@ class TestKPegFormat < Test::Unit::TestCase
   def test_action_nested_curly
     m = match 'a=b c { b + { c + d } }'
     assert_equal [:set, "a", G.seq(:b, :c, G.action(" b + { c + d } "))], m
+  end
+
+  def test_collect
+    m = match 'a = < b c >'
+    assert_equal [:set, "a", G.collect(G.seq(:b, :c))], m
   end
 
   def test_multiple_rules

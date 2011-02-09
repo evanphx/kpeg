@@ -139,6 +139,12 @@ module KPeg
         if rule.tag_name
           io.print ":#{rule.tag_name}"
         end
+      when Action
+        io.print "{#{rule.action}}"
+      when Collect
+        io.print "< "
+        render_rule io, rule.rule
+        io.print " >"
       else
         raise "Unknown rule type - #{rule.class}"
       end

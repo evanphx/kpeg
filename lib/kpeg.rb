@@ -4,7 +4,7 @@ module KPeg
   class ParseFailure < RuntimeError; end
 
   class Parser < StringScanner
-    def initialize(str, grammar)
+    def initialize(str, grammar, log=false)
       super str
 
       @grammar = grammar
@@ -13,6 +13,7 @@ module KPeg
 
       @failing_pos = nil
       @failing_rule = nil
+      @log = log
     end
 
     attr_reader :grammar, :memoizations
@@ -118,21 +119,29 @@ module KPeg
     end
 
     def apply(rule)
+      ans = nil
       if m = @memoizations[rule][pos]
         m.inc!
 
         self.pos = m.pos
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
+          if @log
+            puts "LR #{rule.name} @ #{self.inspect}"
+          end
           return nil
         end
 
-        return m.ans
+        ans = m.ans
       else
         lr = LeftRecursive.new(false)
         m = MemoEntry.new(lr, pos)
         @memoizations[rule][pos] = m
         start_pos = pos
+
+        if @log
+          puts "START #{rule.name} @ #{self.inspect}"
+        end
 
         ans = rule.match(self)
 
@@ -141,13 +150,18 @@ module KPeg
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
         if ans and lr.detected
-          return grow_lr(rule, start_pos, m)
-        else
-          return ans
+          ans = grow_lr(rule, start_pos, m)
         end
-
-        return ans
       end
+
+      if @log
+        if ans
+          puts "   OK #{rule.name} @ #{self.inspect}"
+        else
+          puts " FAIL #{rule.name} @ #{self.inspect}"
+        end
+      end
+      return ans
     end
 
     def grow_lr(rule, start_pos, m)
@@ -708,6 +722,35 @@ module KPeg
     end
   end
 
+  class Collect < Rule
+    def initialize(rule)
+      super()
+      @rule = rule
+    end
+
+    attr_reader :rule
+
+    def match(x)
+      start = x.pos
+      if @rule.match(x)
+        Match.new(self, x.string[start..x.pos])
+      end
+    end
+
+    def ==(obj)
+      case obj
+      when Collect
+        @rule == obj.rule
+      else
+        super
+      end
+    end
+
+    def inspect
+      inspect_type "collect", @rule.inspect
+    end
+  end
+
   class Grammar
     def initialize
       @rules = {}
@@ -881,6 +924,10 @@ module KPeg
 
     def action(action)
       Action.new action
+    end
+
+    def collect(rule)
+      Collect.new Grammar.resolve(rule)
     end
   end
 
