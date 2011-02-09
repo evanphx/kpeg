@@ -9,10 +9,12 @@ module KPeg
       indent = widest.size
 
       @grammar.rule_order.each do |name|
-        op = @grammar.find(name)
+        rule = @grammar.find(name)
 
         io.print(' ' * (indent - name.size))
         io.print "#{name} = "
+
+        op = rule.op
 
         if op.kind_of? Choice
           op.ops.each_with_index do |r,idx|

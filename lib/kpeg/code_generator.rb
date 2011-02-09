@@ -147,13 +147,13 @@ module KPeg
     def output
       code =  "class #{@name} < KPeg::CompiledGrammar\n"
       @grammar.rule_order.each do |name|
-        op = @grammar.rules[name]
+        rule = @grammar.rules[name]
         code << "  def #{method_name name}\n"
         if @debug
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end
 
-        output_op code, op
+        output_op code, rule.op
         if @debug
           code << "    if _tmp\n"
           code << "      puts \"   OK #{name} @ \#{show_pos}\\n\"\n"

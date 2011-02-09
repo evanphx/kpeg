@@ -118,9 +118,9 @@ module KPeg
       end
     end
 
-    def apply(op)
+    def apply(rule)
       ans = nil
-      if m = @memoizations[op][pos]
+      if m = @memoizations[rule][pos]
         m.inc!
 
         self.pos = m.pos
@@ -136,38 +136,38 @@ module KPeg
       else
         lr = LeftRecursive.new(false)
         m = MemoEntry.new(lr, pos)
-        @memoizations[op][pos] = m
+        @memoizations[rule][pos] = m
         start_pos = pos
 
         if @log
-          puts "START #{op.name} @ #{self.inspect}"
+          puts "START #{rule.name} @ #{self.inspect}"
         end
 
-        ans = op.match(self)
+        ans = rule.op.match(self)
 
         m.move! ans, pos
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
         if ans and lr.detected
-          ans = grow_lr(op, start_pos, m)
+          ans = grow_lr(rule, start_pos, m)
         end
       end
 
       if @log
         if ans
-          puts "   OK #{op.name} @ #{self.inspect}"
+          puts "   OK #{rule.name} @ #{self.inspect}"
         else
-          puts " FAIL #{op.name} @ #{self.inspect}"
+          puts " FAIL #{rule.name} @ #{self.inspect}"
         end
       end
       return ans
     end
 
-    def grow_lr(op, start_pos, m)
+    def grow_lr(rule, start_pos, m)
       while true
         self.pos = start_pos
-        ans = op.match(self)
+        ans = rule.op.match(self)
         return nil unless ans
 
         break if pos <= m.pos
@@ -185,15 +185,15 @@ module KPeg
 
     def parse(name=nil)
       if name
-        op = @grammar.find(name)
-        unless op
+        rule = @grammar.find(name)
+        unless rule
           raise "Unknown rule - #{name}"
         end
-
-        match = apply op
       else
-        match = apply @grammar.root
+        rule = @grammar.root
       end
+
+      match = apply rule
 
       if pos == string.size
         @failing_op = nil
@@ -267,14 +267,22 @@ module KPeg
     end
   end
 
+  class Rule
+    def initialize(name, op)
+      @name = name
+      @op = op
+    end
+
+    attr_reader :name, :op
+  end
+
   class Operator
     def initialize
-      @name = nil
       @action = nil
       @has_tags = false
     end
 
-    attr_accessor :name, :action
+    attr_accessor :action
 
     def set_action(act)
       @action = act
@@ -298,8 +306,7 @@ module KPeg
     end
 
     def inspect_type(tag, body)
-      return "#<#{tag} #{body}>" unless @name
-      "#<#{tag}:#{@name} #{body}>"
+      "#<#{tag} #{body}>"
     end
 
     def |(other)
@@ -321,11 +328,7 @@ module KPeg
     end
 
     def inspect
-      if @name
-        "#<dot:#{@name}>"
-      else
-        "#<dot>"
-      end
+      "#<dot>"
     end
   end
 
@@ -632,14 +635,14 @@ module KPeg
     def match(x)
       if @grammar and @grammar != x.grammar
         x.switch_grammar(@grammar) do
-          op = @grammar.find(@rule_name)
-          raise "Unknown rule: '#{@rule_name}'" unless op
-          x.apply op
+          rule = @grammar.find(@rule_name)
+          raise "Unknown rule: '#{@rule_name}'" unless rule
+          x.apply rule
         end
       else
-        op = x.grammar.find(@rule_name)
-        raise "Unknown rule: '#{@rule_name}'" unless op
-        x.apply op
+        rule = x.grammar.find(@rule_name)
+        raise "Unknown rule: '#{@rule_name}'" unless rule
+        x.apply rule
       end
     end
 
@@ -763,16 +766,16 @@ module KPeg
       @rules["root"]
     end
 
-    def set(name, rule)
+    def set(name, op)
       if @rules.key? name
         raise "Already set rule named '#{name}'"
       end
 
-      rule = Grammar.resolve(rule)
+      op = Grammar.resolve(op)
 
       @rule_order << name
-      rule.name = name
 
+      rule = Rule.new(name, op)
       @rules[name] = rule
     end
 

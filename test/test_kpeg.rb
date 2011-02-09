@@ -295,7 +295,7 @@ class TestKPeg < Test::Unit::TestCase
     end
 
     parser = KPeg::Parser.new "1+2", gram
-    m = parser.apply(gram.root)
+    m = parser.parse
 
     assert_equal 3, m.matches.size
     assert_match m.matches[0], "1"
@@ -322,7 +322,7 @@ class TestKPeg < Test::Unit::TestCase
 
     parser = KPeg::Parser.new "1-2-3", gram
 
-    m = parser.apply(gram.root)
+    m = parser.parse
     assert_equal 3, m.matches.size
 
     left = m.matches[0]
@@ -334,7 +334,7 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m.matches[2], "3"
 
     parser = KPeg::Parser.new "hello", gram
-    m = parser.apply(gram.root)
+    m = parser.parse
 
     assert_equal nil, m
   end
