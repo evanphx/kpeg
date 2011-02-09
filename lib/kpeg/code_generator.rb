@@ -151,15 +151,15 @@ module KPeg
         rule = @grammar.rules[name]
         code << "  def #{method_name name}\n"
         if @debug
-          code << "    puts \"START #{name} @ \#{@scanner.inspect}\\n\"\n"
+          code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end
 
         output_node code, rule
         if @debug
           code << "    if _tmp\n"
-          code << "      puts \"   OK #{name} @ \#{@scanner.inspect}\\n\"\n"
+          code << "      puts \"   OK #{name} @ \#{show_pos}\\n\"\n"
           code << "    else\n"
-          code << "      puts \" FAIL #{name} @ \#{@scanner.inspect}\\n\"\n"
+          code << "      puts \" FAIL #{name} @ \#{show_pos}\\n\"\n"
           code << "    end\n"
         end
 

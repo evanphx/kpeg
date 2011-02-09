@@ -1,25 +1,32 @@
-require 'strscan'
-
 module KPeg
   class CompiledGrammar
     def initialize(str)
       @string = str
-      @scanner = StringScanner.new(str)
+      @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
       @text = nil
     end
 
     attr_reader :result, :text
+    attr_accessor :pos
 
     def set_text(start)
-      @text = @string[start..@scanner.pos-1]
+      @text = @string[start..@pos-1]
+    end
+
+    def show_pos
+      if @pos < 5
+        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,5]}\")"
+      else
+        "#{@pos} (\"#{@string[@pos - 5, 5]}\" @ \"#{@string[@pos,5]}\")"
+      end
     end
 
     def match_string(str)
       len = str.size
-      if @scanner.peek(len) == str
-        @scanner.pos = @scanner.pos + len
+      if @string[pos,len] == str
+        @pos += len
         return str
       end
 
@@ -27,23 +34,24 @@ module KPeg
     end
 
     def unget_byte(str)
-      @scanner.pos -= str.size
+      @pos -= str.size
     end
 
     def scan(reg)
-      @scanner.scan(reg)
+      if m = reg.match(@string[@pos..-1])
+        width = m.end(0)
+        @pos += width
+        return true
+      end
+
+      return nil
     end
 
     def get_byte
-      @scanner.get_byte
-    end
-
-    def pos
-      @scanner.pos
-    end
-
-    def pos=(x)
-      @scanner.pos = x
+      return nil if @pos >= @string.size
+      s = @string[@pos,1]
+      @pos += 1
+      s
     end
 
     def run
@@ -78,10 +86,10 @@ module KPeg
     end
 
     def apply(rule, method_name)
-      if m = @memoizations[rule][@scanner.pos]
+      if m = @memoizations[rule][@pos]
         m.inc!
 
-        @scanner.pos = m.pos
+        @pos = m.pos
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
           return nil
@@ -90,13 +98,13 @@ module KPeg
         return m.ans
       else
         lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @scanner.pos)
-        @memoizations[rule][@scanner.pos] = m
-        start_pos = @scanner.pos
+        m = MemoEntry.new(lr, @pos)
+        @memoizations[rule][@pos] = m
+        start_pos = @pos
 
         ans = __send__ method_name
 
-        m.move! ans, @scanner.pos
+        m.move! ans, @pos
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
@@ -112,16 +120,16 @@ module KPeg
 
     def grow_lr(rule, method_name, start_pos, m)
       while true
-        @scanner.pos = start_pos
+        @pos = start_pos
         ans = __send__ method_name
         return nil unless ans
 
-        break if @scanner.pos <= m.pos
+        break if @pos <= m.pos
 
-        m.move! ans, @scanner.pos
+        m.move! ans, @pos
       end
 
-      @scanner.pos = m.pos
+      @pos = m.pos
       return m.ans
     end
   end

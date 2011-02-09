@@ -64,8 +64,8 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "9", cg.run("9")
-    assert_equal "1", cg.run("1")
+    assert_equal true, cg.run("9")
+    assert_equal true, cg.run("1")
     assert_equal nil, cg.run("a")
   end
 

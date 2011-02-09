@@ -55,7 +55,7 @@ root    = Stmt+
     # puts
     # gr.render(STDOUT)
 
-    cg = KPeg::CodeGenerator.new "TestCalc", gram
+    cg = KPeg::CodeGenerator.new "TestCalc", gram, true
 
     code = cg.make("i = 3+4; j = i*8; i + j * 2;")
     code.instance_variable_set(:@vars, {})
