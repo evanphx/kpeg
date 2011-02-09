@@ -12,12 +12,12 @@ module KPeg
       @memoizations = Hash.new { |h,k| h[k] = {} }
 
       @failing_pos = nil
-      @failing_rule = nil
+      @failing_op = nil
       @log = log
     end
 
     attr_reader :grammar, :memoizations
-    attr_accessor :failing_rule
+    attr_accessor :failing_op
 
     def switch_grammar(gram)
       begin
@@ -29,9 +29,9 @@ module KPeg
       end
     end
 
-    def fail(rule)
+    def fail(op)
       @failing_pos = pos
-      @failing_rule = rule
+      @failing_op = op
       return nil
     end
 
@@ -66,25 +66,25 @@ module KPeg
     end
 
     def error_expectation
-      return "" unless @failing_rule
+      return "" unless @failing_op
 
       error_pos = @failing_pos
       line_no = current_line(error_pos)
       col_no = current_column(error_pos)
 
-      return "Expected #{@failing_rule.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
+      return "Expected #{@failing_op.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
     end
 
     def show_error(io=STDOUT)
-      return unless @failing_rule
+      return unless @failing_op
 
       error_pos = @failing_pos
       line_no = current_line(error_pos)
       col_no = current_column(error_pos)
 
-      io.puts "Expected #{@failing_rule.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
+      io.puts "Expected #{@failing_op.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
       io.puts "Got: #{string[error_pos,1].inspect}"
-      io.puts "Rule: #{@failing_rule.inspect}"
+      io.puts "Operator: #{@failing_op.inspect}"
       line = lines[line_no-1]
       io.puts "=> #{line}"
       io.print(" " * (col_no + 3))
@@ -118,16 +118,16 @@ module KPeg
       end
     end
 
-    def apply(rule)
+    def apply(op)
       ans = nil
-      if m = @memoizations[rule][pos]
+      if m = @memoizations[op][pos]
         m.inc!
 
         self.pos = m.pos
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
           if @log
-            puts "LR #{rule.name} @ #{self.inspect}"
+            puts "LR #{op.name} @ #{self.inspect}"
           end
           return nil
         end
@@ -136,38 +136,38 @@ module KPeg
       else
         lr = LeftRecursive.new(false)
         m = MemoEntry.new(lr, pos)
-        @memoizations[rule][pos] = m
+        @memoizations[op][pos] = m
         start_pos = pos
 
         if @log
-          puts "START #{rule.name} @ #{self.inspect}"
+          puts "START #{op.name} @ #{self.inspect}"
         end
 
-        ans = rule.match(self)
+        ans = op.match(self)
 
         m.move! ans, pos
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
         if ans and lr.detected
-          ans = grow_lr(rule, start_pos, m)
+          ans = grow_lr(op, start_pos, m)
         end
       end
 
       if @log
         if ans
-          puts "   OK #{rule.name} @ #{self.inspect}"
+          puts "   OK #{op.name} @ #{self.inspect}"
         else
-          puts " FAIL #{rule.name} @ #{self.inspect}"
+          puts " FAIL #{op.name} @ #{self.inspect}"
         end
       end
       return ans
     end
 
-    def grow_lr(rule, start_pos, m)
+    def grow_lr(op, start_pos, m)
       while true
         self.pos = start_pos
-        ans = rule.match(self)
+        ans = op.match(self)
         return nil unless ans
 
         break if pos <= m.pos
@@ -180,23 +180,23 @@ module KPeg
     end
 
     def failed?
-      !!@failing_rule
+      !!@failing_op
     end
 
     def parse(name=nil)
       if name
-        rule = @grammar.find(name)
-        unless rule
+        op = @grammar.find(name)
+        unless op
           raise "Unknown rule - #{name}"
         end
 
-        match = apply rule
+        match = apply op
       else
         match = apply @grammar.root
       end
 
       if pos == string.size
-        @failing_rule = nil
+        @failing_op = nil
       end
 
       return match
@@ -204,8 +204,8 @@ module KPeg
   end
 
   class Match
-    def initialize(rule, arg)
-      @rule = rule
+    def initialize(op, arg)
+      @op = op
       if arg.kind_of? String
         @matches = nil
         @string = arg
@@ -215,7 +215,7 @@ module KPeg
       end
     end
 
-    attr_reader :rule, :string
+    attr_reader :op, :string
 
     def matches
       return @matches if @matches
@@ -224,7 +224,7 @@ module KPeg
 
     def explain(indent="")
       puts "#{indent}KPeg::Match:#{object_id.to_s(16)}"
-      puts "#{indent}  rule: #{@rule.inspect}"
+      puts "#{indent}  op: #{@op.inspect}"
       if @string
         puts "#{indent}  string: #{@string.inspect}"
       else
@@ -242,32 +242,32 @@ module KPeg
 
     def value(obj=nil)
       if @string
-        return @string unless @rule.action
+        return @string unless @op.action
         if obj
-          obj.instance_exec(@string, &@rule.action)
+          obj.instance_exec(@string, &@op.action)
         else
-          @rule.action.call(@string)
+          @op.action.call(@string)
         end
       else
         values = @matches.map { |m| m.value(obj) }
 
-        values = @rule.prune_values(values)
+        values = @op.prune_values(values)
 
-        unless @rule.action
+        unless @op.action
           return values.first if values.size == 1
           return values
         end
 
         if obj
-          obj.instance_exec(*values, &@rule.action)
+          obj.instance_exec(*values, &@op.action)
         else
-          @rule.action.call(*values)
+          @op.action.call(*values)
         end
       end
     end
   end
 
-  class Rule
+  class Operator
     def initialize
       @name = nil
       @action = nil
@@ -280,9 +280,9 @@ module KPeg
       @action = act
     end
 
-    def detect_tags(rules)
+    def detect_tags(ops)
       tags = []
-      rules.each_with_index do |r,idx|
+      ops.each_with_index do |r,idx|
         if r.kind_of?(Tag)
           @has_tags = true
           tags << idx
@@ -307,7 +307,7 @@ module KPeg
     end
   end
 
-  class Dot < Rule
+  class Dot < Operator
     def match(x)
       if str = x.get_byte
         Match.new(self, str)
@@ -329,7 +329,7 @@ module KPeg
     end
   end
 
-  class LiteralString < Rule
+  class LiteralString < Operator
     def initialize(str)
       super()
       @string = str
@@ -360,7 +360,7 @@ module KPeg
     end
   end
 
-  class LiteralRegexp < Rule
+  class LiteralRegexp < Operator
     def initialize(reg)
       super()
       @regexp = reg
@@ -394,7 +394,7 @@ module KPeg
     end
   end
 
-  class CharRange < Rule
+  class CharRange < Operator
     def initialize(start, fin)
       super()
       @start = start
@@ -430,23 +430,23 @@ module KPeg
     end
   end
 
-  class Choice < Rule
+  class Choice < Operator
     def initialize(*many)
       super()
-      @rules = many
+      @ops = many
     end
 
-    attr_reader :rules
+    attr_reader :ops
 
     def |(other)
-      @rules << Grammar.resolve(other)
+      @ops << Grammar.resolve(other)
       self
     end
 
     def match(x)
       pos = x.pos
 
-      @rules.each do |c|
+      @ops.each do |c|
         if m = c.match(x)
           return m
         end
@@ -460,26 +460,26 @@ module KPeg
     def ==(obj)
       case obj
       when Choice
-        @rules == obj.rules
+        @ops == obj.ops
       else
         super
       end
     end
 
     def inspect
-      inspect_type "any", @rules.map { |i| i.inspect }.join(' | ')
+      inspect_type "any", @ops.map { |i| i.inspect }.join(' | ')
     end
   end
 
-  class Multiple < Rule
-    def initialize(rule, min, max)
+  class Multiple < Operator
+    def initialize(op, min, max)
       super()
-      @rule = rule
+      @op = op
       @min = min
       @max = max
     end
 
-    attr_reader :rule, :min, :max
+    attr_reader :op, :min, :max
 
     def match(x)
       n = 0
@@ -488,7 +488,7 @@ module KPeg
       start = x.pos
 
       while true
-        if m = @rule.match(x)
+        if m = @op.match(x)
           matches << m
         else
           break
@@ -513,29 +513,29 @@ module KPeg
     def ==(obj)
       case obj
       when Multiple
-        @rule == obj.rule and @min == obj.min and @max == obj.max
+        @op == obj.op and @min == obj.min and @max == obj.max
       else
         super
       end
     end
 
     def inspect
-      inspect_type "multi", "#{@min} #{@max ? @max : "*"} #{@rule.inspect}"
+      inspect_type "multi", "#{@min} #{@max ? @max : "*"} #{@op.inspect}"
     end
   end
 
-  class Sequence < Rule
-    def initialize(*rules)
+  class Sequence < Operator
+    def initialize(*ops)
       super()
-      @rules = rules
-      detect_tags rules
+      @ops = ops
+      detect_tags ops
     end
 
-    attr_reader :rules
+    attr_reader :ops
 
     def match(x)
       start = x.pos
-      matches = @rules.map do |n|
+      matches = @ops.map do |n|
         m = n.match(x)
         unless m
           x.pos = start
@@ -549,28 +549,28 @@ module KPeg
     def ==(obj)
       case obj
       when Sequence
-        @rules == obj.rules
+        @ops == obj.ops
       else
         super
       end
     end
 
     def inspect
-      inspect_type "seq", @rules.map { |i| i.inspect }.join(' ')
+      inspect_type "seq", @ops.map { |i| i.inspect }.join(' ')
     end
   end
 
-  class AndPredicate < Rule
-    def initialize(rule)
+  class AndPredicate < Operator
+    def initialize(op)
       super()
-      @rule = rule
+      @op = op
     end
 
-    attr_reader :rule
+    attr_reader :op
 
     def match(x)
       pos = x.pos
-      m = @rule.match(x)
+      m = @op.match(x)
       x.pos = pos
 
       return m ? Match.new(self, "") : nil
@@ -579,28 +579,28 @@ module KPeg
     def ==(obj)
       case obj
       when AndPredicate
-        @rule == obj.rule
+        @op == obj.op
       else
         super
       end
     end
 
     def inspect
-      inspect_type "andp", @rule.inspect
+      inspect_type "andp", @op.inspect
     end
   end
 
-  class NotPredicate < Rule
-    def initialize(rule)
+  class NotPredicate < Operator
+    def initialize(op)
       super()
-      @rule = rule
+      @op = op
     end
 
-    attr_reader :rule
+    attr_reader :op
 
     def match(x)
       pos = x.pos
-      m = @rule.match(x)
+      m = @op.match(x)
       x.pos = pos
 
       return m ? nil : Match.new(self, "")
@@ -609,18 +609,18 @@ module KPeg
     def ==(obj)
       case obj
       when NotPredicate
-        @rule == obj.rule
+        @op == obj.op
       else
         super
       end
     end
 
     def inspect
-      inspect_type "notp", @rule.inspect
+      inspect_type "notp", @op.inspect
     end
   end
 
-  class RuleReference < Rule
+  class RuleReference < Operator
     def initialize(name, grammar=nil)
       super()
       @rule_name = name
@@ -632,14 +632,14 @@ module KPeg
     def match(x)
       if @grammar and @grammar != x.grammar
         x.switch_grammar(@grammar) do
-          rule = @grammar.find(@rule_name)
-          raise "Unknown rule: '#{@rule_name}'" unless rule
-          x.apply rule
+          op = @grammar.find(@rule_name)
+          raise "Unknown rule: '#{@rule_name}'" unless op
+          x.apply op
         end
       else
-        rule = x.grammar.find(@rule_name)
-        raise "Unknown rule: '#{@rule_name}'" unless rule
-        x.apply rule
+        op = x.grammar.find(@rule_name)
+        raise "Unknown rule: '#{@rule_name}'" unless op
+        x.apply op
       end
     end
 
@@ -657,17 +657,17 @@ module KPeg
     end
   end
 
-  class Tag < Rule
-    def initialize(rule, tag_name)
+  class Tag < Operator
+    def initialize(op, tag_name)
       super()
-      @rule = rule
+      @op = op
       @tag_name = tag_name
     end
 
-    attr_reader :rule, :tag_name
+    attr_reader :op, :tag_name
 
     def match(x)
-      if m = @rule.match(x)
+      if m = @op.match(x)
         Match.new(self, [m])
       end
     end
@@ -675,9 +675,9 @@ module KPeg
     def ==(obj)
       case obj
       when Tag
-        @rule == obj.rule and @tag_name == obj.tag_name
-      when Rule
-        @rule == obj
+        @op == obj.op and @tag_name == obj.tag_name
+      when Operator
+        @op == obj
       else
         super
       end
@@ -690,13 +690,13 @@ module KPeg
         body = ""
       end
 
-      body << @rule.inspect
+      body << @op.inspect
 
       inspect_type "tag", body
     end
   end
 
-  class Action < Rule
+  class Action < Operator
     def initialize(action)
       super()
       @action = action
@@ -722,17 +722,17 @@ module KPeg
     end
   end
 
-  class Collect < Rule
-    def initialize(rule)
+  class Collect < Operator
+    def initialize(op)
       super()
-      @rule = rule
+      @op = op
     end
 
-    attr_reader :rule
+    attr_reader :op
 
     def match(x)
       start = x.pos
-      if @rule.match(x)
+      if @op.match(x)
         Match.new(self, x.string[start..x.pos])
       end
     end
@@ -740,14 +740,14 @@ module KPeg
     def ==(obj)
       case obj
       when Collect
-        @rule == obj.rule
+        @op == obj.op
       else
         super
       end
     end
 
     def inspect
-      inspect_type "collect", @rule.inspect
+      inspect_type "collect", @op.inspect
     end
   end
 
@@ -780,34 +780,34 @@ module KPeg
       @rules[name]
     end
 
-    def self.resolve(rule)
-      case rule
-      when Rule
-        return rule
+    def self.resolve(obj)
+      case obj
+      when Operator
+        return obj
       when Symbol
-        return RuleReference.new(rule.to_s)
+        return RuleReference.new(obj.to_s)
       when String
-        return LiteralString.new(rule)
+        return LiteralString.new(obj)
       when Array
-        rules = []
-        rule.each do |x|
+        ops = []
+        obj.each do |x|
           case x
           when Sequence
-            rules.concat x.rules
-          when Rule
-            rules << x
+            ops.concat x.ops
+          when Operator
+            ops << x
           else
-            rules << resolve(x)
+            ops << resolve(x)
           end
         end
 
-        return Sequence.new(*rules)
+        return Sequence.new(*ops)
       when Range
-        return CharRange.new(rule.begin.to_s, rule.end.to_s)
+        return CharRange.new(obj.begin.to_s, obj.end.to_s)
       when Regexp
-        return LiteralRegexp.new(rule)
+        return LiteralRegexp.new(obj)
       else
-        raise "Unknown rule type - #{rule.inspect}"
+        raise "Unknown obj type - #{obj.inspect}"
       end
     end
 
@@ -834,50 +834,50 @@ module KPeg
     end
 
     def lit(obj, &b)
-      rule = Grammar.resolve(obj)
-      rule.set_action(b) if b
-      rule
+      op = Grammar.resolve(obj)
+      op.set_action(b) if b
+      op
     end
 
     def dot(&b)
-      rule = Dot.new
-      rule.set_action(b) if b
-      rule
+      op = Dot.new
+      op.set_action(b) if b
+      op
     end
 
     def str(str, &b)
-      rule = LiteralString.new str
-      rule.set_action(b) if b
-      rule
+      op = LiteralString.new str
+      op.set_action(b) if b
+      op
     end
 
     def reg(reg, &b)
-      rule = LiteralRegexp.new reg
-      rule.set_action(b) if b
-      rule
+      op = LiteralRegexp.new reg
+      op.set_action(b) if b
+      op
     end
 
     def range(start, fin, &b)
-      rule = CharRange.new(start, fin)
-      rule.set_action(b) if b
-      rule
+      op = CharRange.new(start, fin)
+      op.set_action(b) if b
+      op
     end
 
     def any(*nodes, &b)
       nodes.map! { |x| Grammar.resolve(x) }
-      rule = Choice.new(*nodes)
-      rule.set_action(b) if b
-      rule
+      op = Choice.new(*nodes)
+      op.set_action(b) if b
+      op
     end
 
     def multiple(node, min, max, &b)
-      rule = Multiple.new Grammar.resolve(node), min, max
-      rule.set_action(b) if b
-      rule
+      op = Multiple.new Grammar.resolve(node), min, max
+      op.set_action(b) if b
+      op
     end
 
     def maybe(node, &b)
-      rule = multiple Grammar.resolve(node), 0, 1, &b
+      op = multiple Grammar.resolve(node), 0, 1, &b
     end
 
     def many(node, &b)
@@ -889,21 +889,21 @@ module KPeg
     end
 
     def seq(*nodes, &b)
-      rules = []
+      ops = []
       nodes.each do |x|
         case x
         when Sequence
-          rules.concat x.rules
-        when Rule
-          rules << x
+          ops.concat x.ops
+        when Operator
+          ops << x
         else
-          rules << Grammar.resolve(x)
+          ops << Grammar.resolve(x)
         end
       end
 
-      rule = Sequence.new(*rules)
-      rule.set_action(b) if b
-      rule
+      op = Sequence.new(*ops)
+      op.set_action(b) if b
+      op
     end
 
     def andp(node)
@@ -918,16 +918,16 @@ module KPeg
       RuleReference.new name.to_s, other_grammar
     end
 
-    def t(rule, name=nil)
-      Tag.new Grammar.resolve(rule), name
+    def t(op, name=nil)
+      Tag.new Grammar.resolve(op), name
     end
 
     def action(action)
       Action.new action
     end
 
-    def collect(rule)
-      Collect.new Grammar.resolve(rule)
+    def collect(op)
+      Collect.new Grammar.resolve(op)
     end
   end
 

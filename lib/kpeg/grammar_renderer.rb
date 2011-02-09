@@ -9,29 +9,29 @@ module KPeg
       indent = widest.size
 
       @grammar.rule_order.each do |name|
-        rule = @grammar.find(name)
+        op = @grammar.find(name)
 
         io.print(' ' * (indent - name.size))
         io.print "#{name} = "
 
-        if rule.kind_of? Choice
-          rule.rules.each_with_index do |r,idx|
+        if op.kind_of? Choice
+          op.ops.each_with_index do |r,idx|
             unless idx == 0
               io.print "\n#{' ' * (indent+1)}| "
             end
 
-            render_rule io, r
+            render_op io, r
           end
         else
-          render_rule io, rule
+          render_op io, op
         end
 
         io.puts
       end
     end
 
-    def parens?(rule)
-      case rule
+    def parens?(op)
+      case op
       when Sequence, Multiple, AndPredicate, NotPredicate
         return true
       end
@@ -55,98 +55,98 @@ module KPeg
       val
     end
 
-    def render_rule(io, rule)
-      case rule
+    def render_op(io, op)
+      case op
       when Dot
         io.print "."
       when LiteralString
-        esc = GrammarRenderer.escape rule.string
+        esc = GrammarRenderer.escape op.string
         io.print '"'
         io.print esc
         io.print '"'
       when LiteralRegexp
-        io.print rule.regexp.inspect
+        io.print op.regexp.inspect
       when CharRange
-        io.print "[#{rule.start}-#{rule.fin}]"
+        io.print "[#{op.start}-#{op.fin}]"
       when Sequence
-        rule.rules.each_with_index do |r,idx|
+        op.ops.each_with_index do |r,idx|
           unless idx == 0
             io.print " "
           end
-          render_rule io, r
+          render_op io, r
         end
       when Choice
         io.print "("
-        rule.rules.each_with_index do |r,idx|
+        op.ops.each_with_index do |r,idx|
           unless idx == 0
             io.print " | "
           end
 
-          render_rule io, r
+          render_op io, r
         end
         io.print ")"
       when Multiple
-        if parens?(rule.rule)
+        if parens?(op.op)
           io.print "("
-          render_rule io, rule.rule
+          render_op io, op.op
           io.print ")"
         else
-          render_rule io, rule.rule
+          render_op io, op.op
         end
 
-        if rule.max
-          if rule.min == 0 and rule.max == 1
+        if op.max
+          if op.min == 0 and op.max == 1
             io.print "?"
           else
-            io.print "[#{rule.min}, #{rule.max}]"
+            io.print "[#{op.min}, #{op.max}]"
           end
-        elsif rule.min == 0
+        elsif op.min == 0
           io.print "*"
-        elsif rule.min == 1
+        elsif op.min == 1
           io.print "+"
         else
-          io.print "[#{rule.min},*]"
+          io.print "[#{op.min},*]"
         end
       when AndPredicate
         io.print "&"
-        if parens?(rule.rule)
+        if parens?(op.op)
           io.print "("
-          render_rule io, rule.rule
+          render_op io, op.op
           io.print ")"
         else
-          render_rule io, rule.rule
+          render_op io, op.op
         end
       when NotPredicate
         io.print "!"
-        if parens?(rule.rule)
+        if parens?(op.op)
           io.print "("
-          render_rule io, rule.rule
+          render_op io, op.op
           io.print ")"
         else
-          render_rule io, rule.rule
+          render_op io, op.op
         end
       when RuleReference
-        io.print rule.rule_name
+        io.print op.rule_name
       when Tag
-        if parens?(rule.rule)
+        if parens?(op.op)
           io.print "("
-          render_rule io, rule.rule
+          render_op io, op.op
           io.print ")"
         else
-          render_rule io, rule.rule
+          render_op io, op.op
         end
 
-        if rule.tag_name
-          io.print ":#{rule.tag_name}"
+        if op.tag_name
+          io.print ":#{op.tag_name}"
         end
       when Action
-        io.print "{#{rule.action}}"
+        io.print "{#{op.action}}"
       when Collect
         io.print "< "
-        render_rule io, rule.rule
+        render_op io, op.op
         io.print " >"
       else
-        raise "Unknown rule type - #{rule.class}"
+        raise "Unknown op type - #{op.class}"
       end
     end
   end

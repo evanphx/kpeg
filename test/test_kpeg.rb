@@ -214,7 +214,7 @@ class TestKPeg < Test::Unit::TestCase
 
     assert_equal 2, m.matches.size
     tag = m.matches[1]
-    assert_kind_of KPeg::Tag, tag.rule
+    assert_kind_of KPeg::Tag, tag.op
     assert_equal 1, tag.matches.size
     assert_match tag.matches[0], "hello"
 
@@ -241,7 +241,7 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m.matches[0], "hello"
 
     action = m.matches[1]
-    assert_equal action.rule.action, "b + c"
+    assert_equal action.op.action, "b + c"
   end
 
   def test_naming
