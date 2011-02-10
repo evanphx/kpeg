@@ -480,9 +480,14 @@ module KPeg
       @op = op
       @min = min
       @max = max
+      @save_values = nil
     end
 
-    attr_reader :op, :min, :max
+    attr_reader :op, :min, :max, :save_values
+
+    def save_values!
+      @save_values = true
+    end
 
     def match(x)
       n = 0
@@ -663,6 +668,10 @@ module KPeg
   class Tag < Operator
     def initialize(op, tag_name)
       super()
+      if op.kind_of? Multiple
+        op.save_values!
+      end
+
       @op = op
       @tag_name = tag_name
     end

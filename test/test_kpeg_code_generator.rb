@@ -280,6 +280,7 @@ end
     str = <<-STR
 class Test < KPeg::CompiledGrammar
   def _root
+    _save = self.pos
     _tmp = match_string("hello")
     if _tmp
       while true
@@ -287,6 +288,8 @@ class Test < KPeg::CompiledGrammar
         break unless _tmp
       end
       _tmp = true
+    else
+      self.pos = _save
     end
     return _tmp
   end
@@ -333,18 +336,21 @@ end
     str = <<-STR
 class Test < KPeg::CompiledGrammar
   def _root
+    _save = self.pos
     _count = 0
     while true
       _tmp = match_string("hello")
       if _tmp
         _count += 1
+        break if _count == 9
       else
         break
       end
     end
-    if _count >= 5 and _count <= 9
+    if _count >= 5
       _tmp = true
     else
+      self.pos = _save
       _tmp = nil
     end
     return _tmp
@@ -413,9 +419,9 @@ end
     str = <<-STR
 class Test < KPeg::CompiledGrammar
   def _root
-    save = self.pos
+    _save = self.pos
     _tmp = match_string("hello")
-    self.pos = save
+    self.pos = _save
     return _tmp
   end
 end
@@ -442,9 +448,9 @@ end
     str = <<-STR
 class Test < KPeg::CompiledGrammar
   def _root
-    save = self.pos
+    _save = self.pos
     _tmp = match_string("hello")
-    self.pos = save
+    self.pos = _save
     _tmp = _tmp ? nil : true
     return _tmp
   end
@@ -527,6 +533,158 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     assert_equal str, cg.output
+  end
+
+  def test_tag_maybe
+    gram = KPeg.grammar do |g|
+      g.hello = g.seq(g.collect("hello"), g.action("text"))
+      g.root = g.seq g.t(g.maybe(:hello), "lots"), g.action("lots")
+    end
+
+    str = <<-STR
+class Test < KPeg::CompiledGrammar
+  def _hello
+
+    _save = self.pos
+    while true # sequence
+    _text_start = self.pos
+    _tmp = match_string("hello")
+    if _tmp
+      set_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin; text; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+  def _root
+
+    _save1 = self.pos
+    while true # sequence
+    _save2 = self.pos
+    _tmp = apply('hello', :_hello)
+    @value = nil unless _tmp
+    unless _tmp
+      _tmp = true
+      self.pos = _save2
+    end
+    lots = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    @result = begin; lots; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save1
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hello")
+    assert_equal true, code.run
+    assert_equal "hello", code.result
+
+    code = cg.make("")
+    assert_equal true, code.run
+    assert_equal nil, code.result
+  end
+
+
+  def test_tag_multiple
+    gram = KPeg.grammar do |g|
+      g.hello = g.seq(g.collect("hello"), g.action("text"))
+      g.root = g.seq g.t(g.kleene(:hello), "lots"), g.action("lots")
+    end
+
+    str = <<-STR
+class Test < KPeg::CompiledGrammar
+  def _hello
+
+    _save = self.pos
+    while true # sequence
+    _text_start = self.pos
+    _tmp = match_string("hello")
+    if _tmp
+      set_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin; text; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+  def _root
+
+    _save1 = self.pos
+    while true # sequence
+    _ary = []
+    while true
+    _tmp = apply('hello', :_hello)
+    _ary << @result if _tmp
+    break unless _tmp
+    end
+    _tmp = true
+    @result = _ary
+    lots = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    @result = begin; lots; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save1
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hellohello")
+    assert_equal true, code.run
+    assert_equal ["hello", "hello"], code.result
+
+    code = cg.make("hello")
+    assert_equal true, code.run
+    assert_equal ["hello"], code.result
+
+    code = cg.make("")
+    assert_equal true, code.run
+    assert_equal [], code.result
   end
 
   def test_action

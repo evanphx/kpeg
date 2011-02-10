@@ -6,11 +6,24 @@ module KPeg
       @name = name
       @grammar = gram
       @debug = debug
+      @saves = 0
+      @output = nil
     end
 
     def method_name(name)
       name = name.gsub("-","_hyphen_")
       "_#{name}"
+    end
+
+    def save
+      if @saves == 0
+        str = "_save"
+      else
+        str = "_save#{@saves}"
+      end
+
+      @saves += 1
+      str
     end
 
     def output_op(code, op)
@@ -37,7 +50,8 @@ module KPeg
           raise "Unsupported char range - #{op.inspect}"
         end
       when Choice
-        code << "\n    _save = self.pos\n"
+        ss = save()
+        code << "\n    #{ss} = self.pos\n"
         code << "    while true # choice\n"
         op.ops.each_with_index do |n,idx|
           output_op code, n
@@ -46,25 +60,42 @@ module KPeg
             code << "    break\n"
           else
             code << "    break if _tmp\n"
-            code << "    self.pos = _save\n"
+            code << "    self.pos = #{ss}\n"
           end
         end
         code << "    end # end choice\n\n"
       when Multiple
+        ss = save()
         if op.min == 0 and op.max == 1
-          code << "    _save = self.pos\n"
+          code << "    #{ss} = self.pos\n"
           output_op code, op.op
+          if op.save_values
+            code << "    @value = nil unless _tmp\n"
+          end
           code << "    unless _tmp\n"
           code << "      _tmp = true\n"
-          code << "      self.pos = _save\n"
+          code << "      self.pos = #{ss}\n"
           code << "    end\n"
         elsif op.min == 0 and !op.max
+          if op.save_values
+            code << "    _ary = []\n"
+          end
+
           code << "    while true\n"
           output_op code, op.op
+          if op.save_values
+            code << "    _ary << @result if _tmp\n"
+          end
           code << "    break unless _tmp\n"
           code << "    end\n"
           code << "    _tmp = true\n"
+
+          if op.save_values
+            code << "    @result = _ary\n"
+          end
+
         elsif op.min == 1 and !op.max
+          code << "    #{ss} = self.pos\n"
           output_op code, op.op
           code << "    if _tmp\n"
           code << "      while true\n"
@@ -73,51 +104,60 @@ module KPeg
           code << "        break unless _tmp\n"
           code << "      end\n"
           code << "      _tmp = true\n"
+          code << "    else\n"
+          code << "      self.pos = #{ss}\n"
           code << "    end\n"
         else
+          code << "    #{ss} = self.pos\n"
           code << "    _count = 0\n"
           code << "    while true\n"
           code << "  "
           output_op code, op.op
           code << "      if _tmp\n"
           code << "        _count += 1\n"
+          code << "        break if _count == #{op.max}\n"
           code << "      else\n"
           code << "        break\n"
           code << "      end\n"
           code << "    end\n"
-          code << "    if _count >= #{op.min} and _count <= #{op.max}\n"
+          code << "    if _count >= #{op.min}\n"
           code << "      _tmp = true\n"
           code << "    else\n"
+          code << "      self.pos = #{ss}\n"
           code << "      _tmp = nil\n"
           code << "    end\n"
         end
+
       when Sequence
-        code << "\n    _save = self.pos\n"
+        ss = save()
+        code << "\n    #{ss} = self.pos\n"
         code << "    while true # sequence\n"
         op.ops.each_with_index do |n, idx|
           output_op code, n
 
           if idx == op.ops.size - 1
             code << "    unless _tmp\n"
-            code << "      self.pos = _save\n"
+            code << "      self.pos = #{ss}\n"
             code << "    end\n"
             code << "    break\n"
           else
             code << "    unless _tmp\n"
-            code << "      self.pos = _save\n"
+            code << "      self.pos = #{ss}\n"
             code << "      break\n"
             code << "    end\n"
           end
         end
         code << "    end # end sequence\n\n"
       when AndPredicate
-        code << "    save = self.pos\n"
+        ss = save()
+        code << "    #{ss} = self.pos\n"
         output_op code, op.op
-        code << "    self.pos = save\n"
+        code << "    self.pos = #{ss}\n"
       when NotPredicate
-        code << "    save = self.pos\n"
+        ss = save()
+        code << "    #{ss} = self.pos\n"
         output_op code, op.op
-        code << "    self.pos = save\n"
+        code << "    self.pos = #{ss}\n"
         code << "    _tmp = _tmp ? nil : true\n"
       when RuleReference
         code << "    _tmp = apply('#{op.rule_name}', :#{method_name op.rule_name})\n"
@@ -145,6 +185,7 @@ module KPeg
     end
 
     def output
+      return @output if @output
       code =  "class #{@name} < KPeg::CompiledGrammar\n"
       @grammar.rule_order.each do |name|
         rule = @grammar.rules[name]
@@ -166,6 +207,7 @@ module KPeg
         code << "  end\n"
       end
       code << "end\n"
+      @output = code
     end
 
     def make(str)
