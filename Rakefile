@@ -13,6 +13,7 @@ end
 task :grammar do
   require 'kpeg'
   require 'kpeg/format'
+  require 'kpeg/grammar_renderer'
 
   gr = KPeg::GrammarRenderer.new(KPeg::FORMAT)
   gr.render(STDOUT)
