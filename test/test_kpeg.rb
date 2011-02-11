@@ -4,7 +4,7 @@ require 'stringio'
 
 class TestKPeg < Test::Unit::TestCase
   def assert_match(m, str)
-    assert_kind_of KPeg::Match, m
+    assert_kind_of KPeg::MatchString, m
     assert_equal str, m.string
   end
 
