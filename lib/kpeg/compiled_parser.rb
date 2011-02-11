@@ -1,5 +1,5 @@
 module KPeg
-  class CompiledGrammar
+  class CompiledParser
     def initialize(str)
       @string = str
       @pos = 0
@@ -16,10 +16,11 @@ module KPeg
     end
 
     def show_pos
-      if @pos < 5
-        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,5]}\")"
+      width = 10
+      if @pos < width
+        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,width]}\")"
       else
-        "#{@pos} (\"#{@string[@pos - 5, 5]}\" @ \"#{@string[@pos,5]}\")"
+        "#{@pos} (\"... #{@string[@pos - width, width]}\" @ \"#{@string[@pos,width]}\")"
       end
     end
 
@@ -55,7 +56,7 @@ module KPeg
     end
 
     def run
-      _root
+      _root ? true : false
     end
 
     class LeftRecursive
@@ -71,17 +72,19 @@ module KPeg
         @ans = ans
         @pos = pos
         @uses = 1
+        @result = nil
       end
 
-      attr_reader :ans, :pos, :uses
+      attr_reader :ans, :pos, :uses, :result
 
       def inc!
         @uses += 1
       end
 
-      def move!(ans, pos)
+      def move!(ans, pos, result)
         @ans = ans
         @pos = pos
+        @result = result
       end
     end
 
@@ -89,11 +92,14 @@ module KPeg
       if m = @memoizations[rule][@pos]
         m.inc!
 
+        prev = @pos
         @pos = m.pos
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
           return nil
         end
+
+        @result = m.result
 
         return m.ans
       else
@@ -104,7 +110,7 @@ module KPeg
 
         ans = __send__ method_name
 
-        m.move! ans, @pos
+        m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
@@ -121,14 +127,17 @@ module KPeg
     def grow_lr(rule, method_name, start_pos, m)
       while true
         @pos = start_pos
+        @result = m.result
+
         ans = __send__ method_name
         return nil unless ans
 
         break if @pos <= m.pos
 
-        m.move! ans, @pos
+        m.move! ans, @pos, @result
       end
 
+      @result = m.result
       @pos = m.pos
       return m.ans
     end

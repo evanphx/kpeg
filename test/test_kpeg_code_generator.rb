@@ -10,7 +10,7 @@ class TestKPegCodeGenerator < Test::Unit::TestCase
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
     return _tmp
@@ -22,7 +22,7 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal ?h, cg.run("hello")
+    assert cg.run("hello")
   end
 
   def test_str
@@ -31,7 +31,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
     return _tmp
@@ -43,7 +43,7 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "hello", cg.run("hello")
+    assert cg.run("hello")
   end
 
   def test_reg
@@ -52,9 +52,9 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
-    _tmp = scan(/(?-mix:[0-9])/)
+    _tmp = scan(/\\A(?-mix:[0-9])/)
     return _tmp
   end
 end
@@ -64,9 +64,9 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal true, cg.run("9")
-    assert_equal true, cg.run("1")
-    assert_equal nil, cg.run("a")
+    assert cg.run("9")
+    assert cg.run("1")
+    assert !cg.run("a")
   end
 
   def test_char_range
@@ -75,7 +75,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
     if _tmp
@@ -93,9 +93,9 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal ?z, cg.run("z")
-    assert_equal ?a, cg.run("a")
-    assert_equal nil, cg.run("0")
+    assert cg.run("z")
+    assert cg.run("a")
+    assert !cg.run("0")
   end
 
   def test_char_range_in_seq
@@ -104,7 +104,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
 
     _save = self.pos
@@ -136,10 +136,10 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "hello", cg.run("ahello")
-    assert_equal "hello", cg.run("zhello")
-    assert_equal nil, cg.run("0hello")
-    assert_equal nil, cg.run("ajello")
+    assert cg.run("ahello")
+    assert cg.run("zhello")
+    assert !cg.run("0hello")
+    assert !cg.run("ajello")
   end
 
   def test_any
@@ -148,7 +148,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
 
     _save = self.pos
@@ -157,6 +157,8 @@ class Test < KPeg::CompiledGrammar
     break if _tmp
     self.pos = _save
     _tmp = match_string("world")
+    break if _tmp
+    self.pos = _save
     break
     end # end choice
 
@@ -169,9 +171,9 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "hello", cg.run("hello")
-    assert_equal "world", cg.run("world")
-    assert_equal nil, cg.run("jello")
+    assert cg.run("hello")
+    assert cg.run("world")
+    assert !cg.run("jello")
   end
 
   def test_any_resets_pos
@@ -182,10 +184,10 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworld")
-    assert_equal "world", code.run
+    assert code.run
     assert_equal 10, code.pos
 
-    assert_equal "hello balloons", cg.run("hello balloons")
+    assert cg.run("hello balloons")
   end
 
   def test_maybe
@@ -194,7 +196,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -211,8 +213,8 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "hello", cg.run("hello")
-    assert_equal true, cg.run("jello")
+    assert cg.run("hello")
+    assert cg.run("jello")
   end
 
   def test_maybe_resets_pos
@@ -222,10 +224,10 @@ end
 
     cg = KPeg::CodeGenerator.new "Test", gram
 
-    assert_equal "world", cg.run("helloworld")
+    assert cg.run("helloworld")
 
     code = cg.make("hellojello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 0, code.pos
   end
 
@@ -235,7 +237,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     while true
     _tmp = match_string("hello")
@@ -252,7 +254,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohellohello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 15, code.pos
   end
 
@@ -264,11 +266,11 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworldhelloworld")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 20, code.pos
 
     code = cg.make("hellojello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 0, code.pos
   end
 
@@ -278,7 +280,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -301,15 +303,15 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 10, code.pos
 
     code = cg.make("hello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 5, code.pos
 
     code = cg.make("")
-    assert_equal nil, code.run
+    assert !code.run
   end
 
   def test_many_resets_pos
@@ -320,11 +322,11 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworldhelloworld")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 20, code.pos
 
     code = cg.make("hellojello")
-    assert_equal nil, code.run
+    assert !code.run
     assert_equal 0, code.pos
   end
 
@@ -334,7 +336,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _count = 0
@@ -369,7 +371,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
 
     _save = self.pos
@@ -404,10 +406,10 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworld")
-    assert_equal "world", code.run
+    assert code.run
 
     code = cg.make("hellojello")
-    assert_equal nil, code.run
+    assert !code.run
     assert_equal 0, code.pos
   end
 
@@ -417,7 +419,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -432,11 +434,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert_equal "hello", code.run
+    assert code.run
     assert_equal 0, code.pos
 
     code = cg.make("jello")
-    assert_equal nil, code.run
+    assert !code.run
     assert_equal 0, code.pos
   end
 
@@ -446,7 +448,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -462,11 +464,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert_equal nil, code.run
+    assert !code.run
     assert_equal 0, code.pos
 
     code = cg.make("jello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 0, code.pos
   end
 
@@ -477,7 +479,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _greeting
     _tmp = match_string("hello")
     return _tmp
@@ -493,7 +495,7 @@ end
 
     assert_equal str, cg.output
 
-    assert_equal "hello", cg.run("hello")
+    assert cg.run("hello")
   end
 
   def test_tag
@@ -502,7 +504,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
     t = @result
@@ -522,7 +524,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
     return _tmp
@@ -542,7 +544,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _hello
 
     _save = self.pos
@@ -572,7 +574,7 @@ class Test < KPeg::CompiledGrammar
     while true # sequence
     _save2 = self.pos
     _tmp = apply('hello', :_hello)
-    @value = nil unless _tmp
+    @result = nil unless _tmp
     unless _tmp
       _tmp = true
       self.pos = _save2
@@ -600,11 +602,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal "hello", code.result
 
     code = cg.make("")
-    assert_equal true, code.run
+    assert code.run
     assert_equal nil, code.result
   end
 
@@ -616,7 +618,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _hello
 
     _save = self.pos
@@ -675,16 +677,100 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal ["hello", "hello"], code.result
 
     code = cg.make("hello")
-    assert_equal true, code.run
+    assert code.run
     assert_equal ["hello"], code.result
 
     code = cg.make("")
-    assert_equal true, code.run
+    assert code.run
     assert_equal [], code.result
+  end
+
+  def test_tag_many
+    gram = KPeg.grammar do |g|
+      g.hello = g.seq(g.collect("hello"), g.action("text"))
+      g.root = g.seq g.t(g.many(:hello), "lots"), g.action("lots")
+    end
+
+    str = <<-STR
+class Test < KPeg::CompiledParser
+  def _hello
+
+    _save = self.pos
+    while true # sequence
+    _text_start = self.pos
+    _tmp = match_string("hello")
+    if _tmp
+      set_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin; text; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+  def _root
+
+    _save1 = self.pos
+    while true # sequence
+    _save2 = self.pos
+    _ary = []
+    _tmp = apply('hello', :_hello)
+    if _tmp
+      _ary << @result
+      while true
+        _tmp = apply('hello', :_hello)
+        _ary << @result if _tmp
+        break unless _tmp
+      end
+      _tmp = true
+      @result = _ary
+    else
+      self.pos = _save2
+    end
+    lots = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    @result = begin; lots; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save1
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hellohello")
+    assert code.run
+    assert_equal ["hello", "hello"], code.result
+
+    code = cg.make("hello")
+    assert code.run
+    assert_equal ["hello"], code.result
+
+    code = cg.make("")
+    assert !code.run
   end
 
   def test_action
@@ -693,7 +779,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     @result = begin; 3 + 4; end
     _tmp = true
@@ -707,7 +793,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("")
-    assert_equal true, code.run
+    assert code.run
     assert_equal 7, code.result
   end
 
@@ -717,7 +803,7 @@ end
     end
 
     str = <<-STR
-class Test < KPeg::CompiledGrammar
+class Test < KPeg::CompiledParser
   def _root
     _text_start = self.pos
     _tmp = match_string("hello")
@@ -734,7 +820,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert_equal "hello", code.run
+    assert code.run
     assert_equal "hello", code.text
   end
 

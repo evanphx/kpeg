@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+
+require 'kpeg'
+require 'kpeg/format'
+require 'kpeg/code_generator'
+
+name = ARGV.shift
+
+file = ARGV.shift
+
+new_path = "#{file}.rb"
+
+parser = KPeg::Parser.new(File.read(file), KPeg::FORMAT, false)
+m = parser.parse
+
+if parser.failed?
+  puts "Syntax error in grammar #{file}"
+  parser.show_error
+  exit 1
+end
+
+gram = KPeg::Grammar.new
+m.value(gram)
+
+cg = KPeg::CodeGenerator.new name, gram
+
+File.open new_path, "w" do |f|
+  f << cg.output
+end
+
+puts "Wrote #{new_path}"

@@ -63,6 +63,15 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal [:set, "a", G.many(:b)], match('a=b+')
   end
 
+  def test_many_sequence
+    assert_equal [:set, "a", G.many([:b, :c])], match('a=(b c)+')
+  end
+
+  def test_many_sequence_with_action
+    assert_equal [:set, "a", G.seq(G.many([:b, :c]), G.action(" 1 "))], 
+                                   match('a=(b c)+ { 1 }')
+  end
+
   def test_kleene
     assert_equal [:set, "a", G.kleene(:b)], match('a=b*')
   end

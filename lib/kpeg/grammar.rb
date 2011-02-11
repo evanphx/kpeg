@@ -127,7 +127,7 @@ module KPeg
         if m.ans.kind_of? LeftRecursive
           m.ans.detected = true
           if @log
-            puts "LR #{op.name} @ #{self.inspect}"
+            puts "LR #{rule.name} @ #{self.inspect}"
           end
           return nil
         end

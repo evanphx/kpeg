@@ -1,5 +1,3 @@
-require 'kpeg/compiled_grammar'
-
 module KPeg
   class CodeGenerator
     def initialize(name, gram, debug=false)
@@ -33,7 +31,7 @@ module KPeg
       when LiteralString
         code << "    _tmp = match_string(#{op.string.dump})\n"
       when LiteralRegexp
-        code << "    _tmp = scan(/#{op.regexp}/)\n"
+        code << "    _tmp = scan(/\\A#{op.regexp}/)\n"
       when CharRange
         if op.start.bytesize == 1 and op.fin.bytesize == 1
           code << "    _tmp = get_byte\n"
@@ -56,11 +54,10 @@ module KPeg
         op.ops.each_with_index do |n,idx|
           output_op code, n
 
+          code << "    break if _tmp\n"
+          code << "    self.pos = #{ss}\n"
           if idx == op.ops.size - 1
             code << "    break\n"
-          else
-            code << "    break if _tmp\n"
-            code << "    self.pos = #{ss}\n"
           end
         end
         code << "    end # end choice\n\n"
@@ -70,7 +67,7 @@ module KPeg
           code << "    #{ss} = self.pos\n"
           output_op code, op.op
           if op.save_values
-            code << "    @value = nil unless _tmp\n"
+            code << "    @result = nil unless _tmp\n"
           end
           code << "    unless _tmp\n"
           code << "      _tmp = true\n"
@@ -96,14 +93,26 @@ module KPeg
 
         elsif op.min == 1 and !op.max
           code << "    #{ss} = self.pos\n"
+          if op.save_values
+            code << "    _ary = []\n"
+          end
           output_op code, op.op
           code << "    if _tmp\n"
+          if op.save_values
+            code << "      _ary << @result\n"
+          end
           code << "      while true\n"
           code << "    "
           output_op code, op.op
+          if op.save_values
+            code << "        _ary << @result if _tmp\n"
+          end
           code << "        break unless _tmp\n"
           code << "      end\n"
           code << "      _tmp = true\n"
+          if op.save_values
+            code << "      @result = _ary\n"
+          end
           code << "    else\n"
           code << "      self.pos = #{ss}\n"
           code << "    end\n"
@@ -171,6 +180,9 @@ module KPeg
       when Action
         code << "    @result = begin; "
         code << op.action << "; end\n"
+        if @debug
+          code << "    puts \"   => \" #{op.action.dump} \" => \#{@result.inspect} \\n\"\n"
+        end
         code << "    _tmp = true\n"
       when Collect
         code << "    _text_start = self.pos\n"
@@ -186,7 +198,7 @@ module KPeg
 
     def output
       return @output if @output
-      code =  "class #{@name} < KPeg::CompiledGrammar\n"
+      code =  "class #{@name} < KPeg::CompiledParser\n"
       @grammar.rule_order.each do |name|
         rule = @grammar.rules[name]
         code << "  def #{method_name name}\n"
