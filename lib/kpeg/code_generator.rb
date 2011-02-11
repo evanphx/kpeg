@@ -230,8 +230,8 @@ module KPeg
       cls.new(str)
     end
 
-    def run(str)
-      make(str).run
+    def parse(str)
+      make(str).parse
     end
   end
 end

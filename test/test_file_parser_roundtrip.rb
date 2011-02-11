@@ -12,7 +12,7 @@ class TestKPegRoundtrip < Test::Unit::TestCase
     data = File.read(PATH)
 
     pr = KPeg::FormatParser.new data
-    assert pr.run, "Couldn't parse with builtin parser"
+    assert pr.parse, "Couldn't parse with builtin parser"
 
     io = StringIO.new
     gr = KPeg::GrammarRenderer.new(pr.g)
@@ -23,7 +23,7 @@ class TestKPegRoundtrip < Test::Unit::TestCase
     g2 = KPeg::Grammar.new
     pr2.instance_variable_set(:@g, g2)
 
-    assert pr2.run, "Couldn't parse with 2nd generation parser"
+    assert pr2.parse, "Couldn't parse with 2nd generation parser"
 
     io2 = StringIO.new
     gr2 = KPeg::GrammarRenderer.new(g2)
@@ -36,7 +36,7 @@ class TestKPegRoundtrip < Test::Unit::TestCase
     g3 = KPeg::Grammar.new
     pr3.instance_variable_set(:@g, g3)
 
-    assert pr3.run, "Couldn't parse with 3rd generation parser"
+    assert pr3.parse, "Couldn't parse with 3rd generation parser"
 
     io3 = StringIO.new
     gr3 = KPeg::GrammarRenderer.new(g3)
@@ -49,7 +49,7 @@ class TestKPegRoundtrip < Test::Unit::TestCase
     g4 = KPeg::Grammar.new
     pr4.instance_variable_set(:@g, g4)
 
-    assert pr4.run, "Couldn't parse with 4th generation parser"
+    assert pr4.parse, "Couldn't parse with 4th generation parser"
 
     io4 = StringIO.new
     gr4 = KPeg::GrammarRenderer.new(g4)

@@ -55,7 +55,7 @@ module KPeg
       s
     end
 
-    def run
+    def parse
       _root ? true : false
     end
 

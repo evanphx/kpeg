@@ -22,7 +22,7 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("hello")
+    assert cg.parse("hello")
   end
 
   def test_str
@@ -43,7 +43,7 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("hello")
+    assert cg.parse("hello")
   end
 
   def test_reg
@@ -64,9 +64,9 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("9")
-    assert cg.run("1")
-    assert !cg.run("a")
+    assert cg.parse("9")
+    assert cg.parse("1")
+    assert !cg.parse("a")
   end
 
   def test_char_range
@@ -93,9 +93,9 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("z")
-    assert cg.run("a")
-    assert !cg.run("0")
+    assert cg.parse("z")
+    assert cg.parse("a")
+    assert !cg.parse("0")
   end
 
   def test_char_range_in_seq
@@ -136,10 +136,10 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("ahello")
-    assert cg.run("zhello")
-    assert !cg.run("0hello")
-    assert !cg.run("ajello")
+    assert cg.parse("ahello")
+    assert cg.parse("zhello")
+    assert !cg.parse("0hello")
+    assert !cg.parse("ajello")
   end
 
   def test_any
@@ -171,9 +171,9 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("hello")
-    assert cg.run("world")
-    assert !cg.run("jello")
+    assert cg.parse("hello")
+    assert cg.parse("world")
+    assert !cg.parse("jello")
   end
 
   def test_any_resets_pos
@@ -184,10 +184,10 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworld")
-    assert code.run
+    assert code.parse
     assert_equal 10, code.pos
 
-    assert cg.run("hello balloons")
+    assert cg.parse("hello balloons")
   end
 
   def test_maybe
@@ -213,8 +213,8 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("hello")
-    assert cg.run("jello")
+    assert cg.parse("hello")
+    assert cg.parse("jello")
   end
 
   def test_maybe_resets_pos
@@ -224,10 +224,10 @@ end
 
     cg = KPeg::CodeGenerator.new "Test", gram
 
-    assert cg.run("helloworld")
+    assert cg.parse("helloworld")
 
     code = cg.make("hellojello")
-    assert code.run
+    assert code.parse
     assert_equal 0, code.pos
   end
 
@@ -254,7 +254,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohellohello")
-    assert code.run
+    assert code.parse
     assert_equal 15, code.pos
   end
 
@@ -266,11 +266,11 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworldhelloworld")
-    assert code.run
+    assert code.parse
     assert_equal 20, code.pos
 
     code = cg.make("hellojello")
-    assert code.run
+    assert code.parse
     assert_equal 0, code.pos
   end
 
@@ -303,15 +303,15 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohello")
-    assert code.run
+    assert code.parse
     assert_equal 10, code.pos
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal 5, code.pos
 
     code = cg.make("")
-    assert !code.run
+    assert !code.parse
   end
 
   def test_many_resets_pos
@@ -322,11 +322,11 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworldhelloworld")
-    assert code.run
+    assert code.parse
     assert_equal 20, code.pos
 
     code = cg.make("hellojello")
-    assert !code.run
+    assert !code.parse
     assert_equal 0, code.pos
   end
 
@@ -406,10 +406,10 @@ end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     code = cg.make("helloworld")
-    assert code.run
+    assert code.parse
 
     code = cg.make("hellojello")
-    assert !code.run
+    assert !code.parse
     assert_equal 0, code.pos
   end
 
@@ -434,11 +434,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal 0, code.pos
 
     code = cg.make("jello")
-    assert !code.run
+    assert !code.parse
     assert_equal 0, code.pos
   end
 
@@ -464,11 +464,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert !code.run
+    assert !code.parse
     assert_equal 0, code.pos
 
     code = cg.make("jello")
-    assert code.run
+    assert code.parse
     assert_equal 0, code.pos
   end
 
@@ -495,7 +495,7 @@ end
 
     assert_equal str, cg.output
 
-    assert cg.run("hello")
+    assert cg.parse("hello")
   end
 
   def test_tag
@@ -602,11 +602,11 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal "hello", code.result
 
     code = cg.make("")
-    assert code.run
+    assert code.parse
     assert_equal nil, code.result
   end
 
@@ -677,15 +677,15 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohello")
-    assert code.run
+    assert code.parse
     assert_equal ["hello", "hello"], code.result
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal ["hello"], code.result
 
     code = cg.make("")
-    assert code.run
+    assert code.parse
     assert_equal [], code.result
   end
 
@@ -762,15 +762,15 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hellohello")
-    assert code.run
+    assert code.parse
     assert_equal ["hello", "hello"], code.result
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal ["hello"], code.result
 
     code = cg.make("")
-    assert !code.run
+    assert !code.parse
   end
 
   def test_action
@@ -793,7 +793,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("")
-    assert code.run
+    assert code.parse
     assert_equal 7, code.result
   end
 
@@ -820,7 +820,7 @@ end
     assert_equal str, cg.output
 
     code = cg.make("hello")
-    assert code.run
+    assert code.parse
     assert_equal "hello", code.text
   end
 

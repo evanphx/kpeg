@@ -60,7 +60,7 @@ root    = Stmt+
     code = cg.make("i = 3+4; j = i*8; i + j * 2;")
     code.instance_variable_set(:@vars, {})
     code.instance_variable_set(:@answers, [])
-    assert_equal true, code.run
+    assert_equal true, code.parse
     assert_equal [7,56,119], code.instance_variable_get(:@answers)
   end
 end
