@@ -1,15 +1,24 @@
+require 'kpeg/position'
+
 module KPeg
   class CompiledParser
-    def initialize(str)
+    def initialize(str, debug=false)
       @string = str
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
       @text = nil
+      @failing_offset = -1
+      @expected_string = []
+
+      enhance_errors! if debug
     end
 
-    attr_reader :result, :text
+    attr_reader :string
+    attr_reader :result, :text, :failing_offset, :expected_string
     attr_accessor :pos
+
+    include Position
 
     def set_text(start)
       @text = @string[start..@pos-1]
@@ -24,6 +33,11 @@ module KPeg
       end
     end
 
+    def add_failure(obj)
+      @expected_string = obj
+      @failing_offset = @pos if @pos > @failing_offset
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -31,11 +45,15 @@ module KPeg
         return str
       end
 
+      add_failure(str)
+
       return nil
     end
 
-    def unget_one
+    def fail_range(start,fin)
       @pos -= 1
+
+      add_failure Range.new(start, fin)
     end
 
     def scan(reg)
@@ -45,14 +63,55 @@ module KPeg
         return true
       end
 
+      add_failure reg
+
       return nil
     end
 
     def get_byte
-      return nil if @pos >= @string.size
+      if @pos >= @string.size
+        add_failure nil
+        return nil
+      end
+
       s = @string[@pos]
       @pos += 1
       s
+    end
+
+    module EnhancedErrors
+      def add_failure(obj)
+        @expected_string << obj
+        @failing_offset = @pos if @pos > @failing_offset
+      end
+
+      def match_string(str)
+        if ans = super
+          @expected_string.clear
+        end
+
+        ans
+      end
+
+      def scan(reg)
+        if ans = super
+          @expected_string.clear
+        end
+
+        ans
+      end
+
+      def get_byte
+        if ans = super
+          @expected_string.clear
+        end
+
+        ans
+      end
+    end
+
+    def enhance_errors!
+      extend EnhancedErrors
     end
 
     def parse

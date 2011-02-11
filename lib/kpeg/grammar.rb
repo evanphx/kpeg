@@ -1,4 +1,5 @@
 require 'strscan'
+require 'kpeg/position'
 
 module KPeg
   class ParseFailure < RuntimeError; end
@@ -11,13 +12,15 @@ module KPeg
       # A 2 level hash.
       @memoizations = Hash.new { |h,k| h[k] = {} }
 
-      @failing_pos = nil
+      @failing_offset = nil
       @failing_op = nil
       @log = log
     end
 
-    attr_reader :grammar, :memoizations
+    attr_reader :grammar, :memoizations, :failing_offset
     attr_accessor :failing_op
+
+    include Position
 
     def switch_grammar(gram)
       begin
@@ -30,65 +33,20 @@ module KPeg
     end
 
     def fail(op)
-      @failing_pos = pos
+      @failing_offset = pos
       @failing_op = op
       return nil
     end
 
-    def current_column(target=pos)
-      offset = 0
-      string.each_line do |line|
-        len = line.size
-        return (target - offset) if offset + len >= target
-        offset += len
+    def expected_string
+      case @failing_op
+      when Choice
+        return Range.new(@failing_op.start, @failing_op.fin)
+      when Dot
+        return nil
+      else
+        @failing_op.string
       end
-
-      -1
-    end
-
-    def current_line(target=pos)
-      cur_offset = 0
-      cur_line = 0
-
-      string.each_line do |line|
-        cur_line += 1
-        cur_offset += line.size
-        return cur_line if cur_offset >= target
-      end
-
-      -1
-    end
-
-    def lines
-      lines = []
-      string.each_line { |l| lines << l }
-      lines
-    end
-
-    def error_expectation
-      return "" unless @failing_op
-
-      error_pos = @failing_pos
-      line_no = current_line(error_pos)
-      col_no = current_column(error_pos)
-
-      return "Expected #{@failing_op.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
-    end
-
-    def show_error(io=STDOUT)
-      return unless @failing_op
-
-      error_pos = @failing_pos
-      line_no = current_line(error_pos)
-      col_no = current_column(error_pos)
-
-      io.puts "Expected #{@failing_op.string.inspect} at line #{line_no}, column #{col_no} (offset #{error_pos})"
-      io.puts "Got: #{string[error_pos,1].inspect}"
-      io.puts "Operator: #{@failing_op.inspect}"
-      line = lines[line_no-1]
-      io.puts "=> #{line}"
-      io.print(" " * (col_no + 3))
-      io.puts "^"
     end
 
     class LeftRecursive

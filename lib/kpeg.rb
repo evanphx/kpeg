@@ -13,17 +13,10 @@ module KPeg
   end
 
   def self.load(file, log=false)
-    parser = Parser.new(File.read(file), FORMAT, log)
-    m = parser.parse
+    require 'kpeg/format_parser'
+    parser = KPeg::FormatParser.new File.read(file)
+    parser.parse
 
-    if parser.failed?
-      raise "Parse failure"
-    end
-
-    gram = Grammar.new
-    m.value(gram)
-
-    return gram
+    return parser.grammar
   end
-
 end

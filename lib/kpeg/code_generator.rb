@@ -40,7 +40,7 @@ module KPeg
           right = op.fin[0]
 
           code << "      unless _tmp >= #{left} and _tmp <= #{right}\n"
-          code << "        unget_one\n"
+          code << "        fail_range('#{op.start}', '#{op.fin}')\n"
           code << "        _tmp = nil\n"
           code << "      end\n"
           code << "    end\n"

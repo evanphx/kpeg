@@ -80,7 +80,7 @@ class Test < KPeg::CompiledParser
     _tmp = get_byte
     if _tmp
       unless _tmp >= 97 and _tmp <= 122
-        unget_one
+        fail_range('a', 'z')
         _tmp = nil
       end
     end
@@ -112,7 +112,7 @@ class Test < KPeg::CompiledParser
     _tmp = get_byte
     if _tmp
       unless _tmp >= 97 and _tmp <= 122
-        unget_one
+        fail_range('a', 'z')
         _tmp = nil
       end
     end
@@ -822,6 +822,26 @@ end
     code = cg.make("hello")
     assert code.parse
     assert_equal "hello", code.text
+  end
+
+  def test_parse_error
+    gram = KPeg.grammar do |g|
+      g.root = g.seq("hello", "world")
+    end
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    code = cg.make("no")
+    assert !code.parse
+    assert_equal 0, code.failing_offset
+    assert_equal "hello", code.expected_string
+
+    cg2 = KPeg::CodeGenerator.new "Test", gram
+
+    code = cg2.make("hellono")
+    assert !code.parse
+    assert_equal 5, code.failing_offset
+    assert_equal "world", code.expected_string
   end
 
 end

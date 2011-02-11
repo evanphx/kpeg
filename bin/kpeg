@@ -3,26 +3,75 @@
 require 'kpeg'
 require 'kpeg/format'
 require 'kpeg/code_generator'
+require 'kpeg/format_parser'
 
-name = ARGV.shift
+require 'optparse'
+
+options = {}
+OptionParser.new do |o|
+  o.banner = "Usage: kpeg [options]"
+
+  o.on("-o", "--output FILE", "Where to output the parser") do |v|
+    options[:output] = v
+  end
+
+  o.on("-n", "--name NAME", "Class name to use for the parser") do |v|
+    options[:name] = v
+  end
+
+  o.on("-f", "--force", "Overwrite the output if it exists") do |v|
+    options[:force] = v
+  end
+
+  o.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+    options[:verbose] = v
+  end
+
+  o.on("-d", "--debug", "Debug parsing the file") do |v|
+    options[:debug] = v
+  end
+end.parse!
+
+unless options[:name]
+  puts "Please specify -n"
+  exit 1
+end
+
+name = options[:name]
 
 file = ARGV.shift
 
-new_path = "#{file}.rb"
+if options[:output]
+  new_path = options[:output]
+else
+  new_path = "#{file}.rb"
+end
 
-parser = KPeg::Parser.new(File.read(file), KPeg::FORMAT, false)
-m = parser.parse
+if File.exists?(new_path) and !options[:force]
+  puts "Path #{new_path} already exists, not overwriting\n"
+  exit 1
+end
 
-if parser.failed?
+if options[:debug]
+  parser = KPeg::Parser.new File.read(file), KPeg::FORMAT, true
+else
+  parser = KPeg::FormatParser.new File.read(file), true
+end
+
+unless m = parser.parse
   puts "Syntax error in grammar #{file}"
   parser.show_error
   exit 1
 end
 
-gram = KPeg::Grammar.new
-m.value(gram)
+if options[:debug]
+  grammar = KPeg::Grammar.new
+  m.value(grammar)
+else
+  grammar = parser.grammar
+end
 
-cg = KPeg::CodeGenerator.new name, gram
+cg = KPeg::CodeGenerator.new name, grammar
 
 File.open new_path, "w" do |f|
   f << cg.output
