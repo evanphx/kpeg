@@ -5,7 +5,7 @@ require 'kpeg/format.kpeg.rb'
 module KPeg
   class FormatParser
     def initialize(str, debug=false)
-      super
+      setup_parser(str, debug)
       @g = Grammar.new
     end
 

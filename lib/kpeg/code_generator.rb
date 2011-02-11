@@ -6,7 +6,10 @@ module KPeg
       @debug = debug
       @saves = 0
       @output = nil
+      @standalone = false
     end
+
+    attr_accessor :standalone
 
     def method_name(name)
       name = name.gsub("-","_hyphen_")
@@ -196,9 +199,38 @@ module KPeg
 
     end
 
+    def standalone_region(path)
+      cp = File.read(path)
+      start = cp.index("# STANDALONE START")
+      fin = cp.index("# STANDALONE END")
+
+      return nil unless start and fin
+      cp[start..fin]
+    end
+
     def output
       return @output if @output
-      code =  "class #{@name} < KPeg::CompiledParser\n"
+      if @standalone
+        code = "class #{@name}\n"
+
+        unless cp = standalone_region(
+                    File.expand_path("../compiled_parser.rb", __FILE__))
+
+          puts "Standalone failure. Check compiler_parser.rb for proper boundary comments"
+          exit 1
+        end
+
+        unless pp = standalone_region(
+                    File.expand_path("../position.rb", __FILE__))
+          puts "Standalone failure. Check position.rb for proper boundary comments"
+        end
+
+        cp.gsub!(/include Position/, pp)
+        code << cp << "\n"
+      else
+        code =  "require 'kpeg/compiled_parser'\n"
+        code << "class #{@name} < KPeg::CompiledParser\n"
+      end
       @grammar.rule_order.each do |name|
         rule = @grammar.rules[name]
         code << "  def #{method_name name}\n"

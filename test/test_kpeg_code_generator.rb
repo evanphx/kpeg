@@ -10,6 +10,7 @@ class TestKPegCodeGenerator < Test::Unit::TestCase
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
@@ -31,6 +32,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
@@ -52,6 +54,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = scan(/\\A(?-mix:[0-9])/)
@@ -75,6 +78,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
@@ -104,6 +108,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
 
@@ -148,6 +153,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
 
@@ -196,6 +202,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
@@ -237,6 +244,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     while true
@@ -280,6 +288,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
@@ -336,6 +345,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
@@ -371,6 +381,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
 
@@ -419,6 +430,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
@@ -448,6 +460,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
@@ -479,6 +492,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _greeting
     _tmp = match_string("hello")
@@ -504,6 +518,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
@@ -524,6 +539,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _tmp = match_string("hello")
@@ -544,6 +560,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _hello
 
@@ -618,6 +635,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _hello
 
@@ -696,6 +714,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _hello
 
@@ -779,6 +798,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     @result = begin; 3 + 4; end
@@ -803,6 +823,7 @@ end
     end
 
     str = <<-STR
+require 'kpeg/compiled_parser'
 class Test < KPeg::CompiledParser
   def _root
     _text_start = self.pos

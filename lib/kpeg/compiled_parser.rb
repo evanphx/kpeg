@@ -2,7 +2,12 @@ require 'kpeg/position'
 
 module KPeg
   class CompiledParser
-    def initialize(str, debug=false)
+
+    # Leave these markers in! They allow us to generate standalone
+    # code automatically!
+    #
+    # STANDALONE START
+    def setup_parser(str, debug=false)
       @string = str
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
@@ -12,6 +17,14 @@ module KPeg
       @expected_string = []
 
       enhance_errors! if debug
+    end
+
+    # This is distinct from setup_parser so that a standalone parser
+    # can redefine #initialize and still have access to the proper
+    # parser setup code.
+    #
+    def initialize(str, debug=false)
+      setup_parser(str, debug)
     end
 
     attr_reader :string
@@ -200,5 +213,8 @@ module KPeg
       @pos = m.pos
       return m.ans
     end
+
+    # STANDALONE END
+
   end
 end

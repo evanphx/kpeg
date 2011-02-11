@@ -1,5 +1,6 @@
 module KPeg
   module Position
+    # STANDALONE START
     def current_column(target=pos)
       offset = 0
       string.each_line do |line|
@@ -68,6 +69,7 @@ module KPeg
       io.puts "^"
     end
 
+    # STANDALONE END
 
   end
 end

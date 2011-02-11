@@ -28,6 +28,10 @@ OptionParser.new do |o|
     options[:force] = v
   end
 
+  o.on("-s", "--stand-alone", "Write the parser to run standalone") do |v|
+    options[:standalone] = v
+  end
+
   o.on("-v", "--[no-]verbose", "Run verbosely") do |v|
     options[:verbose] = v
   end
@@ -88,6 +92,7 @@ end
 
 
 cg = KPeg::CodeGenerator.new name, grammar
+cg.standalone = options[:standalone]
 
 File.open new_path, "w" do |f|
   f << cg.output
