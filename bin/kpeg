@@ -4,12 +4,17 @@ require 'kpeg'
 require 'kpeg/format'
 require 'kpeg/code_generator'
 require 'kpeg/format_parser'
+require 'kpeg/grammar_renderer'
 
 require 'optparse'
 
 options = {}
 OptionParser.new do |o|
   o.banner = "Usage: kpeg [options]"
+
+  o.on("-t", "--test", "Syntax check the file only") do |v|
+    options[:test] = v
+  end
 
   o.on("-o", "--output FILE", "Where to output the parser") do |v|
     options[:output] = v
@@ -32,7 +37,7 @@ OptionParser.new do |o|
   end
 end.parse!
 
-unless options[:name]
+if !options[:test] and !options[:name]
   puts "Please specify -n"
   exit 1
 end
@@ -47,7 +52,7 @@ else
   new_path = "#{file}.rb"
 end
 
-if File.exists?(new_path) and !options[:force]
+if !options[:test] and File.exists?(new_path) and !options[:force]
   puts "Path #{new_path} already exists, not overwriting\n"
   exit 1
 end
@@ -70,6 +75,17 @@ if options[:debug]
 else
   grammar = parser.grammar
 end
+
+if options[:test]
+  puts "Syntax ok"
+
+  if options[:debug]
+    gr = KPeg::GrammarRenderer.new(grammar)
+    gr.render(STDOUT)
+  end
+  exit 0
+end
+
 
 cg = KPeg::CodeGenerator.new name, grammar
 

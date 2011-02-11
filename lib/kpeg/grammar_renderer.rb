@@ -34,7 +34,7 @@ module KPeg
 
     def parens?(op)
       case op
-      when Sequence, Multiple, AndPredicate, NotPredicate
+      when Sequence, AndPredicate, NotPredicate
         return true
       end
 
