@@ -18,3 +18,7 @@ task :grammar do
   gr = KPeg::GrammarRenderer.new(KPeg::FORMAT)
   gr.render(STDOUT)
 end
+
+task :parser do
+  sh "ruby -Ilib bin/kpeg -o lib/kpeg/format.kpeg.rb -n KPeg::FormatParser -f lib/kpeg/format.kpeg"
+end

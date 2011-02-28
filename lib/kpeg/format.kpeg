@@ -1,5 +1,9 @@
-              sp = " "*
-             bsp = (" " | "\n")*
+             eol = "\n"
+         comment = "#" (!eol .)* eol
+           space = " " | "\t" | eol
+               - = (space | comment)*
+
+                   # Allow - by itself, but not at the beginning
              var = < "-" | /[a-zA-Z][\-_a-zA-Z0-9]*/ > { text }
 
      dbl_escapes = "\\\"" { '"' }
@@ -11,7 +15,7 @@
       dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
 sgl_escape_quote = "\\'" { "'" }
          sgl_seq = < /[^']/ > { text }
-   sgl_not_quote = (sgl_escape_quote | sql_seq)+:segs { segs.join }
+   sgl_not_quote = (sgl_escape_quote | sgl_seq)+:segs { segs.join }
       sgl_string = "'" sgl_not_quote:s "'" { @g.str(s) }
           string = dbl_string
                  | sgl_string
@@ -23,7 +27,8 @@ sgl_escape_quote = "\\'" { "'" }
       char_range = "[" char:l "-" char:r "]" { @g.range(l,r) }
 
       range_elem = < /([1-9][0-9]*)|\*/ > { text }
-      mult_range = "[" sp range_elem:l sp "," sp range_elem:r sp "]" { [l,r] }
+      mult_range = "[" - range_elem:l - "," - range_elem:r - "]"
+                   { [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] }
 
      curly_block = curly
            curly = "{" < (/[^{}]+/ | curly)* > "}" { @g.action(text) }
@@ -35,22 +40,23 @@ sgl_escape_quote = "\\'" { "'" }
                  | value:v mult_range:r { @g.multiple(v, *r) }
                  | "&" value:v { @g.andp(v) }
                  | "!" value:v { @g.notp(v) }
-                 | "(" bsp expression:o bsp ")" { o }
-                 | "<" bsp expression:o bsp ">" { @g.collect(o) }
+                 | "(" - expression:o - ")" { o }
+                 | "<" - expression:o - ">" { @g.collect(o) }
                  | curly_block
                  | "." { @g.dot }
-                 | var:name !(sp "=") { @g.ref(name) }
+                 | var:name !(- "=") { @g.ref(name) }
                  | char_range
                  | regexp
                  | string
 
-          spaces = (" " | "\n")+
+          spaces = (space | comment)+
           values = values:s spaces value:v { @g.seq(s, v) }
                  | value:l spaces value:r  { @g.seq(l, r) }
                  | value
-     choose_cont = bsp "|" bsp values:v { v }
+     choose_cont = - "|" - values:v { v }
       expression = values:v choose_cont+:alts { @g.any(v, *alts) }
                  | values
-      assignment = sp var:v sp "=" sp expression:o { @g.set(v, o) }
-     assignments = assignment (bsp assignments)?
-            root = assignments sp "\n"?
+      assignment = - var:v - "=" - expression:o { @g.set(v, o) }
+     assignments = assignment (- assignments)?
+             eof = !.
+            root = assignments - "\n"? eof

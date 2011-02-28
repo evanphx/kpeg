@@ -1,6 +1,7 @@
 require 'test/unit'
 require 'kpeg'
 require 'kpeg/format'
+require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'
 require 'stringio'
 require 'rubygems'
@@ -9,108 +10,110 @@ class TestKPegFormat < Test::Unit::TestCase
   G = KPeg::FORMAT
 
   def match(str, gram=nil, log=false)
-    parc = KPeg::Parser.new(str, G, log)
-    m = parc.parse
-
-    if parc.failed?
+    parc = KPeg::FormatParser.new str
+    unless parc.parse
       parc.show_error
       raise "Parse failure"
     end
 
-    gram ||= KPeg::Grammar.new
-    m ? m.value(gram) : nil
+    return parc.grammar
+  end
+
+  def assert_rule(expect, gram, name="a")
+    actual = gram.find name.to_s
+    assert_equal expect, actual.op
   end
 
   def test_assignment
-    assert_equal [:set, "a", G.ref("b")], match("a=b")
+    assert_rule G.ref("b"), match("a=b"), "a"
   end
 
-  def test_assignment
-    assert_equal [:set, "-", G.ref("b")], match("-=b")
+  def test_assignment_hyphen_only
+    assert_rule G.ref("b"), match("-=b"), "-"
   end
 
   def test_assigment_sp
-    assert_equal [:set, "a", G.ref("b")], match(" a=b")
-    assert_equal [:set, "a", G.ref("b")], match(" a =b")
-    assert_equal [:set, "a", G.ref("b")], match(" a = b")
-    assert_equal [:set, "a", G.ref("b")], match(" a = b ")
+    assert_rule G.ref("b"), match(" a=b")
+    assert_rule G.ref("b"), match(" a =b")
+    assert_rule G.ref("b"), match(" a = b")
+    assert_rule G.ref("b"), match(" a = b ")
   end
 
   def test_dot
-    assert_equal [:set, "a", G.dot], match("a=.")
+    assert_rule G.dot, match("a=.")
   end
 
   def test_string
-    assert_equal [:set, "a", G.str("hello")], match('a="hello"')
-    assert_equal [:set, "a", G.str("h\"ello")], match('a="h\"ello"')
+    assert_rule G.str("hello"), match('a="hello"')
+    assert_rule G.str("h\"ello"), match('a="h\"ello"')
   end
 
   def test_regexp
-    assert_equal [:set, "a", G.reg(/foo/)], match('a=/foo/')
-    assert_equal [:set, "a", G.reg(/foo\/bar/)], match('a=/foo\/bar/')
-    assert_equal [:set, "a", G.reg(/[^"]/)], match('a=/[^"]/')
+    assert_rule G.reg(/foo/), match('a=/foo/')
+    assert_rule G.reg(/foo\/bar/), match('a=/foo\/bar/')
+    assert_rule G.reg(/[^"]/), match('a=/[^"]/')
   end
 
   def test_char_range
-    assert_equal [:set, "a", G.range("a", "z")], match('a=[a-z]')
+    assert_rule G.range("a", "z"), match('a=[a-z]')
   end
 
   def test_maybe
-    assert_equal [:set, "a", G.maybe(:b)], match('a=b?')
+    assert_rule G.maybe(:b), match('a=b?')
   end
 
   def test_many
-    assert_equal [:set, "a", G.many(:b)], match('a=b+')
+    assert_rule G.many(:b), match('a=b+')
   end
 
   def test_many_sequence
-    assert_equal [:set, "a", G.many([:b, :c])], match('a=(b c)+')
+    assert_rule G.many([:b, :c]), match('a=(b c)+')
   end
 
   def test_many_sequence_with_action
-    assert_equal [:set, "a", G.seq(G.many([:b, :c]), G.action(" 1 "))], 
+    assert_rule G.seq(G.many([:b, :c]), G.action(" 1 ")), 
                                    match('a=(b c)+ { 1 }')
   end
 
   def test_kleene
-    assert_equal [:set, "a", G.kleene(:b)], match('a=b*')
+    assert_rule G.kleene(:b), match('a=b*')
   end
 
   def test_arbitrary_multiple
-    assert_equal [:set, "a", G.multiple(:b, 5, 9)], match('a=b[5,9]')
+    assert_rule G.multiple(:b, 5, 9), match('a=b[5,9]')
   end
 
   def test_no_max_multiple
-    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5,*]')
+    assert_rule G.multiple(:b, 5, nil), match('a=b[5,*]')
   end
 
   def test_no_max_multiple_sp
-    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5, *]')
-    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5, * ]')
-    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[5 , * ]')
-    assert_equal [:set, "a", G.multiple(:b, 5, nil)], match('a=b[ 5 , * ]')
+    assert_rule G.multiple(:b, 5, nil), match('a=b[5, *]')
+    assert_rule G.multiple(:b, 5, nil), match('a=b[5, * ]')
+    assert_rule G.multiple(:b, 5, nil), match('a=b[5 , * ]')
+    assert_rule G.multiple(:b, 5, nil), match('a=b[ 5 , * ]')
   end
 
   def test_andp
-    assert_equal [:set, "a", G.andp(:c)], match('a=&c')
+    assert_rule G.andp(:c), match('a=&c')
   end
 
   def test_notp
-    assert_equal [:set, "a", G.notp(:c)], match('a=!c')
+    assert_rule G.notp(:c), match('a=!c')
   end
 
   def test_choice
-    assert_equal [:set, "a", G.any(:b, :c)], match('a=b|c')
+    assert_rule G.any(:b, :c), match('a=b|c')
   end
 
   def test_choice_seq_priority
-    assert_equal [:set, "a", G.any([:num, :b], :c)], match('a=num b|c')
+    assert_rule G.any([:num, :b], :c), match('a=num b|c')
   end
 
   def test_choice_sp
     m = match 'a=num "+" dig | dig'
-    expected = [:set, "a", G.any([:num, "+", :dig], :dig)]
-    assert_equal expected, m
+    expected = G.any([:num, "+", :dig], :dig)
+    assert_rule expected, m
   end
 
   def test_choice_sp2
@@ -119,11 +122,11 @@ Stmt    = - Expr:e EOL
         | ( !EOL . )* EOL
     STR
     m = match str
-    expected = [:set, "Stmt", G.any(
+    expected = G.any(
                   [:"-", G.t(:Expr, "e"), :EOL],
-                  [G.kleene([G.notp(:EOL), G.dot]), :EOL])]
+                  [G.kleene([G.notp(:EOL), G.dot]), :EOL])
 
-    assert_equal expected, m
+    assert_rule expected, m, "Stmt"
   end
 
   def test_choice_with_actions
@@ -132,12 +135,12 @@ Stmt    = - Expr:e EOL                  { p e }
         | ( !EOL . )* EOL               { puts "error" }
     STR
     m = match str
-    expected = [:set, "Stmt", G.any(
+    expected = G.any(
                   [:"-", G.t(:Expr, "e"), :EOL, G.action(" p e ")],
                   [G.kleene([G.notp(:EOL), G.dot]), :EOL,
-                   G.action(" puts \"error\" ")])]
+                   G.action(" puts \"error\" ")])
 
-    assert_equal expected, m
+    assert_rule expected, m, "Stmt"
   end
 
   def test_multiline_seq
@@ -148,16 +151,16 @@ Sum     = Product:l
                 )*                      { l }
     STR
     m = match str
-    expected = [:set, "Sum", G.seq(
+    expected = G.seq(
                   G.t(:Product, "l"),
                   G.kleene(
                     G.any(
                       [:PLUS, G.t(:Product, "r"),  G.action(" l += r ")],
                       [:MINUS, G.t(:Product, "r"), G.action(" l -= r ")]
                     )),
-                  G.action(" l "))]
+                  G.action(" l "))
 
-    assert_equal expected, m
+    assert_rule expected, m, "Sum"
   end
 
   def test_multiline_seq2
@@ -171,68 +174,78 @@ Value   = NUMBER:i                      { i }
 
   def test_seq
     m = match 'a=b c'
-    assert_equal [:set, "a", G.seq(:b, :c)], m
+    assert_rule G.seq(:b, :c), m
 
     m = match 'a=b c d'
-    assert_equal [:set, "a", G.seq(:b, :c, :d)], m
+    assert_rule G.seq(:b, :c, :d), m
 
     m = match 'a=b c d e f'
-    assert_equal [:set, "a", G.seq(:b, :c, :d, :e, :f)], m
+    assert_rule G.seq(:b, :c, :d, :e, :f), m
   end
 
   def test_tag
     m = match 'a=b:x'
-    assert_equal [:set, "a", G.t(:b, "x")], m
+    assert_rule G.t(:b, "x"), m
   end
 
   def test_tag_parens
     m = match 'a=(b c):x'
-    assert_equal [:set, "a", G.t([:b, :c], "x")], m
+    assert_rule G.t([:b, :c], "x"), m
   end
 
   def test_tag_priority
     m = match 'a=d (b c):x'
-    assert_equal [:set, "a", G.seq(:d, G.t([:b, :c], "x"))], m
+    assert_rule G.seq(:d, G.t([:b, :c], "x")), m
 
     m = match 'a=d c*:x'
-    assert_equal [:set, "a", G.seq(:d, G.t(G.kleene(:c), "x"))], m
+    assert_rule G.seq(:d, G.t(G.kleene(:c), "x")), m
   end
 
   def test_parens
     m = match 'a=(b c)'
-    assert_equal [:set, "a", G.seq(:b, :c)], m
+    assert_rule G.seq(:b, :c), m
   end
 
   def test_parens_sp
     m = match 'a=( b c )'
-    assert_equal [:set, "a", G.seq(:b, :c)], m
+    assert_rule G.seq(:b, :c), m
   end
 
   def test_parens_as_outer
     m = match 'a=b (c|d)'
-    assert_equal [:set, "a", G.seq(:b, G.any(:c, :d))], m
+    assert_rule G.seq(:b, G.any(:c, :d)), m
   end
 
   def test_action
     m = match 'a=b c { b + c }'
-    assert_equal [:set, "a", G.seq(:b, :c, G.action(" b + c "))], m
+    assert_rule G.seq(:b, :c, G.action(" b + c ")), m
   end
 
   def test_action_nested_curly
     m = match 'a=b c { b + { c + d } }'
-    assert_equal [:set, "a", G.seq(:b, :c, G.action(" b + { c + d } "))], m
+    assert_rule G.seq(:b, :c, G.action(" b + { c + d } ")), m
   end
 
   def test_collect
     m = match 'a = < b c >'
-    assert_equal [:set, "a", G.collect(G.seq(:b, :c))], m
+    assert_rule G.collect(G.seq(:b, :c)), m
+  end
+
+  def test_comment
+    m = match "a=b # this is a comment\n"
+    assert_rule G.ref('b'), m
+  end
+
+  def test_comment_span
+    m = match "a=b # this is a comment\n   c"
+    assert_rule G.seq(G.ref('b'), G.ref("c")), m
   end
 
   def test_multiple_rules
     m = match "a=b\nc=d\ne=f"
-    assert_equal [:rules,
-       [:set, "a", G.ref("b")], [:rules,
-         [:set, "c", G.ref("d")], [:set, "e", G.ref("f")]]], m
+    assert_rule G.ref("b"), m, "a"
+    assert_rule G.ref("d"), m, "c"
+    assert_rule G.ref("f"), m, "e"
   end
 
   def test_multiline_choice
@@ -242,10 +255,9 @@ expr = num "+" num
     GRAM
 
     m = match gram
-    expected = [:set, "expr",
-                 G.seq(:num, "+", :num) |
-                 G.seq(:num, "-", :num)]
-    assert_equal expected, m
+    expected = G.seq(:num, "+", :num) |
+               G.seq(:num, "-", :num)
+    assert_rule expected, m, "expr"
   end
 
   def test_multiline_choice_many2
@@ -259,18 +271,15 @@ fact = fact "*" num
     GRAM
 
     m = match gram
-    expected =
-            [:rules,
-              [:set, "term",
-                 G.any([:term, "+", :fact],
-                       [:term, "-", :fact],
-                       :fact)],
-              [:set, "fact",
-                 G.any([:fact, "*", :num],
-                       [:fact, "/", :num],
-                       :num)]]
+    term = G.any([:term, "+", :fact],
+                 [:term, "-", :fact],
+                  :fact)
+    fact = G.any([:fact, "*", :num],
+                  [:fact, "/", :num],
+                   :num)
 
-    assert_equal expected, m
+    assert_equal term, m.find("term").op
+    assert_equal fact, m.find("fact").op
   end
 
   def test_multiline_choice_many
@@ -282,17 +291,13 @@ fact = fact "*" num
     GRAM
 
     m = match gram
+    term = G.any([:term, "+", :fact],
+                 [:term, "-", :fact])
+    fact = G.any([:fact, "*", :num],
+                  [:fact, "/", :num])
 
-    expected =
-            [:rules,
-              [:set, "term",
-                 G.any([:term, "+", :fact],
-                       [:term, "-", :fact])],
-              [:set, "fact",
-                 G.any([:fact, "*", :num],
-                       [:fact, "/", :num])]]
-
-    assert_equal expected, m
+    assert_equal term, m.find("term").op
+    assert_equal fact, m.find("fact").op
   end
 
   def test_roundtrip
