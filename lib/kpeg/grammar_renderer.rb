@@ -8,6 +8,12 @@ module KPeg
       widest = @grammar.rules.keys.sort { |a,b| a.size <=> b.size }.last
       indent = widest.size
 
+      @grammar.setup_actions.each do |act|
+        io.print "%% {"
+        io.print act.action
+        io.print "}\n\n"
+      end
+
       @grammar.rule_order.each do |name|
         rule = @grammar.find(name)
 

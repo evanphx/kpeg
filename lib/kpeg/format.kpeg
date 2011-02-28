@@ -1,3 +1,16 @@
+%% {
+    require 'kpeg/grammar'
+
+    def initialize(str, debug=false)
+      setup_parser(str, debug)
+      @g = KPeg::Grammar.new
+    end
+
+    attr_reader :g
+    alias_method :grammar, :g
+}
+
+
              eol = "\n"
          comment = "#" (!eol .)* eol
            space = " " | "\t" | eol
@@ -56,7 +69,9 @@ sgl_escape_quote = "\\'" { "'" }
      choose_cont = - "|" - values:v { v }
       expression = values:v choose_cont+:alts { @g.any(v, *alts) }
                  | values
-      assignment = - var:v - "=" - expression:o { @g.set(v, o) }
-     assignments = assignment (- assignments)?
+       statement = - var:v - "=" - expression:o { @g.set(v, o) }
+                 | - "%%" - curly:act { @g.add_setup act }
+      statements = statement (- statements)?
              eof = !.
-            root = assignments - "\n"? eof
+            root = statements - "\n"? eof
+

@@ -11,7 +11,10 @@ class TestKPegCodeGenerator < Test::Unit::TestCase
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = .
   def _root
     _tmp = get_byte
     return _tmp
@@ -33,7 +36,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"
   def _root
     _tmp = match_string("hello")
     return _tmp
@@ -55,7 +61,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = /[0-9]/
   def _root
     _tmp = scan(/\\A(?-mix:[0-9])/)
     return _tmp
@@ -79,7 +88,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = [a-z]
   def _root
     _tmp = get_byte
     if _tmp
@@ -109,7 +121,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = [a-z] "hello"
   def _root
 
     _save = self.pos
@@ -154,7 +169,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = ("hello" | "world")
   def _root
 
     _save = self.pos
@@ -203,7 +221,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"?
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -245,7 +266,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"*
   def _root
     while true
     _tmp = match_string("hello")
@@ -289,7 +313,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"+
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -346,7 +373,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"[5, 9]
   def _root
     _save = self.pos
     _count = 0
@@ -382,7 +412,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello" "world"
   def _root
 
     _save = self.pos
@@ -431,7 +464,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = &"hello"
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -461,7 +497,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = !"hello"
   def _root
     _save = self.pos
     _tmp = match_string("hello")
@@ -493,11 +532,16 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # greeting = "hello"
   def _greeting
     _tmp = match_string("hello")
     return _tmp
   end
+
+  # root = greeting
   def _root
     _tmp = apply('greeting', :_greeting)
     return _tmp
@@ -519,7 +563,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello":t
   def _root
     _tmp = match_string("hello")
     t = @result
@@ -540,7 +587,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = "hello"
   def _root
     _tmp = match_string("hello")
     return _tmp
@@ -561,7 +611,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # hello = < "hello" > {text}
   def _hello
 
     _save = self.pos
@@ -585,6 +638,8 @@ class Test < KPeg::CompiledParser
 
     return _tmp
   end
+
+  # root = hello?:lots {lots}
   def _root
 
     _save1 = self.pos
@@ -636,7 +691,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # hello = < "hello" > {text}
   def _hello
 
     _save = self.pos
@@ -660,6 +718,8 @@ class Test < KPeg::CompiledParser
 
     return _tmp
   end
+
+  # root = hello*:lots {lots}
   def _root
 
     _save1 = self.pos
@@ -715,7 +775,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # hello = < "hello" > {text}
   def _hello
 
     _save = self.pos
@@ -739,6 +802,8 @@ class Test < KPeg::CompiledParser
 
     return _tmp
   end
+
+  # root = hello+:lots {lots}
   def _root
 
     _save1 = self.pos
@@ -799,7 +864,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = {3 + 4}
   def _root
     @result = begin; 3 + 4; end
     _tmp = true
@@ -824,7 +892,10 @@ end
 
     str = <<-STR
 require 'kpeg/compiled_parser'
+
 class Test < KPeg::CompiledParser
+
+  # root = < "hello" >
   def _root
     _text_start = self.pos
     _tmp = match_string("hello")
@@ -863,6 +934,35 @@ end
     assert !code.parse
     assert_equal 5, code.failing_offset
     assert_equal "world", code.expected_string
+  end
+
+  def test_setup_actions
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.add_setup g.action(" attr_reader :foo ")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+ attr_reader :foo 
+
+
+  # root = .
+  def _root
+    _tmp = get_byte
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
   end
 
 end

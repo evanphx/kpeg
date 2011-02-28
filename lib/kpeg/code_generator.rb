@@ -1,3 +1,6 @@
+require 'kpeg/grammar_renderer'
+require 'stringio'
+
 module KPeg
   class CodeGenerator
     def initialize(name, gram, debug=false)
@@ -228,11 +231,26 @@ module KPeg
         cp.gsub!(/include Position/, pp)
         code << cp << "\n"
       else
-        code =  "require 'kpeg/compiled_parser'\n"
+        code =  "require 'kpeg/compiled_parser'\n\n"
         code << "class #{@name} < KPeg::CompiledParser\n"
       end
+
+      @grammar.setup_actions.each do |act|
+        code << "\n#{act.action}\n\n"
+      end
+
+      render = GrammarRenderer.new(@grammar)
+
       @grammar.rule_order.each do |name|
         rule = @grammar.rules[name]
+        io = StringIO.new
+        render.render_op io, rule.op
+
+        rend = io.string
+        rend.gsub! "\n", " "
+
+        code << "\n"
+        code << "  # #{name} = #{rend}\n"
         code << "  def #{method_name name}\n"
         if @debug
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"

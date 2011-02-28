@@ -154,4 +154,22 @@ root = < [a-z]+ >
 
     assert_equal expected, io.string
   end
+
+  def test_setup_actions
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.add_setup g.action(" attr_reader :foo ")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    expected = <<-TXT
+%% { attr_reader :foo }
+
+root = .
+    TXT
+    assert_equal expected, io.string
+  end
 end

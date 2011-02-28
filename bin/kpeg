@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'kpeg'
-require 'kpeg/format'
 require 'kpeg/code_generator'
 require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'

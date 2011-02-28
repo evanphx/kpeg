@@ -503,9 +503,14 @@ module KPeg
     def initialize
       @rules = {}
       @rule_order = []
+      @setup_actions = []
     end
 
-    attr_reader :rules, :rule_order
+    attr_reader :rules, :rule_order, :setup_actions
+
+    def add_setup(act)
+      @setup_actions << act
+    end
 
     def root
       @rules["root"]

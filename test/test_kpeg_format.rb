@@ -1,13 +1,12 @@
 require 'test/unit'
 require 'kpeg'
-require 'kpeg/format'
 require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'
 require 'stringio'
 require 'rubygems'
 
 class TestKPegFormat < Test::Unit::TestCase
-  G = KPeg::FORMAT
+  G = KPeg::Grammar.new
 
   def match(str, gram=nil, log=false)
     parc = KPeg::FormatParser.new str
@@ -241,6 +240,12 @@ Value   = NUMBER:i                      { i }
     assert_rule G.seq(G.ref('b'), G.ref("c")), m
   end
 
+  def test_parser_setup
+    m = match "%% { def initialize; end }\na=b"
+    assert_rule G.ref("b"), m
+    assert_equal " def initialize; end ", m.setup_actions.first.action
+  end
+
   def test_multiple_rules
     m = match "a=b\nc=d\ne=f"
     assert_rule G.ref("b"), m, "a"
@@ -300,21 +305,32 @@ fact = fact "*" num
     assert_equal fact, m.find("fact").op
   end
 
+  def make_parser(str, gram, debug=false)
+    cg = KPeg::CodeGenerator.new "Test", gram, debug
+    inst = cg.make(str)
+    inst.enhance_errors!
+    return inst
+  end
+
   def test_roundtrip
-    gr = KPeg::GrammarRenderer.new(G)
+    path = File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
+    parser = KPeg::FormatParser.new File.read(path)
+    assert parser.parse, "Unable to parse"
+
+    start = parser.grammar
+
+    gr = KPeg::GrammarRenderer.new(start)
     io = StringIO.new
     gr.render(io)
 
-    scan = KPeg::Parser.new io.string, G
-    m = scan.parse
-    if scan.failed?
+    scan = make_parser io.string, start
+    unless scan.parse
       puts io.string
       scan.show_error
       assert !scan.failed?, "parsing the grammar"
     end
 
-    g2 = KPeg::Grammar.new
-    m.value(g2)
+    g2 = scan.grammar
 
     gr2 = KPeg::GrammarRenderer.new(g2)
     io2 = StringIO.new
@@ -339,20 +355,11 @@ fact = fact "*" num
     assert_equal io.string, io2.string
 
     # Go for a 3rd generation!
-    scan2 = KPeg::Parser.new io2.string, g2
-    m2 = scan2.parse
-    assert !scan.failed?, "parsing the grammar"
+    scan2 = make_parser io2.string, g2
+    assert scan2.parse, "parsing the grammar"
 
-    g3 = KPeg::Grammar.new
-    m2.value(g3)
+    g3 = scan2.grammar
 
-    # This is as far as we can go. The new parser
-    # in m2 has no semantic actions because they've
-    # been lost. Until we have the semantic actions
-    # in the grammar, this is as far as we can go.
-    #
-    # If we put the actions in grammar, this will come
-    # to life though.
     unless g3.rules.empty?
       gr3 = KPeg::GrammarRenderer.new(g3)
       io3 = StringIO.new
@@ -361,12 +368,10 @@ fact = fact "*" num
       assert_equal io2.string, io3.string
 
       # INCEPTION! 4! go for 4!
-      scan3 = KPeg::Parser.new io3.string, g3
-      m3 = scan3.parse
-      assert !scan.failed?, "parsing the grammar"
+      scan3 = make_parser io3.string, g3
+      assert scan3.parse, "parsing the grammar"
 
-      g4 = KPeg::Grammar.new
-      m3.value(g4)
+      g4 = scan3.grammar
 
       gr4 = KPeg::GrammarRenderer.new(g4)
       io4 = StringIO.new

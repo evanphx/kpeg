@@ -1,6 +1,6 @@
 require 'test/unit'
 require 'kpeg'
-require 'kpeg/format'
+require 'kpeg/format_parser'
 require 'kpeg/code_generator'
 require 'stringio'
 
@@ -43,13 +43,10 @@ root    = Stmt+
   STR
 
   def test_parse
-    parc = KPeg::Parser.new(GRAMMAR, KPeg::FORMAT)
-    m = parc.parse
+    parc = KPeg::FormatParser.new(GRAMMAR)
+    assert parc.parse, "Unable to parse"
 
-    assert !parc.failed?, "Unable to parse"
-
-    gram = KPeg::Grammar.new
-    m.value(gram)
+    gram = parc.grammar
 
     # gr = KPeg::GrammarRenderer.new(gram)
     # puts
