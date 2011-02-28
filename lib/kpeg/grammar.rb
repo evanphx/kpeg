@@ -100,9 +100,32 @@ module KPeg
   end
 
   class LiteralRegexp < Operator
-    def initialize(reg)
+    def initialize(reg, opts=nil)
       super()
-      @regexp = reg
+
+      if reg.kind_of? String
+        flags = 0
+        lang = nil
+
+        if opts
+          opts.split("").each do |o|
+            case o
+            when "n", "N", "e", "E", "s", "S", "u", "U"
+              lang = o
+            when "m"
+              flags |= Regexp::MULTILINE
+            when "x"
+              flags |= Regexp::EXTENDED
+            when "i"
+              flags |= Regexp::IGNORECASE
+            end
+          end
+        end
+
+        @regexp = Regexp.new(reg, flags, lang)
+      else
+        @regexp = reg
+      end
     end
 
     attr_reader :regexp
@@ -604,8 +627,8 @@ module KPeg
       op
     end
 
-    def reg(reg, &b)
-      op = LiteralRegexp.new reg
+    def reg(reg, opts=nil, &b)
+      op = LiteralRegexp.new reg, opts
       op.set_action(b) if b
       op
     end

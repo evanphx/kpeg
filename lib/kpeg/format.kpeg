@@ -33,8 +33,10 @@ sgl_escape_quote = "\\'" { "'" }
           string = dbl_string
                  | sgl_string
 
-       not_slash = ("\\/" | /[^\/]/)+
-          regexp = "/" < not_slash > "/" { @g.reg(Regexp.new(text)) }
+       not_slash = < ("\\/" | /[^\/]/)+ > { text }
+     regexp_opts = < [a-z]* > { text }
+          regexp = "/" not_slash:body "/" regexp_opts:opts
+                   { @g.reg body, opts }
 
             char = < /[a-zA-Z0-9]/ > { text }
       char_range = "[" char:l "-" char:r "]" { @g.range(l,r) }

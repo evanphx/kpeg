@@ -499,24 +499,14 @@ class KPeg::FormatParser < KPeg::CompiledParser
     return _tmp
   end
 
-  # not_slash = ("\\/" | /[^\/]/)+
+  # not_slash = < ("\\/" | /[^\/]/)+ > { text }
   def _not_slash
+
     _save = self.pos
-
+    while true # sequence
+    _text_start = self.pos
     _save1 = self.pos
-    while true # choice
-    _tmp = match_string("\\/")
-    break if _tmp
-    self.pos = _save1
-    _tmp = scan(/\A(?-mix:[^\/])/)
-    break if _tmp
-    self.pos = _save1
-    break
-    end # end choice
 
-    if _tmp
-      while true
-    
     _save2 = self.pos
     while true # choice
     _tmp = match_string("\\/")
@@ -528,16 +518,80 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    if _tmp
+      while true
+    
+    _save3 = self.pos
+    while true # choice
+    _tmp = match_string("\\/")
+    break if _tmp
+    self.pos = _save3
+    _tmp = scan(/\A(?-mix:[^\/])/)
+    break if _tmp
+    self.pos = _save3
+    break
+    end # end choice
+
         break unless _tmp
       end
       _tmp = true
     else
+      self.pos = _save1
+    end
+    if _tmp
+      set_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin;  text ; end
+    _tmp = true
+    unless _tmp
       self.pos = _save
     end
+    break
+    end # end sequence
+
     return _tmp
   end
 
-  # regexp = "/" < not_slash > "/" { @g.reg(Regexp.new(text)) }
+  # regexp_opts = < [a-z]* > { text }
+  def _regexp_opts
+
+    _save = self.pos
+    while true # sequence
+    _text_start = self.pos
+    while true
+    _tmp = get_byte
+    if _tmp
+      unless _tmp >= 97 and _tmp <= 122
+        fail_range('a', 'z')
+        _tmp = nil
+      end
+    end
+    break unless _tmp
+    end
+    _tmp = true
+    if _tmp
+      set_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin;  text ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    return _tmp
+  end
+
+  # regexp = "/" not_slash:body "/" regexp_opts:opts { @g.reg body, opts }
   def _regexp
 
     _save = self.pos
@@ -547,11 +601,8 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _text_start = self.pos
     _tmp = apply('not_slash', :_not_slash)
-    if _tmp
-      set_text(_text_start)
-    end
+    body = @result
     unless _tmp
       self.pos = _save
       break
@@ -561,7 +612,13 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    @result = begin;  @g.reg(Regexp.new(text)) ; end
+    _tmp = apply('regexp_opts', :_regexp_opts)
+    opts = @result
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin;  @g.reg body, opts ; end
     _tmp = true
     unless _tmp
       self.pos = _save

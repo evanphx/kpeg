@@ -53,6 +53,10 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_rule G.reg(/[^"]/), match('a=/[^"]/')
   end
 
+  def test_regexp_options
+    assert_rule G.reg(/foo/u), match('a=/foo/u')
+  end
+
   def test_char_range
     assert_rule G.range("a", "z"), match('a=[a-z]')
   end
