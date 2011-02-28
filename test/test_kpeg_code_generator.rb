@@ -642,24 +642,24 @@ class Test < KPeg::CompiledParser
   # root = hello?:lots {lots}
   def _root
 
-    _save1 = self.pos
+    _save = self.pos
     while true # sequence
-    _save2 = self.pos
+    _save1 = self.pos
     _tmp = apply('hello', :_hello)
     @result = nil unless _tmp
     unless _tmp
       _tmp = true
-      self.pos = _save2
+      self.pos = _save1
     end
     lots = @result
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
       break
     end
     @result = begin; lots; end
     _tmp = true
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
     end
     break
     end # end sequence
@@ -722,7 +722,7 @@ class Test < KPeg::CompiledParser
   # root = hello*:lots {lots}
   def _root
 
-    _save1 = self.pos
+    _save = self.pos
     while true # sequence
     _ary = []
     while true
@@ -734,13 +734,13 @@ class Test < KPeg::CompiledParser
     @result = _ary
     lots = @result
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
       break
     end
     @result = begin; lots; end
     _tmp = true
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
     end
     break
     end # end sequence
@@ -806,9 +806,9 @@ class Test < KPeg::CompiledParser
   # root = hello+:lots {lots}
   def _root
 
-    _save1 = self.pos
+    _save = self.pos
     while true # sequence
-    _save2 = self.pos
+    _save1 = self.pos
     _ary = []
     _tmp = apply('hello', :_hello)
     if _tmp
@@ -821,17 +821,17 @@ class Test < KPeg::CompiledParser
       _tmp = true
       @result = _ary
     else
-      self.pos = _save2
+      self.pos = _save1
     end
     lots = @result
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
       break
     end
     @result = begin; lots; end
     _tmp = true
     unless _tmp
-      self.pos = _save1
+      self.pos = _save
     end
     break
     end # end sequence

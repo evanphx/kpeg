@@ -30,6 +30,10 @@ module KPeg
       str
     end
 
+    def reset_saves
+      @saves = 0
+    end
+
     def output_op(code, op)
       case op
       when Dot
@@ -242,6 +246,8 @@ module KPeg
       render = GrammarRenderer.new(@grammar)
 
       @grammar.rule_order.each do |name|
+        reset_saves
+
         rule = @grammar.rules[name]
         io = StringIO.new
         render.render_op io, rule.op
