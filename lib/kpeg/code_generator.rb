@@ -193,7 +193,7 @@ module KPeg
         code << "    _tmp = _tmp ? nil : true\n"
         code << "    self.pos = #{ss}\n"
       when RuleReference
-        code << "    _tmp = apply('#{op.rule_name}', :#{method_name op.rule_name})\n"
+        code << "    _tmp = apply(:#{method_name op.rule_name})\n"
       when InvokeRule
         code << "    _tmp = #{method_name op.rule_name}()\n"
       when Tag

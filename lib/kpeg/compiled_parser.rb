@@ -173,7 +173,7 @@ module KPeg
       end
     end
 
-    def apply(rule, method_name)
+    def apply(rule)
       if m = @memoizations[rule][@pos]
         m.inc!
 
@@ -193,14 +193,14 @@ module KPeg
         @memoizations[rule][@pos] = m
         start_pos = @pos
 
-        ans = __send__ method_name
+        ans = __send__ rule
 
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
         if ans and lr.detected
-          return grow_lr(rule, method_name, start_pos, m)
+          return grow_lr(rule, start_pos, m)
         else
           return ans
         end
@@ -209,12 +209,12 @@ module KPeg
       end
     end
 
-    def grow_lr(rule, method_name, start_pos, m)
+    def grow_lr(rule, start_pos, m)
       while true
         @pos = start_pos
         @result = m.result
 
-        ans = __send__ method_name
+        ans = __send__ rule
         return nil unless ans
 
         break if @pos <= m.pos

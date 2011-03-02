@@ -613,7 +613,7 @@ class Test < KPeg::CompiledParser
 
   # root = greeting
   def _root
-    _tmp = apply('greeting', :_greeting)
+    _tmp = apply(:_greeting)
     return _tmp
   end
 end
@@ -747,7 +747,7 @@ class Test < KPeg::CompiledParser
     _save = self.pos
     while true # sequence
     _save1 = self.pos
-    _tmp = apply('hello', :_hello)
+    _tmp = apply(:_hello)
     @result = nil unless _tmp
     unless _tmp
       _tmp = true
@@ -828,7 +828,7 @@ class Test < KPeg::CompiledParser
     while true # sequence
     _ary = []
     while true
-    _tmp = apply('hello', :_hello)
+    _tmp = apply(:_hello)
     _ary << @result if _tmp
     break unless _tmp
     end
@@ -912,11 +912,11 @@ class Test < KPeg::CompiledParser
     while true # sequence
     _save1 = self.pos
     _ary = []
-    _tmp = apply('hello', :_hello)
+    _tmp = apply(:_hello)
     if _tmp
       _ary << @result
       while true
-        _tmp = apply('hello', :_hello)
+        _tmp = apply(:_hello)
         _ary << @result if _tmp
         break unless _tmp
       end

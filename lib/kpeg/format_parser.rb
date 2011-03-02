@@ -36,7 +36,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _save2 = self.pos
     while true # sequence
     _save3 = self.pos
-    _tmp = apply('eol', :_eol)
+    _tmp = apply(:_eol)
     _tmp = _tmp ? nil : true
     self.pos = _save3
     unless _tmp
@@ -57,7 +57,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('eol', :_eol)
+    _tmp = apply(:_eol)
     unless _tmp
       self.pos = _save
     end
@@ -78,7 +78,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _tmp = match_string("\t")
     break if _tmp
     self.pos = _save
-    _tmp = apply('eol', :_eol)
+    _tmp = apply(:_eol)
     break if _tmp
     self.pos = _save
     break
@@ -93,10 +93,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # choice
-    _tmp = apply('space', :_space)
+    _tmp = apply(:_space)
     break if _tmp
     self.pos = _save1
-    _tmp = apply('comment', :_comment)
+    _tmp = apply(:_comment)
     break if _tmp
     self.pos = _save1
     break
@@ -262,11 +262,11 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # choice
-    _tmp = apply('dbl_escapes', :_dbl_escapes)
+    _tmp = apply(:_dbl_escapes)
     s = @result
     break if _tmp
     self.pos = _save2
-    _tmp = apply('dbl_seq', :_dbl_seq)
+    _tmp = apply(:_dbl_seq)
     s = @result
     break if _tmp
     self.pos = _save2
@@ -279,11 +279,11 @@ class KPeg::FormatParser < KPeg::CompiledParser
     
     _save3 = self.pos
     while true # choice
-    _tmp = apply('dbl_escapes', :_dbl_escapes)
+    _tmp = apply(:_dbl_escapes)
     s = @result
     break if _tmp
     self.pos = _save3
-    _tmp = apply('dbl_seq', :_dbl_seq)
+    _tmp = apply(:_dbl_seq)
     s = @result
     break if _tmp
     self.pos = _save3
@@ -324,7 +324,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('dbl_not_quote', :_dbl_not_quote)
+    _tmp = apply(:_dbl_not_quote)
     s = @result
     unless _tmp
       self.pos = _save
@@ -402,10 +402,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # choice
-    _tmp = apply('sgl_escape_quote', :_sgl_escape_quote)
+    _tmp = apply(:_sgl_escape_quote)
     break if _tmp
     self.pos = _save2
-    _tmp = apply('sgl_seq', :_sgl_seq)
+    _tmp = apply(:_sgl_seq)
     break if _tmp
     self.pos = _save2
     break
@@ -417,10 +417,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
     
     _save3 = self.pos
     while true # choice
-    _tmp = apply('sgl_escape_quote', :_sgl_escape_quote)
+    _tmp = apply(:_sgl_escape_quote)
     break if _tmp
     self.pos = _save3
-    _tmp = apply('sgl_seq', :_sgl_seq)
+    _tmp = apply(:_sgl_seq)
     break if _tmp
     self.pos = _save3
     break
@@ -460,7 +460,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('sgl_not_quote', :_sgl_not_quote)
+    _tmp = apply(:_sgl_not_quote)
     s = @result
     unless _tmp
       self.pos = _save
@@ -487,10 +487,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save = self.pos
     while true # choice
-    _tmp = apply('dbl_string', :_dbl_string)
+    _tmp = apply(:_dbl_string)
     break if _tmp
     self.pos = _save
-    _tmp = apply('sgl_string', :_sgl_string)
+    _tmp = apply(:_sgl_string)
     break if _tmp
     self.pos = _save
     break
@@ -601,7 +601,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('not_slash', :_not_slash)
+    _tmp = apply(:_not_slash)
     body = @result
     unless _tmp
       self.pos = _save
@@ -612,7 +612,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('regexp_opts', :_regexp_opts)
+    _tmp = apply(:_regexp_opts)
     opts = @result
     unless _tmp
       self.pos = _save
@@ -664,7 +664,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('char', :_char)
+    _tmp = apply(:_char)
     l = @result
     unless _tmp
       self.pos = _save
@@ -675,7 +675,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('char', :_char)
+    _tmp = apply(:_char)
     r = @result
     unless _tmp
       self.pos = _save
@@ -732,18 +732,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('range_elem', :_range_elem)
+    _tmp = apply(:_range_elem)
     l = @result
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
@@ -753,18 +753,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('range_elem', :_range_elem)
+    _tmp = apply(:_range_elem)
     r = @result
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
@@ -787,7 +787,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
   # curly_block = curly
   def _curly_block
-    _tmp = apply('curly', :_curly)
+    _tmp = apply(:_curly)
     return _tmp
   end
 
@@ -809,7 +809,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _tmp = scan(/\A(?-mix:[^{}]+)/)
     break if _tmp
     self.pos = _save2
-    _tmp = apply('curly', :_curly)
+    _tmp = apply(:_curly)
     break if _tmp
     self.pos = _save2
     break
@@ -849,7 +849,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save1
@@ -860,7 +860,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save1
       break
     end
-    _tmp = apply('var', :_var)
+    _tmp = apply(:_var)
     n = @result
     unless _tmp
       self.pos = _save1
@@ -879,7 +879,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save2
@@ -903,7 +903,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save3 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save3
@@ -927,7 +927,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save4 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save4
@@ -951,13 +951,13 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save5 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save5
       break
     end
-    _tmp = apply('mult_range', :_mult_range)
+    _tmp = apply(:_mult_range)
     r = @result
     unless _tmp
       self.pos = _save5
@@ -981,7 +981,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save6
       break
     end
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save6
@@ -1005,7 +1005,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save7
       break
     end
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save7
@@ -1029,18 +1029,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save8
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save8
       break
     end
-    _tmp = apply('expression', :_expression)
+    _tmp = apply(:_expression)
     o = @result
     unless _tmp
       self.pos = _save8
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save8
       break
@@ -1068,18 +1068,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save9
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save9
       break
     end
-    _tmp = apply('expression', :_expression)
+    _tmp = apply(:_expression)
     o = @result
     unless _tmp
       self.pos = _save9
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save9
       break
@@ -1099,7 +1099,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     break if _tmp
     self.pos = _save
-    _tmp = apply('curly_block', :_curly_block)
+    _tmp = apply(:_curly_block)
     break if _tmp
     self.pos = _save
 
@@ -1128,7 +1128,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save11
       break
     end
-    _tmp = apply('var', :_var)
+    _tmp = apply(:_var)
     name = @result
     unless _tmp
       self.pos = _save11
@@ -1138,7 +1138,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save13 = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save13
       break
@@ -1169,7 +1169,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save14 = self.pos
     while true # sequence
-    _tmp = apply('var', :_var)
+    _tmp = apply(:_var)
     name = @result
     unless _tmp
       self.pos = _save14
@@ -1179,7 +1179,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save16 = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save16
       break
@@ -1207,13 +1207,13 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     break if _tmp
     self.pos = _save
-    _tmp = apply('char_range', :_char_range)
+    _tmp = apply(:_char_range)
     break if _tmp
     self.pos = _save
-    _tmp = apply('regexp', :_regexp)
+    _tmp = apply(:_regexp)
     break if _tmp
     self.pos = _save
-    _tmp = apply('string', :_string)
+    _tmp = apply(:_string)
     break if _tmp
     self.pos = _save
     break
@@ -1228,10 +1228,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # choice
-    _tmp = apply('space', :_space)
+    _tmp = apply(:_space)
     break if _tmp
     self.pos = _save1
-    _tmp = apply('comment', :_comment)
+    _tmp = apply(:_comment)
     break if _tmp
     self.pos = _save1
     break
@@ -1242,10 +1242,10 @@ class KPeg::FormatParser < KPeg::CompiledParser
     
     _save2 = self.pos
     while true # choice
-    _tmp = apply('space', :_space)
+    _tmp = apply(:_space)
     break if _tmp
     self.pos = _save2
-    _tmp = apply('comment', :_comment)
+    _tmp = apply(:_comment)
     break if _tmp
     self.pos = _save2
     break
@@ -1268,18 +1268,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # sequence
-    _tmp = apply('values', :_values)
+    _tmp = apply(:_values)
     s = @result
     unless _tmp
       self.pos = _save1
       break
     end
-    _tmp = apply('spaces', :_spaces)
+    _tmp = apply(:_spaces)
     unless _tmp
       self.pos = _save1
       break
     end
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     v = @result
     unless _tmp
       self.pos = _save1
@@ -1298,18 +1298,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # sequence
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     l = @result
     unless _tmp
       self.pos = _save2
       break
     end
-    _tmp = apply('spaces', :_spaces)
+    _tmp = apply(:_spaces)
     unless _tmp
       self.pos = _save2
       break
     end
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     r = @result
     unless _tmp
       self.pos = _save2
@@ -1325,7 +1325,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     break if _tmp
     self.pos = _save
-    _tmp = apply('value', :_value)
+    _tmp = apply(:_value)
     break if _tmp
     self.pos = _save
     break
@@ -1339,7 +1339,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
@@ -1349,12 +1349,12 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('values', :_values)
+    _tmp = apply(:_values)
     v = @result
     unless _tmp
       self.pos = _save
@@ -1379,7 +1379,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # sequence
-    _tmp = apply('values', :_values)
+    _tmp = apply(:_values)
     v = @result
     unless _tmp
       self.pos = _save1
@@ -1387,11 +1387,11 @@ class KPeg::FormatParser < KPeg::CompiledParser
     end
     _save2 = self.pos
     _ary = []
-    _tmp = apply('choose_cont', :_choose_cont)
+    _tmp = apply(:_choose_cont)
     if _tmp
       _ary << @result
       while true
-        _tmp = apply('choose_cont', :_choose_cont)
+        _tmp = apply(:_choose_cont)
         _ary << @result if _tmp
         break unless _tmp
       end
@@ -1415,7 +1415,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     break if _tmp
     self.pos = _save
-    _tmp = apply('values', :_values)
+    _tmp = apply(:_values)
     break if _tmp
     self.pos = _save
     break
@@ -1432,18 +1432,18 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save1 = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save1
       break
     end
-    _tmp = apply('var', :_var)
+    _tmp = apply(:_var)
     v = @result
     unless _tmp
       self.pos = _save1
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save1
       break
@@ -1453,12 +1453,12 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save1
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save1
       break
     end
-    _tmp = apply('expression', :_expression)
+    _tmp = apply(:_expression)
     o = @result
     unless _tmp
       self.pos = _save1
@@ -1477,7 +1477,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save2
       break
@@ -1487,12 +1487,12 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save2
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save2
       break
     end
-    _tmp = apply('curly', :_curly)
+    _tmp = apply(:_curly)
     act = @result
     unless _tmp
       self.pos = _save2
@@ -1519,7 +1519,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply('statement', :_statement)
+    _tmp = apply(:_statement)
     unless _tmp
       self.pos = _save
       break
@@ -1528,12 +1528,12 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save2 = self.pos
     while true # sequence
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save2
       break
     end
-    _tmp = apply('statements', :_statements)
+    _tmp = apply(:_statements)
     unless _tmp
       self.pos = _save2
     end
@@ -1567,12 +1567,12 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply('statements', :_statements)
+    _tmp = apply(:_statements)
     unless _tmp
       self.pos = _save
       break
     end
-    _tmp = apply('-', :__hyphen_)
+    _tmp = apply(:__hyphen_)
     unless _tmp
       self.pos = _save
       break
@@ -1587,7 +1587,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
-    _tmp = apply('eof', :_eof)
+    _tmp = apply(:_eof)
     unless _tmp
       self.pos = _save
     end
