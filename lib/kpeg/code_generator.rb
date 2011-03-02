@@ -46,8 +46,14 @@ module KPeg
         if op.start.bytesize == 1 and op.fin.bytesize == 1
           code << "    _tmp = get_byte\n"
           code << "    if _tmp\n"
-          left  = op.start[0]
-          right = op.fin[0]
+
+          if op.start.respond_to? :getbyte
+            left  = op.start.getbyte 0
+            right = op.fin.getbyte 0
+          else
+            left  = op.start[0]
+            right = op.fin[0]
+          end
 
           code << "      unless _tmp >= #{left} and _tmp <= #{right}\n"
           code << "        fail_range('#{op.start}', '#{op.fin}')\n"

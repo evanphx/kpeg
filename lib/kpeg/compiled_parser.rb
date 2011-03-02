@@ -81,15 +81,28 @@ module KPeg
       return nil
     end
 
-    def get_byte
-      if @pos >= @string.size
-        add_failure nil
-        return nil
-      end
+    if "".respond_to? :getbyte
+      def get_byte
+        if @pos >= @string.size
+          add_failure nil
+          return nil
+        end
 
-      s = @string[@pos]
-      @pos += 1
-      s
+        s = @string.getbyte @pos
+        @pos += 1
+        s
+      end
+    else
+      def get_byte
+        if @pos >= @string.size
+          add_failure nil
+          return nil
+        end
+
+        s = @string[@pos]
+        @pos += 1
+        s
+      end
     end
 
     module EnhancedErrors
