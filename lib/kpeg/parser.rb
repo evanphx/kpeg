@@ -73,6 +73,11 @@ module KPeg
       end
     end
 
+    # Call a rule without memoization
+    def invoke(rule)
+      rule.op.match(self)
+    end
+
     def apply(rule)
       ans = nil
       if m = @memoizations[rule][pos]

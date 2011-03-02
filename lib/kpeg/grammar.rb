@@ -424,6 +424,34 @@ module KPeg
     end
   end
 
+  class InvokeRule < Operator
+    def initialize(name)
+      super()
+      @rule_name = name
+    end
+
+    attr_reader :rule_name
+
+    def match(x)
+      rule = x.grammar.find(@rule_name)
+      raise "Unknown rule: '#{@rule_name}'" unless rule
+      x.invoke rule
+    end
+
+    def ==(obj)
+      case obj
+      when InvokeRule
+        @rule_name == obj.rule_name
+      else
+        super
+      end
+    end
+
+    def inspect
+      inspect_type "invoke", @rule_name
+    end
+  end
+
   class Tag < Operator
     def initialize(op, tag_name)
       super()
@@ -692,6 +720,10 @@ module KPeg
 
     def ref(name, other_grammar=nil)
       RuleReference.new name.to_s, other_grammar
+    end
+
+    def invoke(name)
+      InvokeRule.new name.to_s
     end
 
     def t(op, name=nil)

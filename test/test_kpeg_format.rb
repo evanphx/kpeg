@@ -27,6 +27,10 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_rule G.ref("b"), match("a=b"), "a"
   end
 
+  def test_invoke
+    assert_rule G.invoke("b"), match("a=@b"), "a"
+  end
+
   def test_assignment_hyphen_only
     assert_rule G.ref("b"), match("-=b"), "-"
   end

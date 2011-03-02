@@ -194,6 +194,8 @@ module KPeg
         code << "    self.pos = #{ss}\n"
       when RuleReference
         code << "    _tmp = apply('#{op.rule_name}', :#{method_name op.rule_name})\n"
+      when InvokeRule
+        code << "    _tmp = #{method_name op.rule_name}()\n"
       when Tag
         if op.tag_name and !op.tag_name.empty?
           output_op code, op.op

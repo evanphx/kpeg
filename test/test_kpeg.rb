@@ -177,6 +177,16 @@ class TestKPeg < Test::Unit::TestCase
     assert_match m, "hello"
   end
 
+  def test_invoke
+    gram = KPeg.grammar do |g|
+      g.greeting = g.str("hello")
+      g.root = g.invoke "greeting"
+    end
+
+    m = KPeg.match "hello", gram
+    assert_match m, "hello"
+  end
+
   def test_foreign_ref
     g1 = KPeg.grammar do |g|
       g.greeting = "hello"

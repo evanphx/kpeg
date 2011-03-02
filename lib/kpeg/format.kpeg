@@ -59,6 +59,7 @@ sgl_escape_quote = "\\'" { "'" }
                  | "<" - expression:o - ">" { @g.collect(o) }
                  | curly_block
                  | "." { @g.dot }
+                 | "@" var:name !(- "=") { @g.invoke(name) }
                  | var:name !(- "=") { @g.ref(name) }
                  | char_range
                  | regexp

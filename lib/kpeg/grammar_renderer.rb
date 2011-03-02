@@ -135,6 +135,8 @@ module KPeg
         end
       when RuleReference
         io.print op.rule_name
+      when InvokeRule
+        io.print "@#{op.rule_name}"
       when Tag
         if parens?(op.op)
           io.print "("

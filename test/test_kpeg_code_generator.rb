@@ -626,6 +626,38 @@ end
     assert cg.parse("hello")
   end
 
+  def test_invoke
+    gram = KPeg.grammar do |g|
+      g.greeting = "hello"
+      g.root = g.invoke("greeting")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # greeting = "hello"
+  def _greeting
+    _tmp = match_string("hello")
+    return _tmp
+  end
+
+  # root = @greeting
+  def _root
+    _tmp = _greeting()
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
   def test_tag
     gram = KPeg.grammar do |g|
       g.root = g.t g.str("hello"), "t"

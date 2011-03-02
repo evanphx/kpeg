@@ -15,6 +15,18 @@ class TestKPegGrammarRenderer < Test::Unit::TestCase
     assert_equal 'hello\\"bob\\"', KPeg::GrammarRenderer.escape(str)
   end
 
+  def test_invoke
+    gram = KPeg.grammar do |g|
+      g.root = g.invoke("greeting")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = @greeting\n", io.string
+  end
+
   def test_dot_render
     gram = KPeg.grammar do |g|
       g.root = g.dot

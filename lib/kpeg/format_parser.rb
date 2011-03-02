@@ -37,8 +37,8 @@ class KPeg::FormatParser < KPeg::CompiledParser
     while true # sequence
     _save3 = self.pos
     _tmp = apply('eol', :_eol)
-    self.pos = _save3
     _tmp = _tmp ? nil : true
+    self.pos = _save3
     unless _tmp
       self.pos = _save2
       break
@@ -841,7 +841,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | var:name !(- "=") { @g.ref(name) } | char_range | regexp | string)
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | var:name !(- "=") { @g.ref(name) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
@@ -1123,6 +1123,11 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     _save11 = self.pos
     while true # sequence
+    _tmp = match_string("@")
+    unless _tmp
+      self.pos = _save11
+      break
+    end
     _tmp = apply('var', :_var)
     name = @result
     unless _tmp
@@ -1145,16 +1150,57 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
-    self.pos = _save12
     _tmp = _tmp ? nil : true
+    self.pos = _save12
     unless _tmp
       self.pos = _save11
+      break
+    end
+    @result = begin;  @g.invoke(name) ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save11
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save14 = self.pos
+    while true # sequence
+    _tmp = apply('var', :_var)
+    name = @result
+    unless _tmp
+      self.pos = _save14
+      break
+    end
+    _save15 = self.pos
+
+    _save16 = self.pos
+    while true # sequence
+    _tmp = apply('-', :__hyphen_)
+    unless _tmp
+      self.pos = _save16
+      break
+    end
+    _tmp = match_string("=")
+    unless _tmp
+      self.pos = _save16
+    end
+    break
+    end # end sequence
+
+    _tmp = _tmp ? nil : true
+    self.pos = _save15
+    unless _tmp
+      self.pos = _save14
       break
     end
     @result = begin;  @g.ref(name) ; end
     _tmp = true
     unless _tmp
-      self.pos = _save11
+      self.pos = _save14
     end
     break
     end # end sequence
@@ -1511,8 +1557,8 @@ class KPeg::FormatParser < KPeg::CompiledParser
   def _eof
     _save = self.pos
     _tmp = get_byte
-    self.pos = _save
     _tmp = _tmp ? nil : true
+    self.pos = _save
     return _tmp
   end
 
