@@ -490,6 +490,40 @@ end
     assert_equal 0, code.pos
   end
 
+  def test_andp_for_action
+    gram = KPeg.grammar do |g|
+      g.root = g.andp(g.action(" !defined? @fail "))
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # root = &{ !defined? @fail }
+  def _root
+    _save = self.pos
+    _tmp = begin;  !defined? @fail ; end
+    self.pos = _save
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hello")
+    assert code.parse
+    assert_equal 0, code.pos
+
+    code = cg.make("jello")
+    code.instance_variable_set :@fail, true
+    assert !code.parse
+    assert_equal 0, code.pos
+  end
+
   def test_notp
     gram = KPeg.grammar do |g|
       g.root = g.notp("hello")

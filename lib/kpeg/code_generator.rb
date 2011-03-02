@@ -170,7 +170,11 @@ module KPeg
       when AndPredicate
         ss = save()
         code << "    #{ss} = self.pos\n"
-        output_op code, op.op
+        if op.op.kind_of? Action
+          code << "    _tmp = begin; #{op.op.action}; end\n"
+        else
+          output_op code, op.op
+        end
         code << "    self.pos = #{ss}\n"
       when NotPredicate
         ss = save()
