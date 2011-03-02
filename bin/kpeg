@@ -60,11 +60,7 @@ if !options[:test] and File.exists?(new_path) and !options[:force]
   exit 1
 end
 
-if options[:debug]
-  parser = KPeg::Parser.new File.read(file), KPeg::FORMAT, true
-else
-  parser = KPeg::FormatParser.new File.read(file), true
-end
+parser = KPeg::FormatParser.new File.read(file), true
 
 unless m = parser.parse
   puts "Syntax error in grammar #{file}"
@@ -72,12 +68,7 @@ unless m = parser.parse
   exit 1
 end
 
-if options[:debug]
-  grammar = KPeg::Grammar.new
-  m.value(grammar)
-else
-  grammar = parser.grammar
-end
+grammar = parser.grammar
 
 if options[:test]
   puts "Syntax ok"
