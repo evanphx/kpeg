@@ -179,9 +179,13 @@ module KPeg
       when NotPredicate
         ss = save()
         code << "    #{ss} = self.pos\n"
-        output_op code, op.op
-        code << "    self.pos = #{ss}\n"
+        if op.op.kind_of? Action
+          code << "    _tmp = begin; #{op.op.action}; end\n"
+        else
+          output_op code, op.op
+        end
         code << "    _tmp = _tmp ? nil : true\n"
+        code << "    self.pos = #{ss}\n"
       when RuleReference
         code << "    _tmp = apply('#{op.rule_name}', :#{method_name op.rule_name})\n"
       when Tag

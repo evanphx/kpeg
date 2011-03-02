@@ -538,8 +538,8 @@ class Test < KPeg::CompiledParser
   def _root
     _save = self.pos
     _tmp = match_string("hello")
-    self.pos = _save
     _tmp = _tmp ? nil : true
+    self.pos = _save
     return _tmp
   end
 end
@@ -557,6 +557,42 @@ end
     assert code.parse
     assert_equal 0, code.pos
   end
+
+  def test_notp_for_action
+    gram = KPeg.grammar do |g|
+      g.root = g.notp(g.action(" defined? @fail "))
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # root = !{ defined? @fail }
+  def _root
+    _save = self.pos
+    _tmp = begin;  defined? @fail ; end
+    _tmp = _tmp ? nil : true
+    self.pos = _save
+    return _tmp
+  end
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hello")
+    assert code.parse
+    assert_equal 0, code.pos
+
+    code = cg.make("jello")
+    code.instance_variable_set :@fail, true
+    assert !code.parse
+    assert_equal 0, code.pos
+  end
+
 
   def test_ref
     gram = KPeg.grammar do |g|
