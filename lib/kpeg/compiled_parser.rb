@@ -12,7 +12,6 @@ module KPeg
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
-      @text = nil
       @failing_offset = -1
       @expected_string = []
 
@@ -28,13 +27,13 @@ module KPeg
     end
 
     attr_reader :string
-    attr_reader :result, :text, :failing_offset, :expected_string
+    attr_reader :result, :failing_offset, :expected_string
     attr_accessor :pos
 
     include Position
 
-    def set_text(start)
-      @text = @string[start..@pos-1]
+    def get_text(start)
+      @string[start..@pos-1]
     end
 
     def show_pos

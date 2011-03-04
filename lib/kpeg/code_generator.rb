@@ -214,7 +214,7 @@ module KPeg
         code << "    _text_start = self.pos\n"
         output_op code, op.op
         code << "    if _tmp\n"
-        code << "      set_text(_text_start)\n"
+        code << "      text = get_text(_text_start)\n"
         code << "    end\n"
       else
         raise "Unknown op - #{op.class}"

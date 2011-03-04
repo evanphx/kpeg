@@ -127,7 +127,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     end # end choice
 
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -235,7 +235,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = scan(/\A(?-mix:[^\\"]+)/)
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -375,7 +375,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = scan(/\A(?-mix:[^'])/)
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -539,7 +539,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save1
     end
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -574,7 +574,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     end
     _tmp = true
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -637,7 +637,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = scan(/\A(?-mix:[a-zA-Z0-9])/)
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -705,7 +705,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = scan(/\A(?-mix:([1-9][0-9]*)|\*)/)
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -819,7 +819,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     end
     _tmp = true
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save

@@ -724,7 +724,7 @@ class Test < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = match_string("hello")
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -804,7 +804,7 @@ class Test < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = match_string("hello")
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -888,7 +888,7 @@ class Test < KPeg::CompiledParser
     _text_start = self.pos
     _tmp = match_string("hello")
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
     unless _tmp
       self.pos = _save
@@ -989,7 +989,7 @@ end
 
   def test_collect
     gram = KPeg.grammar do |g|
-      g.root = g.collect("hello")
+      g.root = g.seq(g.collect("hello"), g.action(" text "))
     end
 
     str = <<-STR
@@ -997,13 +997,28 @@ require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
 
-  # root = < "hello" >
+  # root = < "hello" > { text }
   def _root
+
+    _save = self.pos
+    while true # sequence
     _text_start = self.pos
     _tmp = match_string("hello")
     if _tmp
-      set_text(_text_start)
+      text = get_text(_text_start)
     end
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    @result = begin;  text ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
     return _tmp
   end
 end
@@ -1015,7 +1030,7 @@ end
 
     code = cg.make("hello")
     assert code.parse
-    assert_equal "hello", code.text
+    assert_equal "hello", code.result
   end
 
   def test_parse_error
