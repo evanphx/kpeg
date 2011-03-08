@@ -4,18 +4,13 @@ require 'kpeg/code_generator'
 require 'stringio'
 
 class TestKPegCodeGenerator < Test::Unit::TestCase
-  @@i=0
   def compare_str(str1, str2)
-    stripped1 = str1.gsub(/\n[ \t]+/, "\n")
-    stripped2 = str2.gsub(/\n[ \t]+/, "\n")
-    if stripped1 != stripped2
-      puts str1
-      puts '-' * 50
-      puts str2
-      @@i+=1
-      File.open("/tmp/bad#{@@i}", "w"){|f| f.puts str2} if $DEBUG
+    if $DEBUG && str1 != str2
+      @last_bad ||= 0
+      @last_bad += 1
+      File.open("/tmp/bad#{@last_bad}", "w"){|f| f.puts str2}
     end
-    assert_equal stripped1, stripped2
+    assert_equal str1, str2
   end
 
   def test_dot
@@ -109,10 +104,10 @@ class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
     if _tmp
-      unless _tmp >= 97 and _tmp <= 122
-        fail_range('a', 'z')
-        _tmp = nil
-      end
+        unless _tmp >= 97 and _tmp <= 122
+          fail_range('a', 'z')
+          _tmp = nil
+        end
     end
     return _tmp
   end
@@ -143,22 +138,22 @@ class Test < KPeg::CompiledParser
 
     _save = self.pos
     while true # sequence
-    _tmp = get_byte
-    if _tmp
-      unless _tmp >= 97 and _tmp <= 122
-        fail_range('a', 'z')
-        _tmp = nil
+      _tmp = get_byte
+      if _tmp
+          unless _tmp >= 97 and _tmp <= 122
+            fail_range('a', 'z')
+            _tmp = nil
+          end
       end
-    end
-    unless _tmp
-      self.pos = _save
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("hello")
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = match_string("hello")
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     return _tmp
@@ -191,13 +186,13 @@ class Test < KPeg::CompiledParser
 
     _save = self.pos
     while true # choice
-    _tmp = match_string("hello")
-    break if _tmp
-    self.pos = _save
-    _tmp = match_string("world")
-    break if _tmp
-    self.pos = _save
-    break
+      _tmp = match_string("hello")
+      break if _tmp
+      self.pos = _save
+      _tmp = match_string("world")
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     return _tmp
@@ -286,8 +281,8 @@ class Test < KPeg::CompiledParser
   # root = "hello"*
   def _root
     while true
-    _tmp = match_string("hello")
-    break unless _tmp
+      _tmp = match_string("hello")
+      break unless _tmp
     end
     _tmp = true
     return _tmp
@@ -335,14 +330,14 @@ class Test < KPeg::CompiledParser
     _save = self.pos
     _tmp = match_string("hello")
     if _tmp
-      while true
-        _tmp = match_string("hello")
-        break unless _tmp
-      end
-      _tmp = true
-    else
-      self.pos = _save
-    end
+        while true
+                _tmp = match_string("hello")
+            break unless _tmp
+          end
+          _tmp = true
+        else
+          self.pos = _save
+        end
     return _tmp
   end
 end
@@ -395,13 +390,13 @@ class Test < KPeg::CompiledParser
     _save = self.pos
     _count = 0
     while true
-      _tmp = match_string("hello")
-      if _tmp
-        _count += 1
-        break if _count == 9
-      else
-        break
-      end
+          _tmp = match_string("hello")
+        if _tmp
+          _count += 1
+          break if _count == 9
+        else
+          break
+        end
     end
     if _count >= 5
       _tmp = true
@@ -434,16 +429,16 @@ class Test < KPeg::CompiledParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("hello")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("hello")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("world")
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = match_string("world")
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     return _tmp
