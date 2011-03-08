@@ -10,6 +10,14 @@ module KPeg
       @saves = 0
       @output = nil
       @standalone = false
+      @indent = 0
+      @code = ''
+    end
+
+    def add(str, indent=0)
+      @indent -= 2 if indent < 0
+      @code << (' ' * @indent) + str
+      @indent += 2 if indent > 0 
     end
 
     attr_accessor :standalone
@@ -35,17 +43,18 @@ module KPeg
     end
 
     def output_op(code, op)
+      @code = code
       case op
       when Dot
-        code << "    _tmp = get_byte\n"
+        add "    _tmp = get_byte\n"
       when LiteralString
-        code << "    _tmp = match_string(#{op.string.dump})\n"
+        add "    _tmp = match_string(#{op.string.dump})\n"
       when LiteralRegexp
-        code << "    _tmp = scan(/\\A#{op.regexp}/)\n"
+        add "    _tmp = scan(/\\A#{op.regexp}/)\n"
       when CharRange
         if op.start.bytesize == 1 and op.fin.bytesize == 1
-          code << "    _tmp = get_byte\n"
-          code << "    if _tmp\n"
+          add "    _tmp = get_byte\n"
+          add "    if _tmp\n", +1
 
           if op.start.respond_to? :getbyte
             left  = op.start.getbyte 0
@@ -55,167 +64,167 @@ module KPeg
             right = op.fin[0]
           end
 
-          code << "      unless _tmp >= #{left} and _tmp <= #{right}\n"
-          code << "        fail_range('#{op.start}', '#{op.fin}')\n"
-          code << "        _tmp = nil\n"
-          code << "      end\n"
-          code << "    end\n"
+          add "      unless _tmp >= #{left} and _tmp <= #{right}\n"
+          add "        fail_range('#{op.start}', '#{op.fin}')\n"
+          add "        _tmp = nil\n"
+          add "      end\n"
+          add "    end\n", -1
         else
           raise "Unsupported char range - #{op.inspect}"
         end
       when Choice
         ss = save()
-        code << "\n    #{ss} = self.pos\n"
-        code << "    while true # choice\n"
+        add "\n    #{ss} = self.pos\n"
+        add "    while true # choice\n", +1
         op.ops.each_with_index do |n,idx|
           output_op code, n
 
-          code << "    break if _tmp\n"
-          code << "    self.pos = #{ss}\n"
+          add "    break if _tmp\n"
+          add "    self.pos = #{ss}\n"
           if idx == op.ops.size - 1
-            code << "    break\n"
+            add "    break\n"
           end
         end
-        code << "    end # end choice\n\n"
+        add "    end # end choice\n\n", -1
       when Multiple
         ss = save()
         if op.min == 0 and op.max == 1
-          code << "    #{ss} = self.pos\n"
+          add "    #{ss} = self.pos\n"
           output_op code, op.op
           if op.save_values
-            code << "    @result = nil unless _tmp\n"
+            add "    @result = nil unless _tmp\n"
           end
-          code << "    unless _tmp\n"
-          code << "      _tmp = true\n"
-          code << "      self.pos = #{ss}\n"
-          code << "    end\n"
+          add "    unless _tmp\n"
+          add "      _tmp = true\n"
+          add "      self.pos = #{ss}\n"
+          add "    end\n"
         elsif op.min == 0 and !op.max
           if op.save_values
-            code << "    _ary = []\n"
+            add "    _ary = []\n"
           end
 
-          code << "    while true\n"
+          add "    while true\n", +1
           output_op code, op.op
           if op.save_values
-            code << "    _ary << @result if _tmp\n"
+            add "    _ary << @result if _tmp\n"
           end
-          code << "    break unless _tmp\n"
-          code << "    end\n"
-          code << "    _tmp = true\n"
+          add "    break unless _tmp\n"
+          add "    end\n", -1
+          add "    _tmp = true\n"
 
           if op.save_values
-            code << "    @result = _ary\n"
+            add "    @result = _ary\n"
           end
 
         elsif op.min == 1 and !op.max
-          code << "    #{ss} = self.pos\n"
+          add "    #{ss} = self.pos\n"
           if op.save_values
-            code << "    _ary = []\n"
+            add "    _ary = []\n"
           end
           output_op code, op.op
-          code << "    if _tmp\n"
+          add "    if _tmp\n", +1
           if op.save_values
-            code << "      _ary << @result\n"
+            add "      _ary << @result\n"
           end
-          code << "      while true\n"
-          code << "    "
+          add "      while true\n", +1
+          add "    "
           output_op code, op.op
           if op.save_values
-            code << "        _ary << @result if _tmp\n"
+            add "        _ary << @result if _tmp\n"
           end
-          code << "        break unless _tmp\n"
-          code << "      end\n"
-          code << "      _tmp = true\n"
+          add "        break unless _tmp\n"
+          add "      end\n"
+          add "      _tmp = true\n"
           if op.save_values
-            code << "      @result = _ary\n"
+            add "      @result = _ary\n"
           end
-          code << "    else\n"
-          code << "      self.pos = #{ss}\n"
-          code << "    end\n"
+          add "    else\n" 
+          add "      self.pos = #{ss}\n"
+          add "    end\n"
         else
-          code << "    #{ss} = self.pos\n"
-          code << "    _count = 0\n"
-          code << "    while true\n"
-          code << "  "
+          add "    #{ss} = self.pos\n"
+          add "    _count = 0\n"
+          add "    while true\n", +1
+          add "  "
           output_op code, op.op
-          code << "      if _tmp\n"
-          code << "        _count += 1\n"
-          code << "        break if _count == #{op.max}\n"
-          code << "      else\n"
-          code << "        break\n"
-          code << "      end\n"
-          code << "    end\n"
-          code << "    if _count >= #{op.min}\n"
-          code << "      _tmp = true\n"
-          code << "    else\n"
-          code << "      self.pos = #{ss}\n"
-          code << "      _tmp = nil\n"
-          code << "    end\n"
+          add "      if _tmp\n"
+          add "        _count += 1\n"
+          add "        break if _count == #{op.max}\n"
+          add "      else\n"
+          add "        break\n"
+          add "      end\n"
+          add "    end\n", -1
+          add "    if _count >= #{op.min}\n"
+          add "      _tmp = true\n"
+          add "    else\n"
+          add "      self.pos = #{ss}\n"
+          add "      _tmp = nil\n"
+          add "    end\n"
         end
 
       when Sequence
         ss = save()
-        code << "\n    #{ss} = self.pos\n"
-        code << "    while true # sequence\n"
+        add "\n    #{ss} = self.pos\n"
+        add "    while true # sequence\n", +1
         op.ops.each_with_index do |n, idx|
           output_op code, n
 
           if idx == op.ops.size - 1
-            code << "    unless _tmp\n"
-            code << "      self.pos = #{ss}\n"
-            code << "    end\n"
-            code << "    break\n"
+            add "    unless _tmp\n"
+            add "      self.pos = #{ss}\n"
+            add "    end\n"
+            add "    break\n"
           else
-            code << "    unless _tmp\n"
-            code << "      self.pos = #{ss}\n"
-            code << "      break\n"
-            code << "    end\n"
+            add "    unless _tmp\n"
+            add "      self.pos = #{ss}\n"
+            add "      break\n"
+            add "    end\n"
           end
         end
-        code << "    end # end sequence\n\n"
+        add "    end # end sequence\n\n", -1
       when AndPredicate
         ss = save()
-        code << "    #{ss} = self.pos\n"
+        add "    #{ss} = self.pos\n"
         if op.op.kind_of? Action
-          code << "    _tmp = begin; #{op.op.action}; end\n"
+          add "    _tmp = begin; #{op.op.action}; end\n"
         else
           output_op code, op.op
         end
-        code << "    self.pos = #{ss}\n"
+        add "    self.pos = #{ss}\n"
       when NotPredicate
         ss = save()
-        code << "    #{ss} = self.pos\n"
+        add "    #{ss} = self.pos\n"
         if op.op.kind_of? Action
-          code << "    _tmp = begin; #{op.op.action}; end\n"
+          add "    _tmp = begin; #{op.op.action}; end\n"
         else
           output_op code, op.op
         end
-        code << "    _tmp = _tmp ? nil : true\n"
-        code << "    self.pos = #{ss}\n"
+        add "    _tmp = _tmp ? nil : true\n"
+        add "    self.pos = #{ss}\n"
       when RuleReference
-        code << "    _tmp = apply(:#{method_name op.rule_name})\n"
+        add "    _tmp = apply(:#{method_name op.rule_name})\n"
       when InvokeRule
-        code << "    _tmp = #{method_name op.rule_name}()\n"
+        add "    _tmp = #{method_name op.rule_name}()\n"
       when Tag
         if op.tag_name and !op.tag_name.empty?
           output_op code, op.op
-          code << "    #{op.tag_name} = @result\n"
+          add "    #{op.tag_name} = @result\n"
         else
           output_op code, op.op
         end
       when Action
-        code << "    @result = begin; "
-        code << op.action << "; end\n"
+        add "    @result = begin; "
+        add op.action << "; end\n"
         if @debug
-          code << "    puts \"   => \" #{op.action.dump} \" => \#{@result.inspect} \\n\"\n"
+          add "    puts \"   => \" #{op.action.dump} \" => \#{@result.inspect} \\n\"\n"
         end
-        code << "    _tmp = true\n"
+        add "    _tmp = true\n"
       when Collect
-        code << "    _text_start = self.pos\n"
+        add "    _text_start = self.pos\n"
         output_op code, op.op
-        code << "    if _tmp\n"
-        code << "      text = get_text(_text_start)\n"
-        code << "    end\n"
+        add "    if _tmp\n"
+        add "      text = get_text(_text_start)\n"
+        add "    end\n"
       else
         raise "Unknown op - #{op.class}"
       end
