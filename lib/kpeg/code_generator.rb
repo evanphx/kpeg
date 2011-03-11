@@ -64,10 +64,10 @@ module KPeg
             right = op.fin[0]
           end
 
-          add "      unless _tmp >= #{left} and _tmp <= #{right}\n"
-          add "        fail_range('#{op.start}', '#{op.fin}')\n"
-          add "        _tmp = nil\n"
-          add "      end\n"
+          add "    unless _tmp >= #{left} and _tmp <= #{right}\n"
+          add "      fail_range('#{op.start}', '#{op.fin}')\n"
+          add "      _tmp = nil\n"
+          add "    end\n"
           add "    end\n", -1
         else
           raise "Unsupported char range - #{op.inspect}"
@@ -126,40 +126,38 @@ module KPeg
           if op.save_values
             add "      _ary << @result\n"
           end
-          add "      while true\n", +1
-          add "    "
-          output_op code, op.op
-          if op.save_values
-            add "        _ary << @result if _tmp\n"
-          end
-          add "        break unless _tmp\n"
-          add "      end\n"
-          add "      _tmp = true\n"
-          if op.save_values
-            add "      @result = _ary\n"
-          end
-          add "    else\n" 
-          add "      self.pos = #{ss}\n"
-          add "    end\n"
-        else
-          add "    #{ss} = self.pos\n"
-          add "    _count = 0\n"
           add "    while true\n", +1
-          add "  "
           output_op code, op.op
-          add "      if _tmp\n"
-          add "        _count += 1\n"
-          add "        break if _count == #{op.max}\n"
-          add "      else\n"
-          add "        break\n"
-          add "      end\n"
+          if op.save_values
+            add "    _ary << @result if _tmp\n"
+          end
+          add "    break unless _tmp\n"
           add "    end\n", -1
-          add "    if _count >= #{op.min}\n"
-          add "      _tmp = true\n"
-          add "    else\n"
-          add "      self.pos = #{ss}\n"
-          add "      _tmp = nil\n"
-          add "    end\n"
+          add "    _tmp = true\n"
+          if op.save_values
+            add "  @result = _ary\n"
+          end
+          add "  else\n" 
+          add "    self.pos = #{ss}\n"
+          add "  end\n"
+        else
+          add "  #{ss} = self.pos\n"
+          add "  _count = 0\n"
+          add "  while true\n", +1
+          output_op code, op.op
+          add "  if _tmp\n"
+          add "     _count += 1\n"
+          add "     break if _count == #{op.max}\n"
+          add "  else\n"
+          add "     break\n"
+          add "  end\n"
+          add "  end\n", -1
+          add "  if _count >= #{op.min}\n"
+          add "    _tmp = true\n"
+          add "  else\n"
+          add "    self.pos = #{ss}\n"
+          add "    _tmp = nil\n"
+          add "  end\n"
         end
 
       when Sequence

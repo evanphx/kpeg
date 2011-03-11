@@ -104,10 +104,10 @@ class Test < KPeg::CompiledParser
   def _root
     _tmp = get_byte
     if _tmp
-        unless _tmp >= 97 and _tmp <= 122
-          fail_range('a', 'z')
-          _tmp = nil
-        end
+      unless _tmp >= 97 and _tmp <= 122
+        fail_range('a', 'z')
+        _tmp = nil
+      end
     end
     return _tmp
   end
@@ -140,10 +140,10 @@ class Test < KPeg::CompiledParser
     while true # sequence
       _tmp = get_byte
       if _tmp
-          unless _tmp >= 97 and _tmp <= 122
-            fail_range('a', 'z')
-            _tmp = nil
-          end
+        unless _tmp >= 97 and _tmp <= 122
+          fail_range('a', 'z')
+          _tmp = nil
+        end
       end
       unless _tmp
         self.pos = _save
@@ -330,14 +330,14 @@ class Test < KPeg::CompiledParser
     _save = self.pos
     _tmp = match_string("hello")
     if _tmp
-        while true
-                _tmp = match_string("hello")
-            break unless _tmp
-          end
-          _tmp = true
-        else
-          self.pos = _save
-        end
+      while true
+        _tmp = match_string("hello")
+        break unless _tmp
+      end
+      _tmp = true
+    else
+      self.pos = _save
+    end
     return _tmp
   end
 end
@@ -387,23 +387,23 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"[5, 9]
   def _root
-    _save = self.pos
-    _count = 0
-    while true
-          _tmp = match_string("hello")
-        if _tmp
-          _count += 1
-          break if _count == 9
-        else
-          break
-        end
-    end
-    if _count >= 5
-      _tmp = true
+  _save = self.pos
+  _count = 0
+  while true
+      _tmp = match_string("hello")
+    if _tmp
+       _count += 1
+       break if _count == 9
     else
-      self.pos = _save
-      _tmp = nil
+       break
     end
+  end
+  if _count >= 5
+    _tmp = true
+  else
+    self.pos = _save
+    _tmp = nil
+  end
     return _tmp
   end
 end
@@ -924,28 +924,28 @@ class Test < KPeg::CompiledParser
       _tmp = apply(:_hello)
       if _tmp
           _ary << @result
-          while true
-                    _tmp = apply(:_hello)
-              _ary << @result if _tmp
-              break unless _tmp
-            end
-            _tmp = true
-            @result = _ary
-          else
-            self.pos = _save1
-          end
-          lots = @result
-          unless _tmp
-            self.pos = _save
-            break
-          end
-          @result = begin;       lots; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save
-          end
+        while true
+          _tmp = apply(:_hello)
+          _ary << @result if _tmp
+          break unless _tmp
+        end
+        _tmp = true
+      @result = _ary
+      else
+        self.pos = _save1
+      end
+        lots = @result
+        unless _tmp
+          self.pos = _save
           break
-        end # end sequence
+        end
+        @result = begin;     lots; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save
+        end
+        break
+      end # end sequence
 
     return _tmp
   end
