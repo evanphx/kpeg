@@ -464,7 +464,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # dbl_escapes = ("\\\"" { '"' } | "\\n" { "\n" } | "\\t" { "\t" } | "\\\\" { "\\" })
+  # dbl_escapes = ("\\\"" { '"' } | "\\n" { "\n" } | "\\t" { "\t" } | "\\b" { "\b" } | "\\\\" { "\\" })
   def _dbl_escapes
 
     _save = self.pos
@@ -526,15 +526,33 @@ class KPeg::FormatParser
 
     _save4 = self.pos
     while true # sequence
-    _tmp = match_string("\\\\")
+    _tmp = match_string("\\b")
     unless _tmp
       self.pos = _save4
+      break
+    end
+    @result = begin;  "\b" ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save4
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save5 = self.pos
+    while true # sequence
+    _tmp = match_string("\\\\")
+    unless _tmp
+      self.pos = _save5
       break
     end
     @result = begin;  "\\" ; end
     _tmp = true
     unless _tmp
-      self.pos = _save4
+      self.pos = _save5
     end
     break
     end # end sequence
@@ -2386,11 +2404,11 @@ class KPeg::FormatParser
 
   Rules = {}
   Rules[:_eol] = rule_info("eol", "\"\\n\"")
-  Rules[:_comment] = rule_info("comment", "\"#\" (!eol .)* eol")
+  Rules[:_comment] = rule_info("comment", "\"\#\" (!eol .)* eol")
   Rules[:_space] = rule_info("space", "(\" \" | \"\\t\" | eol)")
   Rules[:__hyphen_] = rule_info("-", "(space | comment)*")
   Rules[:_var] = rule_info("var", "< (\"-\" | /[a-zA-Z][\\-_a-zA-Z0-9]*/) > { text }")
-  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"\\\\\\\"\" { '\"' } | \"\\\\n\" { \"\\n\" } | \"\\\\t\" { \"\\t\" } | \"\\\\\\\\\" { \"\\\\\" })")
+  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"\\\\\\\"\" { '\"' } | \"\\\\n\" { \"\\n\" } | \"\\\\t\" { \"\\t\" } | \"\\\\b\" { \"\\b\" } | \"\\\\\\\\\" { \"\\\\\" })")
   Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
   Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(dbl_escapes:s | dbl_seq:s)+:ary { ary }")
   Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")

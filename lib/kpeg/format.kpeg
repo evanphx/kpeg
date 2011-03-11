@@ -24,6 +24,7 @@
      dbl_escapes = "\\\"" { '"' }
                  | "\\n"  { "\n" }
                  | "\\t"  { "\t" }
+                 | "\\b"  { "\b" }
                  | "\\\\" { "\\" }
          dbl_seq = < /[^\\"]+/ > { text }
    dbl_not_quote = (dbl_escapes:s | dbl_seq:s)+:ary { ary }

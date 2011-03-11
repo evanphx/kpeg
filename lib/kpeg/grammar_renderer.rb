@@ -1,3 +1,5 @@
+require 'kpeg/string_escape'
+
 module KPeg
   class GrammarRenderer
     def initialize(gram)
@@ -47,20 +49,16 @@ module KPeg
       false
     end
 
-    StringEscape = KPeg.grammar do |g|
-      g.escapes = g.str("\\") { "\\\\" } \
-                | g.str("\n") { "\\n" }  \
-                | g.str("\t") { "\\t" }  \
-                | g.str("\b") { "\\b" }  \
-                | g.str('"')  { "\\\"" }
-      g.root = g.many(g.any(:escapes, g.dot))
-    end
+    def self.escape(str, embed=false)
+      parc = StringEscape.new(str)
 
-    def self.escape(str)
-      m = KPeg.match str, StringEscape
-      val = m.value
-      val = val.join if val.kind_of?(Array)
-      val
+      rule = (embed ? "embed" : nil)
+
+      unless parc.parse(rule)
+        parc.raise_error
+      end
+
+      return parc.text
     end
 
     def render_op(io, op)

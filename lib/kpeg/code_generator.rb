@@ -332,7 +332,7 @@ module KPeg
       @grammar.rule_order.each do |name|
         rule = @grammar.rules[name]
 
-        rend = GrammarRenderer.escape renderings[name]
+        rend = GrammarRenderer.escape renderings[name], true
         code << "  Rules[:#{method_name name}] = rule_info(\"#{name}\", \"#{rend}\")\n"
       end
 

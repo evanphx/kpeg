@@ -1,0 +1,26 @@
+%% name = KPeg::StringEscape
+
+%% {
+  attr_reader :text
+}
+
+segment = < /[\w ]+/ > { text } # Don't use \s because that matchs \n
+        | "\\" { "\\\\" }
+        | "\n" { "\\n" }
+        | "\t" { "\\t" }
+        | "\b" { "\\b" }
+        | "\"" { "\\\"" }
+        | < . > { text }
+
+segments = segment:s segments:r { "#{s}#{r}" }
+         | segment
+
+root = segments:s { @text = s }
+
+embed_seg = "#" { "\\#" }
+          | segment
+
+embed_segs = embed_seg:s embed_segs:r { "#{s}#{r}" }
+           | embed_seg
+
+embed = embed_segs:s { @text = s }
