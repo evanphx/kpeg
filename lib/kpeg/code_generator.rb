@@ -43,7 +43,9 @@ module KPeg
       when LiteralRegexp
         code << "    _tmp = scan(/\\A#{op.regexp}/)\n"
       when CharRange
+        ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1
+          code << "    #{ss} = self.pos\n"
           code << "    _tmp = get_byte\n"
           code << "    if _tmp\n"
 
@@ -56,7 +58,7 @@ module KPeg
           end
 
           code << "      unless _tmp >= #{left} and _tmp <= #{right}\n"
-          code << "        fail_range('#{op.start}', '#{op.fin}')\n"
+          code << "        self.pos = #{ss}\n"
           code << "        _tmp = nil\n"
           code << "      end\n"
           code << "    end\n"
@@ -261,6 +263,8 @@ module KPeg
 
       render = GrammarRenderer.new(@grammar)
 
+      renderings = {}
+
       @grammar.rule_order.each do |name|
         reset_saves
 
@@ -270,6 +274,8 @@ module KPeg
 
         rend = io.string
         rend.gsub! "\n", " "
+
+        renderings[name] = rend
 
         code << "\n"
         code << "  # #{name} = #{rend}\n"
@@ -287,9 +293,19 @@ module KPeg
           code << "    end\n"
         end
 
+        code << "    set_failed_rule :#{method_name name} unless _tmp\n"
         code << "    return _tmp\n"
         code << "  end\n"
       end
+
+      code << "\n  Rules = {}\n"
+      @grammar.rule_order.each do |name|
+        rule = @grammar.rules[name]
+
+        rend = GrammarRenderer.escape renderings[name]
+        code << "  Rules[:#{method_name name}] = rule_info(\"#{name}\", \"#{rend}\")\n"
+      end
+
       code << "end\n"
       @output = code
     end

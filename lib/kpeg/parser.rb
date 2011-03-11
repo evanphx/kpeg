@@ -161,6 +161,32 @@ module KPeg
 
       return match
     end
+
+    def expectation
+      error_pos = @failing_offset
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      expected = expected_string()
+
+      prefix = nil
+
+      case expected
+      when String
+        prefix = expected.inspect
+      when Range
+        prefix = "to be between #{expected.begin} and #{expected.end}"
+      when Array
+        prefix = "to be one of #{expected.inspect}"
+      when nil
+        prefix = "anything (no more input)"
+      else
+        prefix = "unknown"
+      end
+
+      return "Expected #{prefix} at line #{line_no}, column #{col_no} (offset #{error_pos})"
+    end
+
   end
 
 

@@ -8,12 +8,12 @@ require 'rubygems'
 class TestKPegFormat < Test::Unit::TestCase
   G = KPeg::Grammar.new
 
+  gram = File.read File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
+  KPeg.compile gram, "TestParser", self
+
   def match(str, gram=nil, log=false)
-    parc = KPeg::FormatParser.new str
-    unless parc.parse
-      parc.show_error
-      raise "Parse failure"
-    end
+    parc = TestParser.new str
+    parc.raise_error unless parc.parse
 
     return parc.grammar
   end
@@ -316,7 +316,6 @@ fact = fact "*" num
   def make_parser(str, gram, debug=false)
     cg = KPeg::CodeGenerator.new "Test", gram, debug
     inst = cg.make(str)
-    inst.enhance_errors!
     return inst
   end
 
