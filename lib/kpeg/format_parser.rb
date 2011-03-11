@@ -188,8 +188,14 @@ class KPeg::FormatParser
       end
     end
 
-    def parse
-      _root ? true : false
+    def parse(rule=nil)
+      if !rule
+        _root ? true : false
+      else
+        # This is not shared with code_generator.rb so this can be standalone
+        method = rule.gsub("-","_hyphen_")
+        __send__("_#{method}") ? true : false
+      end
     end
 
     class LeftRecursive
