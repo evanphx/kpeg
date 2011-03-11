@@ -61,6 +61,8 @@ sgl_escape_quote = "\\'" { "'" }
                  | curly_block
                  | "." { @g.dot }
                  | "@" var:name !(- "=") { @g.invoke(name) }
+                 | "^" var:name < nested_paren? >
+                   { @g.foreign_invoke("parent", name, text) }
                  | "%" var:gram "." var:name < nested_paren? >
                    { @g.foreign_invoke(gram, name, text) }
                  | var:name < nested_paren? > !(- "=")

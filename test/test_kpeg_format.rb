@@ -109,6 +109,11 @@ b(p) = x
     assert_equal "OtherGrammar", gram.foreign_grammars["blah"]
   end
 
+  def test_invoke_parent_rule
+    assert_rule G.foreign_invoke("parent", "letters"),
+                match("a=^letters"), "a"
+  end
+
   def test_dot
     assert_rule G.dot, match("a=.")
   end
