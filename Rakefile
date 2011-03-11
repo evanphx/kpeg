@@ -20,7 +20,7 @@ task :grammar do
 end
 
 task :parser do
-  sh "ruby -Ilib bin/kpeg -o lib/kpeg/format_parser.rb -n KPeg::FormatParser -f lib/kpeg/format.kpeg"
+  sh "ruby -Ilib bin/kpeg -o lib/kpeg/format_parser.rb -n KPeg::FormatParser -s -f lib/kpeg/format.kpeg"
 end
 
 def gemspec

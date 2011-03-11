@@ -28,6 +28,20 @@ module KPeg
     Object.module_eval code
     true
   end
+
+  def self.compile(str, name, scope=Object)
+    parser = KPeg::FormatParser.new str
+    unless parser.parse
+      parser.raise_error
+    end
+
+    cg = KPeg::CodeGenerator.new name, parser.grammar
+
+    code = cg.output
+
+    scope.module_eval code
+    true
+  end
 end
 
 require 'kpeg/grammar'

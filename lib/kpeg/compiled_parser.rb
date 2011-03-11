@@ -12,10 +12,8 @@ module KPeg
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
-      @failing_offset = -1
-      @expected_string = []
-
-      enhance_errors! if debug
+      @failed_rule = nil
+      @failing_rule_offset = -1
     end
 
     # This is distinct from setup_parser so that a standalone parser
@@ -27,7 +25,7 @@ module KPeg
     end
 
     attr_reader :string
-    attr_reader :result, :failing_offset, :expected_string
+    attr_reader :result, :failing_rule_offset
     attr_accessor :pos
 
     include Position
@@ -45,10 +43,68 @@ module KPeg
       end
     end
 
-    def add_failure(obj)
-      @expected_string = obj
-      @failing_offset = @pos if @pos > @failing_offset
+    def failure_info
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+      info = self.class::Rules[@failed_rule]
+
+      "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
     end
+
+    def failure_caret
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      line = lines[l-1]
+      "#{line}\n#{' ' * (c - 1)}^"
+    end
+
+    def failure_character
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+      lines[l-1][c-1, 1]
+    end
+
+    def failure_oneline
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      info = self.class::Rules[@failed_rule]
+      char = lines[l-1][c-1, 1]
+
+      "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+    end
+
+    class ParseError < RuntimeError
+    end
+
+    def raise_error
+      raise ParseError, failure_oneline
+    end
+
+    def show_error(io=STDOUT)
+      error_pos = @failing_rule_offset
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      info = self.class::Rules[@failed_rule]
+      io.puts "On line #{line_no}, column #{col_no}:"
+      io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
+      io.puts "Got: #{string[error_pos,1].inspect}"
+      line = lines[line_no-1]
+      io.puts "=> #{line}"
+      io.print(" " * (col_no + 3))
+      io.puts "^"
+    end
+
+    def set_failed_rule(name)
+      if @pos > @failing_rule_offset
+        @failed_rule = name
+        @failing_rule_offset = @pos
+      end
+    end
+
+    attr_reader :failed_rule
 
     def match_string(str)
       len = str.size
@@ -57,15 +113,7 @@ module KPeg
         return str
       end
 
-      add_failure(str)
-
       return nil
-    end
-
-    def fail_range(start,fin)
-      @pos -= 1
-
-      add_failure Range.new(start, fin)
     end
 
     def scan(reg)
@@ -75,15 +123,12 @@ module KPeg
         return true
       end
 
-      add_failure reg
-
       return nil
     end
 
     if "".respond_to? :getbyte
       def get_byte
         if @pos >= @string.size
-          add_failure nil
           return nil
         end
 
@@ -94,7 +139,6 @@ module KPeg
     else
       def get_byte
         if @pos >= @string.size
-          add_failure nil
           return nil
         end
 
@@ -102,41 +146,6 @@ module KPeg
         @pos += 1
         s
       end
-    end
-
-    module EnhancedErrors
-      def add_failure(obj)
-        @expected_string << obj
-        @failing_offset = @pos if @pos > @failing_offset
-      end
-
-      def match_string(str)
-        if ans = super
-          @expected_string.clear
-        end
-
-        ans
-      end
-
-      def scan(reg)
-        if ans = super
-          @expected_string.clear
-        end
-
-        ans
-      end
-
-      def get_byte
-        if ans = super
-          @expected_string.clear
-        end
-
-        ans
-      end
-    end
-
-    def enhance_errors!
-      extend EnhancedErrors
     end
 
     def parse
@@ -224,6 +233,19 @@ module KPeg
       @result = m.result
       @pos = m.pos
       return m.ans
+    end
+
+    class RuleInfo
+      def initialize(name, rendered)
+        @name = name
+        @rendered = rendered
+      end
+
+      attr_reader :name, :rendered
+    end
+
+    def self.rule_info(name, rendered)
+      RuleInfo.new(name, rendered)
     end
 
     # STANDALONE END

@@ -1,6 +1,275 @@
-require 'kpeg/compiled_parser'
+class KPeg::FormatParser
+# STANDALONE START
+    def setup_parser(str, debug=false)
+      @string = str
+      @pos = 0
+      @memoizations = Hash.new { |h,k| h[k] = {} }
+      @result = nil
+      @failed_rule = nil
+      @failing_rule_offset = -1
+    end
 
-class KPeg::FormatParser < KPeg::CompiledParser
+    # This is distinct from setup_parser so that a standalone parser
+    # can redefine #initialize and still have access to the proper
+    # parser setup code.
+    #
+    def initialize(str, debug=false)
+      setup_parser(str, debug)
+    end
+
+    attr_reader :string
+    attr_reader :result, :failing_rule_offset
+    attr_accessor :pos
+
+    # STANDALONE START
+    def current_column(target=pos)
+      if c = string.rindex("\n", target-1)
+        return target - c - 1
+      end
+
+      target + 1
+    end
+
+    def current_line(target=pos)
+      cur_offset = 0
+      cur_line = 0
+
+      string.each_line do |line|
+        cur_line += 1
+        cur_offset += line.size
+        return cur_line if cur_offset >= target
+      end
+
+      -1
+    end
+
+    def lines
+      lines = []
+      string.each_line { |l| lines << l }
+      lines
+    end
+
+    #
+
+    def get_text(start)
+      @string[start..@pos-1]
+    end
+
+    def show_pos
+      width = 10
+      if @pos < width
+        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,width]}\")"
+      else
+        "#{@pos} (\"... #{@string[@pos - width, width]}\" @ \"#{@string[@pos,width]}\")"
+      end
+    end
+
+    def failure_info
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+      info = self.class::Rules[@failed_rule]
+
+      "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
+    end
+
+    def failure_caret
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      line = lines[l-1]
+      "#{line}\n#{' ' * (c - 1)}^"
+    end
+
+    def failure_character
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+      lines[l-1][c-1, 1]
+    end
+
+    def failure_oneline
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      info = self.class::Rules[@failed_rule]
+      char = lines[l-1][c-1, 1]
+
+      "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+    end
+
+    class ParseError < RuntimeError
+    end
+
+    def raise_error
+      raise ParseError, failure_oneline
+    end
+
+    def show_error(io=STDOUT)
+      error_pos = @failing_rule_offset
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      info = self.class::Rules[@failed_rule]
+      io.puts "On line #{line_no}, column #{col_no}:"
+      io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
+      io.puts "Got: #{string[error_pos,1].inspect}"
+      line = lines[line_no-1]
+      io.puts "=> #{line}"
+      io.print(" " * (col_no + 3))
+      io.puts "^"
+    end
+
+    def set_failed_rule(name)
+      if @pos > @failing_rule_offset
+        @failed_rule = name
+        @failing_rule_offset = @pos
+      end
+    end
+
+    attr_reader :failed_rule
+
+    def match_string(str)
+      len = str.size
+      if @string[pos,len] == str
+        @pos += len
+        return str
+      end
+
+      return nil
+    end
+
+    def scan(reg)
+      if m = reg.match(@string[@pos..-1])
+        width = m.end(0)
+        @pos += width
+        return true
+      end
+
+      return nil
+    end
+
+    if "".respond_to? :getbyte
+      def get_byte
+        if @pos >= @string.size
+          return nil
+        end
+
+        s = @string.getbyte @pos
+        @pos += 1
+        s
+      end
+    else
+      def get_byte
+        if @pos >= @string.size
+          return nil
+        end
+
+        s = @string[@pos]
+        @pos += 1
+        s
+      end
+    end
+
+    def parse
+      _root ? true : false
+    end
+
+    class LeftRecursive
+      def initialize(detected=false)
+        @detected = detected
+      end
+
+      attr_accessor :detected
+    end
+
+    class MemoEntry
+      def initialize(ans, pos)
+        @ans = ans
+        @pos = pos
+        @uses = 1
+        @result = nil
+      end
+
+      attr_reader :ans, :pos, :uses, :result
+
+      def inc!
+        @uses += 1
+      end
+
+      def move!(ans, pos, result)
+        @ans = ans
+        @pos = pos
+        @result = result
+      end
+    end
+
+    def apply(rule)
+      if m = @memoizations[rule][@pos]
+        m.inc!
+
+        prev = @pos
+        @pos = m.pos
+        if m.ans.kind_of? LeftRecursive
+          m.ans.detected = true
+          return nil
+        end
+
+        @result = m.result
+
+        return m.ans
+      else
+        lr = LeftRecursive.new(false)
+        m = MemoEntry.new(lr, @pos)
+        @memoizations[rule][@pos] = m
+        start_pos = @pos
+
+        ans = __send__ rule
+
+        m.move! ans, @pos, @result
+
+        # Don't bother trying to grow the left recursion
+        # if it's failing straight away (thus there is no seed)
+        if ans and lr.detected
+          return grow_lr(rule, start_pos, m)
+        else
+          return ans
+        end
+
+        return ans
+      end
+    end
+
+    def grow_lr(rule, start_pos, m)
+      while true
+        @pos = start_pos
+        @result = m.result
+
+        ans = __send__ rule
+        return nil unless ans
+
+        break if @pos <= m.pos
+
+        m.move! ans, @pos, @result
+      end
+
+      @result = m.result
+      @pos = m.pos
+      return m.ans
+    end
+
+    class RuleInfo
+      def initialize(name, rendered)
+        @name = name
+        @rendered = rendered
+      end
+
+      attr_reader :name, :rendered
+    end
+
+    def self.rule_info(name, rendered)
+      RuleInfo.new(name, rendered)
+    end
+
+    #
 
 
     require 'kpeg/grammar'
@@ -18,6 +287,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
   # eol = "\n"
   def _eol
     _tmp = match_string("\n")
+    set_failed_rule :_eol unless _tmp
     return _tmp
   end
 
@@ -64,6 +334,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_comment unless _tmp
     return _tmp
   end
 
@@ -84,6 +355,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_space unless _tmp
     return _tmp
   end
 
@@ -105,6 +377,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break unless _tmp
     end
     _tmp = true
+    set_failed_rule :__hyphen_ unless _tmp
     return _tmp
   end
 
@@ -141,6 +414,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_var unless _tmp
     return _tmp
   end
 
@@ -224,6 +498,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_dbl_escapes unless _tmp
     return _tmp
   end
 
@@ -249,6 +524,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_dbl_seq unless _tmp
     return _tmp
   end
 
@@ -311,6 +587,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_dbl_not_quote unless _tmp
     return _tmp
   end
 
@@ -343,6 +620,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_dbl_string unless _tmp
     return _tmp
   end
 
@@ -364,6 +642,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_sgl_escape_quote unless _tmp
     return _tmp
   end
 
@@ -389,6 +668,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_sgl_seq unless _tmp
     return _tmp
   end
 
@@ -447,6 +727,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_sgl_not_quote unless _tmp
     return _tmp
   end
 
@@ -479,6 +760,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_sgl_string unless _tmp
     return _tmp
   end
 
@@ -496,6 +778,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_string unless _tmp
     return _tmp
   end
 
@@ -553,6 +836,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_not_slash unless _tmp
     return _tmp
   end
 
@@ -563,10 +847,11 @@ class KPeg::FormatParser < KPeg::CompiledParser
     while true # sequence
     _text_start = self.pos
     while true
+    _save2 = self.pos
     _tmp = get_byte
     if _tmp
       unless _tmp >= 97 and _tmp <= 122
-        fail_range('a', 'z')
+        self.pos = _save2
         _tmp = nil
       end
     end
@@ -588,6 +873,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_regexp_opts unless _tmp
     return _tmp
   end
 
@@ -626,6 +912,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_regexp unless _tmp
     return _tmp
   end
 
@@ -651,6 +938,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_char unless _tmp
     return _tmp
   end
 
@@ -694,6 +982,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_char_range unless _tmp
     return _tmp
   end
 
@@ -719,6 +1008,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_range_elem unless _tmp
     return _tmp
   end
 
@@ -782,12 +1072,14 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_mult_range unless _tmp
     return _tmp
   end
 
   # curly_block = curly
   def _curly_block
     _tmp = apply(:_curly)
+    set_failed_rule :_curly_block unless _tmp
     return _tmp
   end
 
@@ -838,10 +1130,52 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_curly unless _tmp
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | var:name !(- "=") { @g.ref(name) } | char_range | regexp | string)
+  # nested_paren = "(" (/[^()]+/ | nested_paren)* ")"
+  def _nested_paren
+
+    _save = self.pos
+    while true # sequence
+    _tmp = match_string("(")
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    while true
+
+    _save2 = self.pos
+    while true # choice
+    _tmp = scan(/\A(?-mix:[^()]+)/)
+    break if _tmp
+    self.pos = _save2
+    _tmp = apply(:_nested_paren)
+    break if _tmp
+    self.pos = _save2
+    break
+    end # end choice
+
+    break unless _tmp
+    end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    _tmp = match_string(")")
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    set_failed_rule :_nested_paren unless _tmp
+    return _tmp
+  end
+
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
@@ -1175,29 +1509,43 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save14
       break
     end
+    _text_start = self.pos
     _save15 = self.pos
-
+    _tmp = apply(:_nested_paren)
+    unless _tmp
+      _tmp = true
+      self.pos = _save15
+    end
+    if _tmp
+      text = get_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save14
+      break
+    end
     _save16 = self.pos
+
+    _save17 = self.pos
     while true # sequence
     _tmp = apply(:__hyphen_)
     unless _tmp
-      self.pos = _save16
+      self.pos = _save17
       break
     end
     _tmp = match_string("=")
     unless _tmp
-      self.pos = _save16
+      self.pos = _save17
     end
     break
     end # end sequence
 
     _tmp = _tmp ? nil : true
-    self.pos = _save15
+    self.pos = _save16
     unless _tmp
       self.pos = _save14
       break
     end
-    @result = begin;  @g.ref(name) ; end
+    @result = begin;  text.empty? ? @g.ref(name) : @g.invoke(name, text) ; end
     _tmp = true
     unless _tmp
       self.pos = _save14
@@ -1219,6 +1567,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_value unless _tmp
     return _tmp
   end
 
@@ -1257,6 +1606,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     else
       self.pos = _save
     end
+    set_failed_rule :_spaces unless _tmp
     return _tmp
   end
 
@@ -1331,6 +1681,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_values unless _tmp
     return _tmp
   end
 
@@ -1368,6 +1719,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_choose_cont unless _tmp
     return _tmp
   end
 
@@ -1421,10 +1773,92 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end choice
 
+    set_failed_rule :_expression unless _tmp
     return _tmp
   end
 
-  # statement = (- var:v - "=" - expression:o { @g.set(v, o) } | - "%%" - curly:act { @g.add_setup act })
+  # args = (args:a "," - var:n - { a + [n] } | - var:n - { [n] })
+  def _args
+
+    _save = self.pos
+    while true # choice
+
+    _save1 = self.pos
+    while true # sequence
+    _tmp = apply(:_args)
+    a = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = match_string(",")
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = apply(:_var)
+    n = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    @result = begin;  a + [n] ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save1
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save2 = self.pos
+    while true # sequence
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    _tmp = apply(:_var)
+    n = @result
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    @result = begin;  [n] ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save2
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+    break
+    end # end choice
+
+    set_failed_rule :_args unless _tmp
+    return _tmp
+  end
+
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%%" - curly:act { @g.add_setup act })
   def _statement
 
     _save = self.pos
@@ -1439,6 +1873,22 @@ class KPeg::FormatParser < KPeg::CompiledParser
     end
     _tmp = apply(:_var)
     v = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = match_string("(")
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = apply(:_args)
+    a = @result
+    unless _tmp
+      self.pos = _save1
+      break
+    end
+    _tmp = match_string(")")
     unless _tmp
       self.pos = _save1
       break
@@ -1464,7 +1914,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save1
       break
     end
-    @result = begin;  @g.set(v, o) ; end
+    @result = begin;  @g.set(v, o, a) ; end
     _tmp = true
     unless _tmp
       self.pos = _save1
@@ -1482,7 +1932,8 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save2
       break
     end
-    _tmp = match_string("%%")
+    _tmp = apply(:_var)
+    v = @result
     unless _tmp
       self.pos = _save2
       break
@@ -1492,13 +1943,23 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save2
       break
     end
-    _tmp = apply(:_curly)
-    act = @result
+    _tmp = match_string("=")
     unless _tmp
       self.pos = _save2
       break
     end
-    @result = begin;  @g.add_setup act ; end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    _tmp = apply(:_expression)
+    o = @result
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    @result = begin;  @g.set(v, o) ; end
     _tmp = true
     unless _tmp
       self.pos = _save2
@@ -1508,9 +1969,44 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
     break if _tmp
     self.pos = _save
+
+    _save3 = self.pos
+    while true # sequence
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _tmp = match_string("%%")
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _tmp = apply(:_curly)
+    act = @result
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    @result = begin;  @g.add_setup act ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save3
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
     break
     end # end choice
 
+    set_failed_rule :_statement unless _tmp
     return _tmp
   end
 
@@ -1550,6 +2046,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_statements unless _tmp
     return _tmp
   end
 
@@ -1559,6 +2056,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     _tmp = get_byte
     _tmp = _tmp ? nil : true
     self.pos = _save
+    set_failed_rule :_eof unless _tmp
     return _tmp
   end
 
@@ -1594,6 +2092,43 @@ class KPeg::FormatParser < KPeg::CompiledParser
     break
     end # end sequence
 
+    set_failed_rule :_root unless _tmp
     return _tmp
   end
+
+  Rules = {}
+  Rules[:_eol] = rule_info("eol", "\"\\n\"")
+  Rules[:_comment] = rule_info("comment", "\"#\" (!eol .)* eol")
+  Rules[:_space] = rule_info("space", "(\" \" | \"\\t\" | eol)")
+  Rules[:__hyphen_] = rule_info("-", "(space | comment)*")
+  Rules[:_var] = rule_info("var", "< (\"-\" | /[a-zA-Z][\\-_a-zA-Z0-9]*/) > { text }")
+  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"\\\\\\\"\" { '\"' } | \"\\\\n\" { \"\\n\" } | \"\\\\t\" { \"\\t\" } | \"\\\\\\\\\" { \"\\\\\" })")
+  Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
+  Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(dbl_escapes:s | dbl_seq:s)+:ary { ary }")
+  Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")
+  Rules[:_sgl_escape_quote] = rule_info("sgl_escape_quote", "\"\\\\'\" { \"'\" }")
+  Rules[:_sgl_seq] = rule_info("sgl_seq", "< /[^']/ > { text }")
+  Rules[:_sgl_not_quote] = rule_info("sgl_not_quote", "(sgl_escape_quote | sgl_seq)+:segs { segs.join }")
+  Rules[:_sgl_string] = rule_info("sgl_string", "\"'\" sgl_not_quote:s \"'\" { @g.str(s) }")
+  Rules[:_string] = rule_info("string", "(dbl_string | sgl_string)")
+  Rules[:_not_slash] = rule_info("not_slash", "< (\"\\\\/\" | /[^\\/]/)+ > { text }")
+  Rules[:_regexp_opts] = rule_info("regexp_opts", "< [a-z]* > { text }")
+  Rules[:_regexp] = rule_info("regexp", "\"/\" not_slash:body \"/\" regexp_opts:opts { @g.reg body, opts }")
+  Rules[:_char] = rule_info("char", "< /[a-zA-Z0-9]/ > { text }")
+  Rules[:_char_range] = rule_info("char_range", "\"[\" char:l \"-\" char:r \"]\" { @g.range(l,r) }")
+  Rules[:_range_elem] = rule_info("range_elem", "< /([1-9][0-9]*)|\\*/ > { text }")
+  Rules[:_mult_range] = rule_info("mult_range", "\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] }")
+  Rules[:_curly_block] = rule_info("curly_block", "curly")
+  Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}]+/ | curly)* > \"}\" { @g.action(text) }")
+  Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()]+/ | nested_paren)* \")\"")
+  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
+  Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
+  Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
+  Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
+  Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
+  Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%%\" - curly:act { @g.add_setup act })")
+  Rules[:_statements] = rule_info("statements", "statement (- statements)?")
+  Rules[:_eof] = rule_info("eof", "!.")
+  Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")
 end

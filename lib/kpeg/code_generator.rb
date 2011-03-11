@@ -52,7 +52,9 @@ module KPeg
       when LiteralRegexp
         add "    _tmp = scan(/\\A#{op.regexp}/)\n"
       when CharRange
+        ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1
+          add "    #{ss} = self.pos\n"
           add "    _tmp = get_byte\n"
           add "    if _tmp\n", +1
 
@@ -65,7 +67,7 @@ module KPeg
           end
 
           add "    unless _tmp >= #{left} and _tmp <= #{right}\n"
-          add "      fail_range('#{op.start}', '#{op.fin}')\n"
+          add "      self.pos = #{ss}\n"
           add "      _tmp = nil\n"
           add "    end\n"
           add "    end\n", -1
@@ -202,7 +204,11 @@ module KPeg
       when RuleReference
         add "    _tmp = apply(:#{method_name op.rule_name})\n"
       when InvokeRule
-        add "    _tmp = #{method_name op.rule_name}()\n"
+        if op.arguments
+          add "    _tmp = #{method_name op.rule_name}#{op.arguments}\n"
+        else
+          add "    _tmp = #{method_name op.rule_name}()\n"
+        end
       when Tag
         if op.tag_name and !op.tag_name.empty?
           output_op code, op.op
@@ -268,6 +274,8 @@ module KPeg
 
       render = GrammarRenderer.new(@grammar)
 
+      renderings = {}
+
       @grammar.rule_order.each do |name|
         reset_saves
 
@@ -278,9 +286,17 @@ module KPeg
         rend = io.string
         rend.gsub! "\n", " "
 
+        renderings[name] = rend
+
         code << "\n"
         code << "  # #{name} = #{rend}\n"
-        code << "  def #{method_name name}\n"
+
+        if rule.arguments
+          code << "  def #{method_name name}(#{rule.arguments.join(',')})\n"
+        else
+          code << "  def #{method_name name}\n"
+        end
+
         if @debug
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end
@@ -294,9 +310,19 @@ module KPeg
           code << "    end\n"
         end
 
+        code << "    set_failed_rule :#{method_name name} unless _tmp\n"
         code << "    return _tmp\n"
         code << "  end\n"
       end
+
+      code << "\n  Rules = {}\n"
+      @grammar.rule_order.each do |name|
+        rule = @grammar.rules[name]
+
+        rend = GrammarRenderer.escape renderings[name]
+        code << "  Rules[:#{method_name name}] = rule_info(\"#{name}\", \"#{rend}\")\n"
+      end
+
       code << "end\n"
       @output = code
     end
