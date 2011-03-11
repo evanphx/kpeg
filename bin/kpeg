@@ -15,7 +15,11 @@ OptionParser.new do |o|
     options[:test] = v
   end
 
-  o.on("-o", "--output FILE", "Where to output the parser") do |v|
+  o.on("--reformat", "Reformat your grammar and write it back out") do
+    options[:reformat] = true
+  end
+
+  o.on("-o", "--output FILE", "Where the output should go") do |v|
     options[:output] = v
   end
 
@@ -40,14 +44,50 @@ OptionParser.new do |o|
   end
 end.parse!
 
+file = ARGV.shift
+
+unless File.exists?(file)
+  puts "File '#{file}' does not exist"
+  exit 1
+end
+
+parser = KPeg::FormatParser.new File.read(file), true
+
+unless m = parser.parse
+  puts "Syntax error in grammar #{file}"
+  parser.show_error
+  exit 1
+end
+
+if options[:reformat]
+  if !options[:output]
+    puts "Please specify -o for where to write the new grammar"
+    exit 1
+  end
+
+  output = options[:output]
+  if File.exists?(output) and !options[:force]
+    puts "Output '#{output}' already exists, not overwriting (use -f)"
+    exit 1
+  end
+
+  rend = KPeg::GrammarRenderer.new(parser.grammar)
+
+  File.open output, "w" do |f|
+    rend.render(f)
+  end
+
+  puts "Wrote reformatted output to #{output}"
+
+  exit 0
+end
+
 if !options[:test] and !options[:name]
   puts "Please specify -n"
   exit 1
 end
 
 name = options[:name]
-
-file = ARGV.shift
 
 if options[:output]
   new_path = options[:output]
@@ -57,14 +97,6 @@ end
 
 if !options[:test] and File.exists?(new_path) and !options[:force]
   puts "Path #{new_path} already exists, not overwriting\n"
-  exit 1
-end
-
-parser = KPeg::FormatParser.new File.read(file), true
-
-unless m = parser.parse
-  puts "Syntax error in grammar #{file}"
-  parser.show_error
   exit 1
 end
 
