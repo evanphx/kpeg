@@ -4,12 +4,13 @@ require 'kpeg/match'
 
 module KPeg
   class Rule
-    def initialize(name, op)
+    def initialize(name, op, args=nil)
       @name = name
       @op = op
+      @arguments = args
     end
 
-    attr_reader :name, :op
+    attr_reader :name, :op, :arguments
   end
 
   class Operator
@@ -425,12 +426,13 @@ module KPeg
   end
 
   class InvokeRule < Operator
-    def initialize(name)
+    def initialize(name, args=nil)
       super()
       @rule_name = name
+      @arguments = args
     end
 
-    attr_reader :rule_name
+    attr_reader :rule_name, :arguments
 
     def match(x)
       rule = x.grammar.find(@rule_name)
@@ -441,14 +443,19 @@ module KPeg
     def ==(obj)
       case obj
       when InvokeRule
-        @rule_name == obj.rule_name
+        @rule_name == obj.rule_name and @arguments == obj.arguments
       else
         super
       end
     end
 
     def inspect
-      inspect_type "invoke", @rule_name
+      if @arguments
+        body = "#{@rule_name} #{@arguments}"
+      else
+        body = @rule_name
+      end
+      inspect_type "invoke", body
     end
   end
 
@@ -567,7 +574,7 @@ module KPeg
       @rules["root"]
     end
 
-    def set(name, op)
+    def set(name, op, args=nil)
       if @rules.key? name
         raise "Already set rule named '#{name}'"
       end
@@ -576,7 +583,7 @@ module KPeg
 
       @rule_order << name
 
-      rule = Rule.new(name, op)
+      rule = Rule.new(name, op, args)
       @rules[name] = rule
     end
 
@@ -722,8 +729,8 @@ module KPeg
       RuleReference.new name.to_s, other_grammar
     end
 
-    def invoke(name)
-      InvokeRule.new name.to_s
+    def invoke(name, args=nil)
+      InvokeRule.new name.to_s, args
     end
 
     def t(op, name=nil)

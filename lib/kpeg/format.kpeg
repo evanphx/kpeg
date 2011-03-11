@@ -47,6 +47,7 @@ sgl_escape_quote = "\\'" { "'" }
 
      curly_block = curly
            curly = "{" < (/[^{}]+/ | curly)* > "}" { @g.action(text) }
+    nested_paren = "(" (/[^()]+/ | nested_paren)* ")"
 
            value = value:v ":" var:n { @g.t(v,n) }
                  | value:v "?" { @g.maybe(v) }
@@ -60,6 +61,7 @@ sgl_escape_quote = "\\'" { "'" }
                  | curly_block
                  | "." { @g.dot }
                  | "@" var:name !(- "=") { @g.invoke(name) }
+                 | var:name < nested_paren > { @g.invoke(name, text) }
                  | var:name !(- "=") { @g.ref(name) }
                  | char_range
                  | regexp
@@ -72,7 +74,10 @@ sgl_escape_quote = "\\'" { "'" }
      choose_cont = - "|" - values:v { v }
       expression = values:v choose_cont+:alts { @g.any(v, *alts) }
                  | values
+            args = args:a "," - var:n - { a + [n] }
+                 | - var:n - { [n] }
        statement = - var:v - "=" - expression:o { @g.set(v, o) }
+                 | - var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) }
                  | - "%%" - curly:act { @g.add_setup act }
       statements = statement (- statements)?
              eof = !.

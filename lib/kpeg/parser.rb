@@ -46,6 +46,10 @@ module KPeg
       end
     end
 
+    def show_error
+
+    end
+
     class LeftRecursive
       def initialize(detected=false)
         @detected = detected

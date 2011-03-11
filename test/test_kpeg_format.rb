@@ -42,6 +42,54 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_rule G.ref("b"), match(" a = b ")
   end
 
+  def test_assign_with_arg
+    gram = match("a(t) = b")
+    rule = gram.find "a"
+    assert_equal ["t"], rule.arguments
+  end
+
+  def test_assign_with_multiple_args
+    gram = match("a(t,x) = b")
+    rule = gram.find "a"
+    assert_equal ["t", "x"], rule.arguments
+  end
+
+  def test_assign_with_args_spacing
+    gram = match("a( t) = b")
+    rule = gram.find "a"
+    assert_equal ["t"], rule.arguments
+
+    gram = match("a( t ) = b")
+    rule = gram.find "a"
+    assert_equal ["t"], rule.arguments
+
+    gram = match("a( t,x) = b")
+    rule = gram.find "a"
+    assert_equal ["t", "x"], rule.arguments
+
+    gram = match("a( t,x ) = b")
+    rule = gram.find "a"
+    assert_equal ["t", "x"], rule.arguments
+
+    gram = match("a( t ,x ) = b")
+    rule = gram.find "a"
+    assert_equal ["t", "x"], rule.arguments
+
+    gram = match("a( t , x ) = b")
+    rule = gram.find "a"
+    assert_equal ["t", "x"], rule.arguments
+  end
+
+  def test_invoke_with_arg
+    gram = match("a=b(1)")
+    rule = gram.find "a"
+    assert_equal "(1)", rule.op.arguments
+  end
+
+  def test_invoke_with_multiple_args
+    assert_rule G.invoke("b", "(1,2)"), match("a=b(1,2)"), "a"
+  end
+
   def test_dot
     assert_rule G.dot, match("a=.")
   end

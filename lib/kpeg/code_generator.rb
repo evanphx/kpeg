@@ -197,7 +197,11 @@ module KPeg
       when RuleReference
         code << "    _tmp = apply(:#{method_name op.rule_name})\n"
       when InvokeRule
-        code << "    _tmp = #{method_name op.rule_name}()\n"
+        if op.arguments
+          code << "    _tmp = #{method_name op.rule_name}#{op.arguments}\n"
+        else
+          code << "    _tmp = #{method_name op.rule_name}()\n"
+        end
       when Tag
         if op.tag_name and !op.tag_name.empty?
           output_op code, op.op
@@ -279,7 +283,13 @@ module KPeg
 
         code << "\n"
         code << "  # #{name} = #{rend}\n"
-        code << "  def #{method_name name}\n"
+
+        if rule.arguments
+          code << "  def #{method_name name}(#{rule.arguments.join(',')})\n"
+        else
+          code << "  def #{method_name name}\n"
+        end
+
         if @debug
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end

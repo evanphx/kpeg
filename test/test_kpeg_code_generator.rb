@@ -731,8 +731,35 @@ end
 
     assert cg.parse("hello")
   end
+
+  def test_invoke_with_args
+    gram = KPeg.grammar do |g|
+      g.set("greeting", "hello", ["a", "b"])
+      g.root = g.invoke("greeting", "(1,2)")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # greeting = "hello"
+  def _greeting(a,b)
+    _tmp = match_string("hello")
+    set_failed_rule :_greeting unless _tmp
     return _tmp
   end
+
+  # root = greeting(1,2)
+  def _root
+    _tmp = _greeting(1,2)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
+  Rules[:_root] = rule_info("root", "greeting(1,2)")
 end
     STR
 
