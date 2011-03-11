@@ -459,6 +459,46 @@ module KPeg
     end
   end
 
+  class ForeignInvokeRule < Operator
+    def initialize(grammar, name, args=nil)
+      super()
+      @grammar_name = grammar
+      @rule_name = name
+      if !args or args.empty?
+        @arguments = nil
+      else
+        @arguments = args
+      end
+    end
+
+    attr_reader :grammar_name, :rule_name, :arguments
+
+    def match(x)
+      rule = x.grammar.find(@rule_name)
+      raise "Unknown rule: '#{@rule_name}'" unless rule
+      x.invoke rule
+    end
+
+    def ==(obj)
+      case obj
+      when ForeignInvokeRule
+        @grammar_name == obj.grammar_name and \
+          @rule_name == obj.rule_name and @arguments == obj.arguments
+      else
+        super
+      end
+    end
+
+    def inspect
+      if @arguments
+        body = "%#{@grammar}.#{@rule_name} #{@arguments}"
+      else
+        body = "%#{@grammar}.#{@rule_name}"
+      end
+      inspect_type "invoke", body
+    end
+  end
+
   class Tag < Operator
     def initialize(op, tag_name)
       super()
@@ -562,12 +602,17 @@ module KPeg
       @rules = {}
       @rule_order = []
       @setup_actions = []
+      @foreign_grammars = {}
     end
 
-    attr_reader :rules, :rule_order, :setup_actions
+    attr_reader :rules, :rule_order, :setup_actions, :foreign_grammars
 
     def add_setup(act)
       @setup_actions << act
+    end
+
+    def add_foreign_grammar(name, str)
+      @foreign_grammars[name] = str
     end
 
     def root
@@ -731,6 +776,10 @@ module KPeg
 
     def invoke(name, args=nil)
       InvokeRule.new name.to_s, args
+    end
+
+    def foreign_invoke(gram, name, args=nil)
+      ForeignInvokeRule.new gram, name.to_s, args
     end
 
     def t(op, name=nil)

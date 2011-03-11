@@ -14,6 +14,11 @@ module KPeg
       @result = nil
       @failed_rule = nil
       @failing_rule_offset = -1
+
+      setup_foreign_grammar
+    end
+
+    def setup_foreign_grammar
     end
 
     # This is distinct from setup_parser so that a standalone parser
@@ -178,6 +183,21 @@ module KPeg
         @ans = ans
         @pos = pos
         @result = result
+      end
+    end
+
+    def external_invoke(other, rule, *args)
+      old_pos = @pos
+      old_string = @string
+
+      @pos = other.pos
+      @string = other.string
+
+      begin
+        __send__ rule, *args
+      ensure
+        @pos = old_pos
+        @string = old_string
       end
     end
 

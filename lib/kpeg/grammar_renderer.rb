@@ -141,6 +141,12 @@ module KPeg
         else
           io.print "@#{op.rule_name}"
         end
+      when ForeignInvokeRule
+        if op.arguments
+          io.print "%#{op.grammar_name}.#{op.rule_name}#{op.arguments}"
+        else
+          io.print "%#{op.grammar_name}.#{op.rule_name}"
+        end
       when Tag
         if parens?(op.op)
           io.print "("

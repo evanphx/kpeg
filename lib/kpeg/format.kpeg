@@ -61,6 +61,8 @@ sgl_escape_quote = "\\'" { "'" }
                  | curly_block
                  | "." { @g.dot }
                  | "@" var:name !(- "=") { @g.invoke(name) }
+                 | "%" var:gram "." var:name < nested_paren? >
+                   { @g.foreign_invoke(gram, name, text) }
                  | var:name < nested_paren? > !(- "=")
                    { text.empty? ? @g.ref(name) : @g.invoke(name, text) }
                  | char_range
@@ -78,6 +80,8 @@ sgl_escape_quote = "\\'" { "'" }
                  | - var:n - { [n] }
        statement = - var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) }
                  | - var:v - "=" - expression:o { @g.set(v, o) }
+                 | - "%" var:name - "=" - < /[::A-Za-z]+/ >
+                   { @g.add_foreign_grammar name, text }
                  | - "%%" - curly:act { @g.add_setup act }
       statements = statement (- statements)?
              eof = !.

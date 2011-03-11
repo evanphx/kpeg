@@ -39,6 +39,30 @@ class TestKPegGrammarRenderer < Test::Unit::TestCase
     assert_equal "root = greeting(1,2)\n", io.string
   end
 
+  def test_foreign_invoke
+    gram = KPeg.grammar do |g|
+      g.root = g.foreign_invoke("blah", "greeting")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = %blah.greeting\n", io.string
+  end
+
+  def test_foreign_invoke_with_args
+    gram = KPeg.grammar do |g|
+      g.root = g.foreign_invoke("blah", "greeting", "(1,2)")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = %blah.greeting(1,2)\n", io.string
+  end
+
   def test_dot_render
     gram = KPeg.grammar do |g|
       g.root = g.dot

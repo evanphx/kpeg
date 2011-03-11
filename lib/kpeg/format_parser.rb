@@ -7,6 +7,11 @@ class KPeg::FormatParser
       @result = nil
       @failed_rule = nil
       @failing_rule_offset = -1
+
+      setup_foreign_grammar
+    end
+
+    def setup_foreign_grammar
     end
 
     # This is distinct from setup_parser so that a standalone parser
@@ -199,6 +204,21 @@ class KPeg::FormatParser
         @ans = ans
         @pos = pos
         @result = result
+      end
+    end
+
+    def external_invoke(other, rule, *args)
+      old_pos = @pos
+      old_string = @string
+
+      @pos = other.pos
+      @string = other.string
+
+      begin
+        __send__ rule, *args
+      ensure
+        @pos = old_pos
+        @string = old_string
       end
     end
 
@@ -1175,7 +1195,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
@@ -1503,6 +1523,22 @@ class KPeg::FormatParser
 
     _save14 = self.pos
     while true # sequence
+    _tmp = match_string("%")
+    unless _tmp
+      self.pos = _save14
+      break
+    end
+    _tmp = apply(:_var)
+    gram = @result
+    unless _tmp
+      self.pos = _save14
+      break
+    end
+    _tmp = match_string(".")
+    unless _tmp
+      self.pos = _save14
+      break
+    end
     _tmp = apply(:_var)
     name = @result
     unless _tmp
@@ -1523,32 +1559,65 @@ class KPeg::FormatParser
       self.pos = _save14
       break
     end
-    _save16 = self.pos
+    @result = begin;  @g.foreign_invoke(gram, name, text) ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save14
+    end
+    break
+    end # end sequence
 
+    break if _tmp
+    self.pos = _save
+
+    _save16 = self.pos
+    while true # sequence
+    _tmp = apply(:_var)
+    name = @result
+    unless _tmp
+      self.pos = _save16
+      break
+    end
+    _text_start = self.pos
     _save17 = self.pos
+    _tmp = apply(:_nested_paren)
+    unless _tmp
+      _tmp = true
+      self.pos = _save17
+    end
+    if _tmp
+      text = get_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save16
+      break
+    end
+    _save18 = self.pos
+
+    _save19 = self.pos
     while true # sequence
     _tmp = apply(:__hyphen_)
     unless _tmp
-      self.pos = _save17
+      self.pos = _save19
       break
     end
     _tmp = match_string("=")
     unless _tmp
-      self.pos = _save17
+      self.pos = _save19
     end
     break
     end # end sequence
 
     _tmp = _tmp ? nil : true
-    self.pos = _save16
+    self.pos = _save18
     unless _tmp
-      self.pos = _save14
+      self.pos = _save16
       break
     end
     @result = begin;  text.empty? ? @g.ref(name) : @g.invoke(name, text) ; end
     _tmp = true
     unless _tmp
-      self.pos = _save14
+      self.pos = _save16
     end
     break
     end # end sequence
@@ -1858,7 +1927,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%%" - curly:act { @g.add_setup act })
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar name, text } | - "%%" - curly:act { @g.add_setup act })
   def _statement
 
     _save = self.pos
@@ -1977,7 +2046,13 @@ class KPeg::FormatParser
       self.pos = _save3
       break
     end
-    _tmp = match_string("%%")
+    _tmp = match_string("%")
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _tmp = apply(:_var)
+    name = @result
     unless _tmp
       self.pos = _save3
       break
@@ -1987,16 +2062,63 @@ class KPeg::FormatParser
       self.pos = _save3
       break
     end
+    _tmp = match_string("=")
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    _text_start = self.pos
+    _tmp = scan(/\A(?-mix:[::A-Za-z]+)/)
+    if _tmp
+      text = get_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save3
+      break
+    end
+    @result = begin;  @g.add_foreign_grammar name, text ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save3
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save4 = self.pos
+    while true # sequence
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save4
+      break
+    end
+    _tmp = match_string("%%")
+    unless _tmp
+      self.pos = _save4
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save4
+      break
+    end
     _tmp = apply(:_curly)
     act = @result
     unless _tmp
-      self.pos = _save3
+      self.pos = _save4
       break
     end
     @result = begin;  @g.add_setup act ; end
     _tmp = true
     unless _tmp
-      self.pos = _save3
+      self.pos = _save4
     end
     break
     end # end sequence
@@ -2121,13 +2243,13 @@ class KPeg::FormatParser
   Rules[:_curly_block] = rule_info("curly_block", "curly")
   Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}]+/ | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()]+/ | nested_paren)* \")\"")
-  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
+  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
   Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
   Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
   Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
-  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%%\" - curly:act { @g.add_setup act })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar name, text } | - \"%%\" - curly:act { @g.add_setup act })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
   Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")

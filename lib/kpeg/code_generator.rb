@@ -202,6 +202,12 @@ module KPeg
         else
           code << "    _tmp = #{method_name op.rule_name}()\n"
         end
+      when ForeignInvokeRule
+        if op.arguments
+          code << "    _tmp = @_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name}, #{op.arguments[1..-2]})\n"
+        else
+          code << "    _tmp = @_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name})\n"
+        end
       when Tag
         if op.tag_name and !op.tag_name.empty?
           output_op code, op.op
@@ -263,6 +269,20 @@ module KPeg
 
       @grammar.setup_actions.each do |act|
         code << "\n#{act.action}\n\n"
+      end
+
+      fg = @grammar.foreign_grammars
+
+      if fg.empty?
+        if @standalone
+          code << "  def setup_foreign_grammar; end\n"
+        end
+      else
+        code << "  def setup_foreign_grammar\n"
+        @grammar.foreign_grammars.each do |name, gram|
+          code << "    @_grammar_#{name} = #{gram}.new(nil)\n"
+        end
+        code << "  end\n"
       end
 
       render = GrammarRenderer.new(@grammar)

@@ -10,8 +10,14 @@ class TestKPegCompiledParser < Test::Unit::TestCase
   root = letter
   GRAM
 
-
   KPeg.compile gram, "TestParser", self
+
+  gram = <<-GRAM
+  %test = TestKPegCompiledParser::TestParser
+  root = %test.letter
+  GRAM
+
+  KPeg.compile gram, "CompTestParser", self
 
   def test_current_column
     r = TestParser.new "hello\nsir"
@@ -57,6 +63,11 @@ class TestKPegCompiledParser < Test::Unit::TestCase
 
     expected = "@1:1 failed rule 'letter', got '9'"
     assert_equal expected, r.failure_oneline
+  end
+
+  def test_composite_grammar
+    r = CompTestParser.new "l"
+    assert r.parse, "should parse"
   end
 
 end

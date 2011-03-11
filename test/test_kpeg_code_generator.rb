@@ -770,6 +770,79 @@ end
     assert cg.parse("hello")
   end
 
+  gram = <<-GRAM
+  greeting = "hello"
+  greeting2(a,b) = "hello"
+  GRAM
+
+  KPeg.compile gram, "TestParser", self
+
+  def test_foreign_invoke
+    gram = KPeg.grammar do |g|
+      g.add_foreign_grammar "blah", "TestKPegCodeGenerator::TestParser"
+      g.root = g.foreign_invoke("blah", "greeting")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+  def setup_foreign_grammar
+    @_grammar_blah = TestKPegCodeGenerator::TestParser.new(nil)
+  end
+
+  # root = %blah.greeting
+  def _root
+    _tmp = @_grammar_blah.external_invoke(self, :_greeting)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", "%blah.greeting")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
+  def test_foreign_invoke_with_args
+    gram = KPeg.grammar do |g|
+      g.add_foreign_grammar "blah", "TestKPegCodeGenerator::TestParser"
+      g.root = g.foreign_invoke("blah", "greeting2", "(1,2)")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+  def setup_foreign_grammar
+    @_grammar_blah = TestKPegCodeGenerator::TestParser.new(nil)
+  end
+
+  # root = %blah.greeting2(1,2)
+  def _root
+    _tmp = @_grammar_blah.external_invoke(self, :_greeting2, 1,2)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", "%blah.greeting2(1,2)")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
   def test_tag
     gram = KPeg.grammar do |g|
       g.root = g.t g.str("hello"), "t"

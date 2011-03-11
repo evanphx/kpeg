@@ -99,6 +99,16 @@ b(p) = x
     assert_rule G.invoke("b", "(1,2)"), match("a=b(1,2)"), "a"
   end
 
+  def test_invoke_foreign_rule
+    assert_rule G.foreign_invoke("blah", "letters"),
+                match("a=%blah.letters"), "a"
+  end
+
+  def test_add_foreign_grammar
+    gram = match "%blah = OtherGrammar"
+    assert_equal "OtherGrammar", gram.foreign_grammars["blah"]
+  end
+
   def test_dot
     assert_rule G.dot, match("a=.")
   end
