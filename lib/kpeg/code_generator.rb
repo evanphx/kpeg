@@ -42,7 +42,8 @@ module KPeg
       @saves = 0
     end
 
-    def output_op(code, op)
+    def output_op(code, op, indent_adjust=0)
+      @indent += indent_adjust
       @code = code
       case op
       when Dot
@@ -146,7 +147,7 @@ module KPeg
           add "  #{ss} = self.pos\n"
           add "  _count = 0\n"
           add "  while true\n", +1
-          output_op code, op.op
+          output_op code, op.op, -2
           add "  if _tmp\n"
           add "     _count += 1\n"
           add "     break if _count == #{op.max}\n"
@@ -230,9 +231,11 @@ module KPeg
         add "      text = get_text(_text_start)\n"
         add "    end\n"
       else
+        @indent -= indent_adjust
         raise "Unknown op - #{op.class}"
       end
-
+      @indent -= indent_adjust
+      
     end
 
     def standalone_region(path)

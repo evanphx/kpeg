@@ -428,7 +428,7 @@ class Test < KPeg::CompiledParser
   _save = self.pos
   _count = 0
   while true
-      _tmp = match_string("hello")
+    _tmp = match_string("hello")
     if _tmp
        _count += 1
        break if _count == 9
