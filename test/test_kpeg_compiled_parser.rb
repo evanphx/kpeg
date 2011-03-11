@@ -14,7 +14,7 @@ class TestKPegCompiledParser < Test::Unit::TestCase
 
   gram = <<-GRAM
   %test = TestKPegCompiledParser::TestParser
-  root = %test.letter
+  root = %test.letter "!"
   GRAM
 
   KPeg.compile gram, "CompTestParser", self
@@ -66,7 +66,7 @@ class TestKPegCompiledParser < Test::Unit::TestCase
   end
 
   def test_composite_grammar
-    r = CompTestParser.new "l"
+    r = CompTestParser.new "l!"
     assert r.parse, "should parse"
   end
 

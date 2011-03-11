@@ -194,7 +194,10 @@ module KPeg
       @string = other.string
 
       begin
-        __send__ rule, *args
+        if val = __send__(rule, *args)
+          other.pos = @pos
+        end
+        val
       ensure
         @pos = old_pos
         @string = old_string
