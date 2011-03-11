@@ -12,7 +12,6 @@ module KPeg
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
-      @expected_string = []
       @failed_rule = nil
       @failing_rule_offset = -1
     end
@@ -26,7 +25,7 @@ module KPeg
     end
 
     attr_reader :string
-    attr_reader :result, :failing_rule_offset, :expected_string
+    attr_reader :result, :failing_rule_offset
     attr_accessor :pos
 
     include Position
