@@ -70,4 +70,12 @@ class TestKPegCompiledParser < Test::Unit::TestCase
     assert r.parse, "should parse"
   end
 
+  def test_composite_grammar_failure
+    r = CompTestParser.new "9"
+    assert !r.parse, "should parse"
+
+    expected = "@1:1 failed rule 'TestKPegCompiledParser::TestParser#_letter', got '9'"
+    assert_equal expected, r.failure_oneline
+  end
+
 end

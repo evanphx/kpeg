@@ -51,9 +51,13 @@ module KPeg
     def failure_info
       l = current_line @failing_rule_offset
       c = current_column @failing_rule_offset
-      info = self.class::Rules[@failed_rule]
 
-      "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
+      else
+        "line #{l}, column #{c}: failed rule '#{@failed_rule}'"
+      end
     end
 
     def failure_caret
@@ -74,10 +78,14 @@ module KPeg
       l = current_line @failing_rule_offset
       c = current_column @failing_rule_offset
 
-      info = self.class::Rules[@failed_rule]
       char = lines[l-1][c-1, 1]
 
-      "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+      else
+        "@#{l}:#{c} failed rule '#{@failed_rule}', got '#{char}'"
+      end
     end
 
     class ParseError < RuntimeError
@@ -92,9 +100,15 @@ module KPeg
       line_no = current_line(error_pos)
       col_no = current_column(error_pos)
 
-      info = self.class::Rules[@failed_rule]
       io.puts "On line #{line_no}, column #{col_no}:"
-      io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
+
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
+      else
+        io.puts "Failed to match rule '#{@failed_rule}'"
+      end
+
       io.puts "Got: #{string[error_pos,1].inspect}"
       line = lines[line_no-1]
       io.puts "=> #{line}"
@@ -196,6 +210,8 @@ module KPeg
       begin
         if val = __send__(rule, *args)
           other.pos = @pos
+        else
+          other.set_failed_rule "#{self.class}##{rule}"
         end
         val
       ensure
