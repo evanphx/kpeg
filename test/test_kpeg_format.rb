@@ -48,6 +48,15 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_equal ["t"], rule.arguments
   end
 
+  def test_assign_with_arg_disambiguated_from_grouping
+    str = <<-STR
+a = c
+b(p) = x
+    STR
+
+    gram = match(str)
+  end
+
   def test_assign_with_multiple_args
     gram = match("a(t,x) = b")
     rule = gram.find "a"
