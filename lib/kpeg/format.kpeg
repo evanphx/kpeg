@@ -1,3 +1,5 @@
+%% name = KPeg::FormatParser
+
 %% {
     require 'kpeg/grammar'
 
@@ -83,8 +85,10 @@ sgl_escape_quote = "\\'" { "'" }
        statement = - var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) }
                  | - var:v - "=" - expression:o { @g.set(v, o) }
                  | - "%" var:name - "=" - < /[::A-Za-z]+/ >
-                   { @g.add_foreign_grammar name, text }
+                   { @g.add_foreign_grammar(name, text) }
                  | - "%%" - curly:act { @g.add_setup act }
+                 | - "%%" - var:name - "=" - < (!"\n" .)+ >
+                   { @g.set_variable(name, text) }
       statements = statement (- statements)?
              eof = !.
             root = statements - "\n"? eof

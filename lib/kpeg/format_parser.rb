@@ -1985,7 +1985,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar name, text } | - "%%" - curly:act { @g.add_setup act })
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
 
     _save = self.pos
@@ -2139,7 +2139,7 @@ class KPeg::FormatParser
       self.pos = _save3
       break
     end
-    @result = begin;  @g.add_foreign_grammar name, text ; end
+    @result = begin;  @g.add_foreign_grammar(name, text) ; end
     _tmp = true
     unless _tmp
       self.pos = _save3
@@ -2177,6 +2177,108 @@ class KPeg::FormatParser
     _tmp = true
     unless _tmp
       self.pos = _save4
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save5 = self.pos
+    while true # sequence
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = match_string("%%")
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = apply(:_var)
+    name = @result
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = match_string("=")
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _tmp = apply(:__hyphen_)
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    _text_start = self.pos
+    _save6 = self.pos
+
+    _save7 = self.pos
+    while true # sequence
+    _save8 = self.pos
+    _tmp = match_string("\n")
+    _tmp = _tmp ? nil : true
+    self.pos = _save8
+    unless _tmp
+      self.pos = _save7
+      break
+    end
+    _tmp = get_byte
+    unless _tmp
+      self.pos = _save7
+    end
+    break
+    end # end sequence
+
+    if _tmp
+      while true
+    
+    _save9 = self.pos
+    while true # sequence
+    _save10 = self.pos
+    _tmp = match_string("\n")
+    _tmp = _tmp ? nil : true
+    self.pos = _save10
+    unless _tmp
+      self.pos = _save9
+      break
+    end
+    _tmp = get_byte
+    unless _tmp
+      self.pos = _save9
+    end
+    break
+    end # end sequence
+
+        break unless _tmp
+      end
+      _tmp = true
+    else
+      self.pos = _save6
+    end
+    if _tmp
+      text = get_text(_text_start)
+    end
+    unless _tmp
+      self.pos = _save5
+      break
+    end
+    @result = begin;  @g.set_variable(name, text) ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save5
     end
     break
     end # end sequence
@@ -2307,7 +2409,7 @@ class KPeg::FormatParser
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
   Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
   Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
-  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar name, text } | - \"%%\" - curly:act { @g.add_setup act })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
   Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")

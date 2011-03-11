@@ -59,6 +59,8 @@ unless m = parser.parse
   exit 1
 end
 
+grammar = parser.grammar
+
 if options[:reformat]
   if !options[:output]
     puts "Please specify -o for where to write the new grammar"
@@ -83,11 +85,14 @@ if options[:reformat]
 end
 
 if !options[:test] and !options[:name]
-  puts "Please specify -n"
-  exit 1
+  unless name = grammar.variables["name"]
+    puts "Please specify -n"
+    exit 1
+  end
+else
+  name = options[:name]
 end
 
-name = options[:name]
 
 if options[:output]
   new_path = options[:output]
@@ -99,8 +104,6 @@ if !options[:test] and File.exists?(new_path) and !options[:force]
   puts "Path #{new_path} already exists, not overwriting\n"
   exit 1
 end
-
-grammar = parser.grammar
 
 if options[:test]
   puts "Syntax ok"
@@ -120,4 +123,4 @@ File.open new_path, "w" do |f|
   f << cg.output
 end
 
-puts "Wrote #{new_path}"
+puts "Wrote #{name} to #{new_path}"

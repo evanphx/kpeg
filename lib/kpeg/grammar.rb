@@ -603,9 +603,11 @@ module KPeg
       @rule_order = []
       @setup_actions = []
       @foreign_grammars = {}
+      @variables = {}
     end
 
     attr_reader :rules, :rule_order, :setup_actions, :foreign_grammars
+    attr_reader :variables
 
     def add_setup(act)
       @setup_actions << act
@@ -613,6 +615,10 @@ module KPeg
 
     def add_foreign_grammar(name, str)
       @foreign_grammars[name] = str
+    end
+
+    def set_variable(name, val)
+      @variables[name] = val
     end
 
     def root
@@ -683,6 +689,8 @@ module KPeg
         rule = args.first
         set(meth_s[0..-2], rule)
         return rule
+      elsif !args.empty?
+        super
       end
 
       # Hm, I guess this is fine. It might end up confusing people though.

@@ -326,6 +326,11 @@ Value   = NUMBER:i                      { i }
     assert_equal " def initialize; end ", m.setup_actions.first.action
   end
 
+  def test_parser_name
+    m = match "%%name = BlahParser"
+    assert_equal "BlahParser", m.variables["name"]
+  end
+
   def test_multiple_rules
     m = match "a=b\nc=d\ne=f"
     assert_rule G.ref("b"), m, "a"
