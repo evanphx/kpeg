@@ -10,11 +10,12 @@ Gem::Specification.new do |s|
   s.email       = ["evan@fallingsnow.net"]
   s.homepage    = "https://github.com/evanphx/kpeg"
   s.summary     = %q{Peg-based Code Generator}
-#  s.description = %q{TODO: Write a gem description}
+  s.description = %q{A tool for generating parsers using PEG}
 
-  s.files         = `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.files = ["LICENSE", "README.md", "Rakefile", "kpeg.gemspec", "Gemfile", "{lib,bin,doc}/**/*"].map{|p| Dir[p]}.flatten
+  s.test_files    = Dir["test/**/*.rb"]
+  s.bindir = "bin"
+  s.executables = ["kpeg"]
   s.require_paths = ["lib"]
   s.add_development_dependency "rake"
 end
