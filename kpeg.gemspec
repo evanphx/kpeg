@@ -12,7 +12,10 @@ Gem::Specification.new do |s|
   s.summary     = %q{Peg-based Code Generator}
   s.description = %q{A tool for generating parsers using PEG}
 
-  s.files = ["LICENSE", "README.md", "Rakefile", "kpeg.gemspec", "Gemfile", "{lib,bin,doc}/**/*"].map{|p| Dir[p]}.flatten
+  rb = Dir["lib/**/*.rb"] << "bin/kpeg"
+  docs = Dir["doc/**/*"]
+
+  s.files = rb + docs + ["LICENSE", "README.md", "Rakefile", "kpeg.gemspec", "Gemfile"]
   s.test_files    = Dir["test/**/*.rb"]
   s.bindir = "bin"
   s.executables = ["kpeg"]
