@@ -2009,7 +2009,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
 
     _save = self.pos
@@ -2155,7 +2155,7 @@ class KPeg::FormatParser
       break
     end
     _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[::A-Za-z]+)/)
+    _tmp = scan(/\A(?-mix:[::A-Za-z0-9_]+)/)
     if _tmp
       text = get_text(_text_start)
     end
@@ -2433,7 +2433,7 @@ class KPeg::FormatParser
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
   Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
   Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
-  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
   Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")

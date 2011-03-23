@@ -109,6 +109,16 @@ b(p) = x
     assert_equal "OtherGrammar", gram.foreign_grammars["blah"]
   end
 
+  def test_add_foreign_grammar_with_numbers
+    gram = match "%blah = Thing1::OtherGrammar"
+    assert_equal "Thing1::OtherGrammar", gram.foreign_grammars["blah"]
+  end
+
+  def test_add_foreign_grammar_with_undescore
+    gram = match "%blah = Other_Grammar"
+    assert_equal "Other_Grammar", gram.foreign_grammars["blah"]
+  end
+
   def test_invoke_parent_rule
     assert_rule G.foreign_invoke("parent", "letters"),
                 match("a=^letters"), "a"
