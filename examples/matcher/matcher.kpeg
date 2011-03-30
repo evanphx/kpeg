@@ -1,0 +1,7 @@
+%% name = Matcher
+upper = [A-Z]
+lower = [a-z]
+
+word = "a"+
+
+root = word
