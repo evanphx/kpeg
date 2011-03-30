@@ -1,0 +1,13 @@
+%% name = Calculator
+
+%% {
+  attr_accessor :result
+}
+
+space = " "
+num = < /[1-9][0-9]*/ > { text.to_i }
+
+sum = < num:n space* "+" space* sum:s > { n + s }
+      | < num:n > { n }
+
+root = sum:s { @result = s }
