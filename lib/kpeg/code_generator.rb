@@ -41,7 +41,8 @@ module KPeg
       when LiteralString
         code << "    _tmp = match_string(#{op.string.dump})\n"
       when LiteralRegexp
-        code << "    _tmp = scan(/\\A#{op.regexp}/)\n"
+        lang = op.regexp.kcode.to_s[0,1]
+        code << "    _tmp = scan(/\\A#{op.regexp}/#{lang})\n"
       when CharRange
         ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1

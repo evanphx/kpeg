@@ -93,6 +93,36 @@ end
     assert !cg.parse("a")
   end
 
+  def test_reg_unicode
+    gram = KPeg.grammar do |g|
+      g.root = g.reg(/./u)
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # root = /./u
+  def _root
+    _tmp = scan(/\\A(?-mix:.)/u)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", "/./u")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("う")
+    assert cg.parse("a")
+  end
+
   def test_char_range
     gram = KPeg.grammar do |g|
       g.root = g.range("a", "z")
