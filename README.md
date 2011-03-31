@@ -59,15 +59,27 @@ To test and return a false value if the test passes do the following:
 
     do_not_match_greater_than_10 = < num:n > !{ n > 10 }
     
-Rules can also act like functions and take parameters, an example of this is can be lifted from the [Email List Validator](https://github.com/larb/email_address_validator), where an ascii value is passed in and the character is evaluated against it returning a true if it matches
+Rules can also act like functions and take parameters. An example of this is lifted from the [Email List Validator](https://github.com/larb/email_address_validator), where an ascii value is passed in and the character is evaluated against it returning a true if it matches
     
     d(num) = <.> &{ text[0] == num }
 
-Rules support some regular expression syntax like maybe, many, kleene and groupings for matching
+Rules support some regular expression syntax for matching
+ 
++ maybe ?
++ many 
++ kleene * 
++ groupings () 
+
+Examples
 
     letters = alpha+
     words = alpha+ space* period?
     sentence = (letters+ | space+)+
+    
+Kpeg also allows a rule to define the acceptable number of matches in the form of a range. In regular expressions this is often denoted with syntax like {0,3}. Kpeg uses this syntax to accomplish match ranges [min, max].
+
+    matches_3_to_5_times = letter[3,5]
+    matches_3_to_any_times = letter[3,*]
   
     
 ### Defining Actions
@@ -79,7 +91,7 @@ Illustrated above in some of the examples, kpeg allows you to perform actions ba
 
 ### Referencing an external grammar
 
-Kpeg allows you to run a rule that is defined in an external grammar. This is useful if there is a defined set of rules that you would like to reuse in another parser. To do this create your grammar and generate a parser using the kpeg command line tool.
+Kpeg allows you to run a rule that is defined in an external grammar. This is useful if there is a defined set of rules that you would like to reuse in another parser. To do this, create your grammar and generate a parser using the kpeg command line tool.
 
     kpeg literals.kpeg
 
@@ -89,7 +101,7 @@ Once you have the generated parser, include that file into your new grammar
       require "literals.kpeg.rb"
     }
     
-Then create a variable to hold to foreign interface and pass it that class name of your parser, in this case my parser class name is Literal 
+Then create a variable to hold to foreign interface and pass it the class name of your parser. In this case my parser class name is Literal 
 
     %foreign_grammer = Literal
 
@@ -118,14 +130,11 @@ Include your generated parser file into an application that you want to use the 
 
 ## Examples
 
-There are several examples available in the /examples directory
+There are several examples available in the /examples directory. The upper parser has a readme with a step by step description of the grammar.
 
 ## Projects using kpeg
 
-[Dang](https://github.com/veganstraightedge/dang)
-
-[Email Address Validator](https://github.com/larb/email_address_validator)
-
-[Callisto](https://github.com/dwaite/Callisto)
-
-[Doodle](https://github.com/vito/doodle)
+Dang - https://github.com/veganstraightedge/dang
+Email Address Validator - https://github.com/larb/email_address_validator
+Callisto - https://github.com/dwaite/Callisto
+Doodle - https://github.com/vito/doodle

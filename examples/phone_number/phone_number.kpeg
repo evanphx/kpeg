@@ -9,10 +9,10 @@ dash = "-"
 LP = "("
 RP = ")"
 
-country_code = digit { text }
-area_code = digit[3,3] { text }
-prefix = digit[3,3] { text }
-suffix = digit[4,4] { text }
+country_code = digit:d { d }
+area_code = digit[3,3]:d { d }
+prefix = digit[3,4]:d { d }
+suffix = digit[4,4]:d { d }
 
 phone_number = LP? area_code:ac RP? space* prefix:p space* dash? space* suffix:s space* { "(#{ac}) #{p}-#{s}" } 
 

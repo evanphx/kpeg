@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   rb = Dir["lib/**/*.rb"] << "bin/kpeg"
   docs = Dir["doc/**/*"]
 
-  s.files = rb + docs + ["LICENSE", "README.md", "Rakefile", "kpeg.gemspec", "Gemfile"]
+  s.files = rb + docs + ["README.md", "Rakefile", "kpeg.gemspec", "Gemfile"]
   s.test_files    = Dir["test/**/*.rb"]
   s.bindir = "bin"
   s.executables = ["kpeg"]
