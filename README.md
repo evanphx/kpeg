@@ -134,7 +134,10 @@ There are several examples available in the /examples directory. The upper parse
 
 ## Projects using kpeg
 
-Dang - https://github.com/veganstraightedge/dang
-Email Address Validator - https://github.com/larb/email_address_validator
-Callisto - https://github.com/dwaite/Callisto
-Doodle - https://github.com/vito/doodle
+[Dang](https://github.com/veganstraightedge/dang)
+
+[Email Address Validator](https://github.com/larb/email_address_validator)
+
+[Callisto](https://github.com/dwaite/Callisto)
+
+[Doodle](https://github.com/vito/doodle)
