@@ -17,7 +17,8 @@
          comment = "#" (!eol .)* eol
            space = " " | "\t" | eol
                - = (space | comment)*
-
+          kleene = "*"
+          
                    # Allow - by itself, but not at the beginning
              var = < "-" | /[a-zA-Z][\-_a-zA-Z0-9]*/ > { text }
 
@@ -44,9 +45,11 @@ sgl_escape_quote = "\\'" { "'" }
             char = < /[a-zA-Z0-9]/ > { text }
       char_range = "[" char:l "-" char:r "]" { @g.range(l,r) }
 
-      range_elem = < /([1-9][0-9]*)|\*/ > { text }
+       range_num = < /[1-9][0-9]*/ > { text }
+      range_elem = < range_num|kleene > { text }
       mult_range = "[" - range_elem:l - "," - range_elem:r - "]"
                    { [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] }
+                 | "[" - range_num:e - "]" { [e.to_i, e.to_i] }
 
      curly_block = curly
            curly = "{" < (/[^{}]+/ | curly)* > "}" { @g.action(text) }

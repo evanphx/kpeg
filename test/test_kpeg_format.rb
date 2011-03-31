@@ -172,9 +172,9 @@ b(p) = x
     assert_rule G.multiple(:b, 5, 9), match('a=b[5,9]')
   end
   
-  # def test_single_value_for_multiple
-  #   assert_rule G.multiple(:b, 5, 5), match('a=b[5]')
-  # end
+  def test_single_value_for_multiple
+    assert_rule G.multiple(:b, 5, 5), match('a=b[5]')
+  end
 
   def test_no_max_multiple
     assert_rule G.multiple(:b, 5, nil), match('a=b[5,*]')

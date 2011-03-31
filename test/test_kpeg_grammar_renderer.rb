@@ -220,4 +220,16 @@ root = .
     TXT
     assert_equal expected, io.string
   end
+  
+  def test_multiple_render
+    gram = KPeg.grammar do |g|
+      g.root = g.multiple("a", 3, 5)
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = \"a\"[3, 5]\n", io.string
+  end
 end
