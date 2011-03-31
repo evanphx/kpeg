@@ -126,7 +126,14 @@ Include your generated parser file into an application that you want to use the 
     
     parser = Example::Parser.new(string_to_evaluate)
     parser.parse
-    
+
+### Shortcuts and other techniques
+
+Per vito, you can get the current line or current column in the following way 
+
+    line = { current_line }
+    column = { current_column }
+    foo = line:line ... { # use line here }
 
 ## Examples
 
