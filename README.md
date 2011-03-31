@@ -49,8 +49,7 @@ The most basic of these rules is a string capture
 
 While this looks very much like the ALPHA literal defined above it differs in one important way, the text captured by the rule defined between the < and > symbols will be set as the text variable in block that follows. You can also explicitly define the variable that you would like but only with existing rules or literals.
     
-    num = /[1-9][0-9]*/
-    sum = < num:n1 "+" num:n2 > { n1 + n2 }
+    letter = alpha:a { a }
     
 Additionally blocks can return true or false values based upon an expression within the block. To return true if a test passes do the following:
 
@@ -60,7 +59,7 @@ To test and return a false value if the test passes do the following:
 
     do_not_match_greater_than_10 = < num:n > !{ n > 10 }
     
-Rules can also act like functions and take parameters, an example of this is can be lifted from the [Email List Validator](https://github.com/andrewvc/email_address_validator), where an ascii value is passed in and the character is evaluated against it returning a true if it matches
+Rules can also act like functions and take parameters, an example of this is can be lifted from the [Email List Validator](https://github.com/larb/email_address_validator), where an ascii value is passed in and the character is evaluated against it returning a true if it matches
     
     d(num) = <.> &{ text[0] == num }
 
@@ -68,12 +67,15 @@ Rules support some regular expression syntax like maybe, many, kleene and groupi
 
     letters = alpha+
     words = alpha+ space* period?
-    sentence = (letters+ | words)
+    sentence = (letters+ | space+)+
   
     
 ### Defining Actions
 
 Illustrated above in some of the examples, kpeg allows you to perform actions based upon a match that are described in block provided or in the rule definition itself.
+
+    num = /[1-9][0-9]*/
+    sum = < num:n1 "+" num:n2 > { n1 + n2 }
 
 ### Referencing an external grammar
 
@@ -96,9 +98,23 @@ You can then use rules defined in the foreign grammar in the local grammar file 
     sentence = (%foreign_grammer.alpha %foreign_grammer.space*)+ %foreign_grammer.period
 
     
-### Generating your parser
+### Generating and running your parser
 
-Before you can generate your parser you will need to define a root rule
+Before you can generate your parser you will need to define a root rule. This will be the first rule run against the string provided to the parser
+
+    root = sentence
+    
+To generate the parser run the kpeg command with the kpeg file(s) as an argument. This will generate a ruby file with the same name as your grammar file.
+
+    kpeg example.kpeg
+    
+Include your generated parser file into an application that you want to use the parser in and run it. Create a new instance of the parser and pass in the string you want to evaluate. When parse is called on the parser instance it will return a true if the sting is matched, or false if it doesn't. 
+
+    require "example.kpeg.rb"
+    
+    parser = Example::Parser.new(string_to_evaluate)
+    parser.parse
+    
 
 ## Examples
 
