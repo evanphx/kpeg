@@ -1,0 +1,5 @@
+%% name = Literal
+
+period = "."
+space = " "
+alpha = /[A-Za-z]/

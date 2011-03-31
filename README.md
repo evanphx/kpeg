@@ -64,18 +64,52 @@ Rules can also act like functions and take parameters, an example of this is can
     
     d(num) = <.> &{ text[0] == num }
 
-Rules also support the maybe, many and kleene for matching
+Rules support some regular expression syntax like maybe, many, kleene and groupings for matching
 
     letters = alpha+
     words = alpha+ space* period?
+    sentence = (letters+ | words)
+  
     
 ### Defining Actions
 
 Illustrated above in some of the examples, kpeg allows you to perform actions based upon a match that are described in block provided or in the rule definition itself.
 
+### Referencing an external grammar
+
+Kpeg allows you to run a rule that is defined in an external grammar. This is useful if there is a defined set of rules that you would like to reuse in another parser. To do this create your grammar and generate a parser using the kpeg command line tool.
+
+    kpeg literals.kpeg
+
+Once you have the generated parser, include that file into your new grammar
+
+    %{
+      require "literals.kpeg.rb"
+    }
+    
+Then create a variable to hold to foreign interface and pass it that class name of your parser, in this case my parser class name is Literal 
+
+    %foreign_grammer = Literal
+
+You can then use rules defined in the foreign grammar in the local grammar file like so
+
+    sentence = (%foreign_grammer.alpha %foreign_grammer.space*)+ %foreign_grammer.period
+
+    
+### Generating your parser
+
+Before you can generate your parser you will need to define a root rule
+
+## Examples
+
+There are several examples available in the /examples directory
+
 ## Projects using kpeg
 
 [Dang](https://github.com/veganstraightedge/dang)
-[Email Address Validator](https://github.com/andrewvc/email_address_validator)
+
+[Email Address Validator](https://github.com/larb/email_address_validator)
+
 [Callisto](https://github.com/dwaite/Callisto)
+
 [Doodle](https://github.com/vito/doodle)
