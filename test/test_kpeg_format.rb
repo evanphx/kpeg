@@ -140,7 +140,11 @@ b(p) = x
   end
 
   def test_regexp_options
-    assert_rule G.reg(/foo/u), match('a=/foo/u')
+    if RUBY_VERSION > "1.8.7"
+      assert_rule G.reg(/foo/n), match('a=/foo/n')    
+    else
+      assert_rule G.reg(/foo/u), match('a=/foo/u')
+    end
   end
 
   def test_char_range

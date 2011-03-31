@@ -111,8 +111,15 @@ module KPeg
         if opts
           opts.split("").each do |o|
             case o
-            when "n", "N", "e", "E", "s", "S", "u", "U"
-              lang = o
+            when "n", "N", "e", "E", "s", "S"
+              lang = o.downcase
+            when "u", "U"
+              if RUBY_VERSION > "1.8.7"
+                # Ruby 1.9 defaults to UTF-8 for string matching
+                lang = ""
+              else
+                lang = "u"
+              end
             when "m"
               flags |= Regexp::MULTILINE
             when "x"

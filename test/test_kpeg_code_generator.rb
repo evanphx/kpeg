@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'test/unit'
 require 'kpeg'
 require 'kpeg/code_generator'
@@ -97,7 +98,25 @@ end
     gram = KPeg.grammar do |g|
       g.root = g.reg(/./u)
     end
+    
+    if RUBY_VERSION > "1.8.7"
+    str = <<-STR
+require 'kpeg/compiled_parser'
 
+class Test < KPeg::CompiledParser
+
+  # root = /./
+  def _root
+    _tmp = scan(/\\A(?-mix:.)/)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", "/./")
+end
+    STR
+    else
     str = <<-STR
 require 'kpeg/compiled_parser'
 
@@ -114,7 +133,7 @@ class Test < KPeg::CompiledParser
   Rules[:_root] = rule_info("root", "/./u")
 end
     STR
-
+    end
     cg = KPeg::CodeGenerator.new "Test", gram
 
     assert_equal str, cg.output

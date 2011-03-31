@@ -41,7 +41,12 @@ module KPeg
       when LiteralString
         code << "    _tmp = match_string(#{op.string.dump})\n"
       when LiteralRegexp
-        lang = op.regexp.kcode.to_s[0,1]
+        if op.regexp.respond_to?(:kcode)
+          lang = op.regexp.kcode.to_s[0,1]
+        else
+          # Let default ruby string handling figure it out
+          lang = ""
+        end
         code << "    _tmp = scan(/\\A#{op.regexp}/#{lang})\n"
       when CharRange
         ss = save()
