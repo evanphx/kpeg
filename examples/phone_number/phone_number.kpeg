@@ -1,4 +1,4 @@
-%% name = Matcher
+%% name = PhoneNumber
 upper = [A-Z]
 lower = [a-z]
 

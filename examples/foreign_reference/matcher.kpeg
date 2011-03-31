@@ -1,0 +1,9 @@
+%% name = Matcher
+
+%% {
+	require "literals.kpeg.rb"
+}
+
+%grammer1 = Literal
+
+root = (%grammer1.alpha %grammer1.space*)+ %grammer1.period
