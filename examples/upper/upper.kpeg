@@ -9,16 +9,16 @@ period = "."
 space = " "
 alpha = < /[A-Za-z]/ > { text.upcase }
 
-word = < alpha:a word:w > { "#{a}#{w}" }
-      | < alpha:a space > { "#{a} "}    
-      | < alpha:a > { a }
+word = alpha:a word:w { "#{a}#{w}" }
+      | alpha:a space { "#{a} "}    
+      | alpha:a { a }
 
-sentence = < word:w sentence:s > { "#{w}#{s}" }
-          | < word:w > { w }
+sentence = word:w sentence:s { "#{w}#{s}" }
+          | word:w { w }
 
-document = < sentence:s period space* document:d >  { "#{s}. #{d}" }
-          | < sentence:s period > { "#{s}." }
-          | < sentence:s > { "#{s}" }
+document = sentence:s period space* document:d  { "#{s}. #{d}" }
+          | sentence:s period { "#{s}." }
+          | sentence:s { "#{s}" }
 
 root = document:d { @output = d }
 
