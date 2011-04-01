@@ -109,8 +109,13 @@ You can then use rules defined in the foreign grammar in the local grammar file 
 
     sentence = (%foreign_grammer.alpha %foreign_grammer.space*)+ %foreign_grammer.period
 
+### Comments
+
+Kpeg allows comments to be added to the grammar file by using the # symbol
+
+    # This is a comment in my grammar
     
-### Generating and running your parser
+## Generating and running your parser
 
 Before you can generate your parser you will need to define a root rule. This will be the first rule run against the string provided to the parser
 
@@ -127,7 +132,7 @@ Include your generated parser file into an application that you want to use the 
     parser = Example::Parser.new(string_to_evaluate)
     parser.parse
 
-### Shortcuts and other techniques
+## Shortcuts and other techniques
 
 Per vito, you can get the current line or current column in the following way 
 
