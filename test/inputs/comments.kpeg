@@ -1,0 +1,4 @@
+%% name = Name
+word = /\w+/
+root = word
+#

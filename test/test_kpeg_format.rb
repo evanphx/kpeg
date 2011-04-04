@@ -413,6 +413,12 @@ fact = fact "*" num
     inst = cg.make(str)
     return inst
   end
+  
+  def test_allow_ends_with_comment
+    path = File.expand_path("../inputs/comments.kpeg", __FILE__)
+    parser = KPeg::FormatParser.new File.read(path), true
+    assert parser.parse, true
+  end
 
   def test_roundtrip
     path = File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
