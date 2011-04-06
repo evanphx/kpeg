@@ -1,6 +1,320 @@
-require 'kpeg/compiled_parser'
+class KPeg::FormatParser
+# STANDALONE START
+    def setup_parser(str, debug=false)
+      @string = str
+      @pos = 0
+      @memoizations = Hash.new { |h,k| h[k] = {} }
+      @result = nil
+      @failed_rule = nil
+      @failing_rule_offset = -1
 
-class KPeg::FormatParser < KPeg::CompiledParser
+      setup_foreign_grammar
+    end
+
+    def setup_foreign_grammar
+    end
+
+    # This is distinct from setup_parser so that a standalone parser
+    # can redefine #initialize and still have access to the proper
+    # parser setup code.
+    #
+    def initialize(str, debug=false)
+      setup_parser(str, debug)
+    end
+
+    attr_reader :string
+    attr_reader :result, :failing_rule_offset
+    attr_accessor :pos
+
+    # STANDALONE START
+    def current_column(target=pos)
+      if c = string.rindex("\n", target-1)
+        return target - c - 1
+      end
+
+      target + 1
+    end
+
+    def current_line(target=pos)
+      cur_offset = 0
+      cur_line = 0
+
+      string.each_line do |line|
+        cur_line += 1
+        cur_offset += line.size
+        return cur_line if cur_offset >= target
+      end
+
+      -1
+    end
+
+    def lines
+      lines = []
+      string.each_line { |l| lines << l }
+      lines
+    end
+
+    #
+
+    def get_text(start)
+      @string[start..@pos-1]
+    end
+
+    def show_pos
+      width = 10
+      if @pos < width
+        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,width]}\")"
+      else
+        "#{@pos} (\"... #{@string[@pos - width, width]}\" @ \"#{@string[@pos,width]}\")"
+      end
+    end
+
+    def failure_info
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
+      else
+        "line #{l}, column #{c}: failed rule '#{@failed_rule}'"
+      end
+    end
+
+    def failure_caret
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      line = lines[l-1]
+      "#{line}\n#{' ' * (c - 1)}^"
+    end
+
+    def failure_character
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+      lines[l-1][c-1, 1]
+    end
+
+    def failure_oneline
+      l = current_line @failing_rule_offset
+      c = current_column @failing_rule_offset
+
+      char = lines[l-1][c-1, 1]
+
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+      else
+        "@#{l}:#{c} failed rule '#{@failed_rule}', got '#{char}'"
+      end
+    end
+
+    class ParseError < RuntimeError
+    end
+
+    def raise_error
+      raise ParseError, failure_oneline
+    end
+
+    def show_error(io=STDOUT)
+      error_pos = @failing_rule_offset
+      line_no = current_line(error_pos)
+      col_no = current_column(error_pos)
+
+      io.puts "On line #{line_no}, column #{col_no}:"
+
+      if @failed_rule.kind_of? Symbol
+        info = self.class::Rules[@failed_rule]
+        io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
+      else
+        io.puts "Failed to match rule '#{@failed_rule}'"
+      end
+
+      io.puts "Got: #{string[error_pos,1].inspect}"
+      line = lines[line_no-1]
+      io.puts "=> #{line}"
+      io.print(" " * (col_no + 3))
+      io.puts "^"
+    end
+
+    def set_failed_rule(name)
+      if @pos > @failing_rule_offset
+        @failed_rule = name
+        @failing_rule_offset = @pos
+      end
+    end
+
+    attr_reader :failed_rule
+
+    def match_string(str)
+      len = str.size
+      if @string[pos,len] == str
+        @pos += len
+        return str
+      end
+
+      return nil
+    end
+
+    def scan(reg)
+      if m = reg.match(@string[@pos..-1])
+        width = m.end(0)
+        @pos += width
+        return true
+      end
+
+      return nil
+    end
+
+    if "".respond_to? :getbyte
+      def get_byte
+        if @pos >= @string.size
+          return nil
+        end
+
+        s = @string.getbyte @pos
+        @pos += 1
+        s
+      end
+    else
+      def get_byte
+        if @pos >= @string.size
+          return nil
+        end
+
+        s = @string[@pos]
+        @pos += 1
+        s
+      end
+    end
+
+    def parse(rule=nil)
+      if !rule
+        _root ? true : false
+      else
+        # This is not shared with code_generator.rb so this can be standalone
+        method = rule.gsub("-","_hyphen_")
+        __send__("_#{method}") ? true : false
+      end
+    end
+
+    class LeftRecursive
+      def initialize(detected=false)
+        @detected = detected
+      end
+
+      attr_accessor :detected
+    end
+
+    class MemoEntry
+      def initialize(ans, pos)
+        @ans = ans
+        @pos = pos
+        @uses = 1
+        @result = nil
+      end
+
+      attr_reader :ans, :pos, :uses, :result
+
+      def inc!
+        @uses += 1
+      end
+
+      def move!(ans, pos, result)
+        @ans = ans
+        @pos = pos
+        @result = result
+      end
+    end
+
+    def external_invoke(other, rule, *args)
+      old_pos = @pos
+      old_string = @string
+
+      @pos = other.pos
+      @string = other.string
+
+      begin
+        if val = __send__(rule, *args)
+          other.pos = @pos
+        else
+          other.set_failed_rule "#{self.class}##{rule}"
+        end
+        val
+      ensure
+        @pos = old_pos
+        @string = old_string
+      end
+    end
+
+    def apply(rule)
+      if m = @memoizations[rule][@pos]
+        m.inc!
+
+        prev = @pos
+        @pos = m.pos
+        if m.ans.kind_of? LeftRecursive
+          m.ans.detected = true
+          return nil
+        end
+
+        @result = m.result
+
+        return m.ans
+      else
+        lr = LeftRecursive.new(false)
+        m = MemoEntry.new(lr, @pos)
+        @memoizations[rule][@pos] = m
+        start_pos = @pos
+
+        ans = __send__ rule
+
+        m.move! ans, @pos, @result
+
+        # Don't bother trying to grow the left recursion
+        # if it's failing straight away (thus there is no seed)
+        if ans and lr.detected
+          return grow_lr(rule, start_pos, m)
+        else
+          return ans
+        end
+
+        return ans
+      end
+    end
+
+    def grow_lr(rule, start_pos, m)
+      while true
+        @pos = start_pos
+        @result = m.result
+
+        ans = __send__ rule
+        return nil unless ans
+
+        break if @pos <= m.pos
+
+        m.move! ans, @pos, @result
+      end
+
+      @result = m.result
+      @pos = m.pos
+      return m.ans
+    end
+
+    class RuleInfo
+      def initialize(name, rendered)
+        @name = name
+        @rendered = rendered
+      end
+
+      attr_reader :name, :rendered
+    end
+
+    def self.rule_info(name, rendered)
+      RuleInfo.new(name, rendered)
+    end
+
+    #
 
 
     require 'kpeg/grammar'
@@ -14,11 +328,54 @@ class KPeg::FormatParser < KPeg::CompiledParser
     alias_method :grammar, :g
 
 
+  def setup_foreign_grammar; end
 
   # eol = "\n"
   def _eol
     _tmp = match_string("\n")
     set_failed_rule :_eol unless _tmp
+    return _tmp
+  end
+
+  # eof_comment = "#" (!eof .)*
+  def _eof_comment
+
+    _save = self.pos
+    while true # sequence
+    _tmp = match_string("#")
+    unless _tmp
+      self.pos = _save
+      break
+    end
+    while true
+
+    _save2 = self.pos
+    while true # sequence
+    _save3 = self.pos
+    _tmp = apply(:_eof)
+    _tmp = _tmp ? nil : true
+    self.pos = _save3
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    _tmp = get_byte
+    unless _tmp
+      self.pos = _save2
+    end
+    break
+    end # end sequence
+
+    break unless _tmp
+    end
+    _tmp = true
+    unless _tmp
+      self.pos = _save
+    end
+    break
+    end # end sequence
+
+    set_failed_rule :_eof_comment unless _tmp
     return _tmp
   end
 
@@ -2142,7 +2499,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
     return _tmp
   end
 
-  # root = statements - "\n"? eof
+  # root = statements - "\n"? eof_comment? eof
   def _root
 
     _save = self.pos
@@ -2167,6 +2524,16 @@ class KPeg::FormatParser < KPeg::CompiledParser
       self.pos = _save
       break
     end
+    _save2 = self.pos
+    _tmp = apply(:_eof_comment)
+    unless _tmp
+      _tmp = true
+      self.pos = _save2
+    end
+    unless _tmp
+      self.pos = _save
+      break
+    end
     _tmp = apply(:_eof)
     unless _tmp
       self.pos = _save
@@ -2180,6 +2547,7 @@ class KPeg::FormatParser < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_eol] = rule_info("eol", "\"\\n\"")
+  Rules[:_eof_comment] = rule_info("eof_comment", "\"\#\" (!eof .)*")
   Rules[:_comment] = rule_info("comment", "\"\#\" (!eol .)* eol")
   Rules[:_space] = rule_info("space", "(\" \" | \"\\t\" | eol)")
   Rules[:__hyphen_] = rule_info("-", "(space | comment)*")
@@ -2214,5 +2582,5 @@ class KPeg::FormatParser < KPeg::CompiledParser
   Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
-  Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")
+  Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof_comment? eof")
 end

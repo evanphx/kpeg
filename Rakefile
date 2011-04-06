@@ -19,6 +19,7 @@ task :grammar do
   gr.render(STDOUT)
 end
 
+desc "rebuild parser"
 task :parser do
   sh "ruby -Ilib bin/kpeg -o lib/kpeg/format_parser.rb -s -f lib/kpeg/format.kpeg"
 end

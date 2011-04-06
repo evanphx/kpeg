@@ -14,6 +14,8 @@
 
 
              eol = "\n"
+     eof_comment = "#" (!eof .)*
+             
          comment = "#" (!eol .)* eol
            space = " " | "\t" | eol
                - = (space | comment)*
@@ -95,5 +97,5 @@ sgl_escape_quote = "\\'" { "'" }
                    { @g.set_variable(name, text) }
       statements = statement (- statements)?
              eof = !.
-            root = statements - "\n"? eof
+            root = statements - eof_comment? eof
 
