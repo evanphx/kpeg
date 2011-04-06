@@ -1353,4 +1353,95 @@ end
     assert cg.parse("hello")
   end
 
+  def test_ast_generation
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.set_variable "bracket", "ast BracketOperator(receiver, argument)"
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  module AST
+    class Node; end
+    class BracketOperator < Node
+      def initialize(receiver, argument)
+        @receiver = receiver
+        @argument = argument
+      end
+      attr_reader :receiver
+      attr_reader :argument
+    end
+  end
+  def bracket(receiver, argument)
+    AST::BracketOperator.new(receiver, argument)
+  end
+
+  # root = .
+  def _root
+    _tmp = get_byte
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", ".")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
+  def test_ast_generation_in_different_location
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.set_variable "bracket", "ast BracketOperator(receiver, argument)"
+      g.set_variable "ast-location", "MegaAST"
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  module MegaAST
+    class Node; end
+    class BracketOperator < Node
+      def initialize(receiver, argument)
+        @receiver = receiver
+        @argument = argument
+      end
+      attr_reader :receiver
+      attr_reader :argument
+    end
+  end
+  def bracket(receiver, argument)
+    MegaAST::BracketOperator.new(receiver, argument)
+  end
+
+  # root = .
+  def _root
+    _tmp = get_byte
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", ".")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
 end

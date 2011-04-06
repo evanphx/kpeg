@@ -23,6 +23,7 @@
           
                    # Allow - by itself, but not at the beginning
              var = < "-" | /[a-zA-Z][\-_a-zA-Z0-9]*/ > { text }
+          method = < /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }
 
      dbl_escapes = "\\\"" { '"' }
                  | "\\n"  { "\n" }
@@ -67,6 +68,8 @@ sgl_escape_quote = "\\'" { "'" }
                  | "(" - expression:o - ")" { o }
                  | "<" - expression:o - ">" { @g.collect(o) }
                  | curly_block
+                 | "~" method:m < nested_paren? >
+                   { @g.action("#{m}#{text}") }
                  | "." { @g.dot }
                  | "@" var:name !(- "=") { @g.invoke(name) }
                  | "^" var:name < nested_paren? >
@@ -99,3 +102,14 @@ sgl_escape_quote = "\\'" { "'" }
              eof = !.
             root = statements - eof_comment? eof
 
+# These are a seperate set of rules used to parse an ast declaration
+
+    ast_constant = < /[A-Z][A-Za-z0-9_]*/ > { text }
+        ast_word = < /[A-Za-z_][A-Za-z0-9_]*/ > { text }
+
+          ast_sp = (" " | "\t")*
+
+       ast_words = ast_words:r ast_sp "," ast_sp ast_word:w { r + [w] }
+                 | ast_word:w { [w] }
+
+        ast_root = ast_constant:c "(" ast_words:w ")" { [c, w] }

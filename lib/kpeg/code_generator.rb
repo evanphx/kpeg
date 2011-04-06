@@ -34,6 +34,59 @@ module KPeg
       @saves = 0
     end
 
+    def output_ast(short, code, description)
+      parser = FormatParser.new description
+
+      # just skip it if it's bad.
+      return unless parser.parse "ast_root"
+
+      name, attrs = parser.result
+
+      code << "    class #{name} < Node\n"
+      code << "      def initialize(#{attrs.join(', ')})\n"
+      attrs.each do |at|
+        code << "        @#{at} = #{at}\n"
+      end
+      code << "      end\n"
+      attrs.each do |at|
+        code << "      attr_reader :#{at}\n"
+      end
+      code << "    end\n"
+
+      [short, name, attrs]
+    end
+
+    def handle_ast(code)
+      output_node = false
+
+      root = @grammar.variables["ast-location"] || "AST"
+
+      methods = []
+
+      @grammar.variables.each do |name, val|
+        if val.index("ast ") == 0
+          unless output_node
+            code << "\n"
+            code << "  module #{root}\n"
+            code << "    class Node; end\n"
+            output_node = true
+          end
+          if m = output_ast(name, code, val[4..-1])
+            methods << m
+          end
+        end
+      end
+
+      if output_node
+        code << "  end\n"
+        methods.each do |short, name, attrs|
+          code << "  def #{short}(#{attrs.join(', ')})\n"
+          code << "    #{root}::#{name}.new(#{attrs.join(', ')})\n"
+          code << "  end\n"
+        end
+      end
+    end
+
     def output_op(code, op)
       case op
       when Dot
@@ -276,6 +329,8 @@ module KPeg
       @grammar.setup_actions.each do |act|
         code << "\n#{act.action}\n\n"
       end
+
+      handle_ast(code)
 
       fg = @grammar.foreign_grammars
 

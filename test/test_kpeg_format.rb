@@ -323,6 +323,16 @@ Value   = NUMBER:i                      { i }
     assert_rule G.seq(:b, :c, G.action(" b + { c + d } ")), m
   end
 
+  def test_action_send
+    m = match 'a=b c ~d'
+    assert_rule G.seq(:b, :c, G.action("d")), m
+  end
+
+  def test_action_send_with_args
+    m = match 'a=b c ~d(b,c)'
+    assert_rule G.seq(:b, :c, G.action("d(b,c)")), m
+  end
+
   def test_collect
     m = match 'a = < b c >'
     assert_rule G.collect(G.seq(:b, :c)), m
