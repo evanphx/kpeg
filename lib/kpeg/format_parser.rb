@@ -2560,7 +2560,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # root = statements - "\n"? eof_comment? eof
+  # root = statements - eof_comment? eof
   def _root
 
     _save = self.pos
@@ -2576,20 +2576,10 @@ class KPeg::FormatParser
       break
     end
     _save1 = self.pos
-    _tmp = match_string("\n")
-    unless _tmp
-      _tmp = true
-      self.pos = _save1
-    end
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _save2 = self.pos
     _tmp = apply(:_eof_comment)
     unless _tmp
       _tmp = true
-      self.pos = _save2
+      self.pos = _save1
     end
     unless _tmp
       self.pos = _save
@@ -2828,8 +2818,7 @@ class KPeg::FormatParser
   Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
-  Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof_comment? eof")
-  Rules[:_root] = rule_info("root", "statements - \"\\n\"? eof")
+  Rules[:_root] = rule_info("root", "statements - eof_comment? eof")
   Rules[:_ast_constant] = rule_info("ast_constant", "< /[A-Z][A-Za-z0-9_]*/ > { text }")
   Rules[:_ast_word] = rule_info("ast_word", "< /[A-Za-z_][A-Za-z0-9_]*/ > { text }")
   Rules[:_ast_sp] = rule_info("ast_sp", "(\" \" | \"\\t\")*")
