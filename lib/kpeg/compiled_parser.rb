@@ -3,6 +3,11 @@ require 'kpeg/position'
 module KPeg
   class CompiledParser
 
+    # Must be outside the STANDALONE block because a standalone
+    # parser always injects it's own version of this method.
+    def setup_foreign_grammar
+    end
+
     # Leave these markers in! They allow us to generate standalone
     # code automatically!
     #
@@ -16,9 +21,6 @@ module KPeg
       @failing_rule_offset = -1
 
       setup_foreign_grammar
-    end
-
-    def setup_foreign_grammar
     end
 
     # This is distinct from setup_parser so that a standalone parser
