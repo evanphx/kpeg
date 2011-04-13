@@ -88,12 +88,11 @@ module KPeg
     end
     
     def indentify(code, indent)
-      returner = ""
-      0.upto(indent) { returner << "  " }
-      returner << code
+      "#{"  " * indent}#{code}"
     end
     
-    def output_op(code, op, indent=1)
+    # Default indent is 4 spaces (indent=2)
+    def output_op(code, op, indent=2)
       case op
       when Dot
         code << indentify("_tmp = get_byte\n", indent)
