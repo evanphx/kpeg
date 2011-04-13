@@ -323,6 +323,11 @@ Value   = NUMBER:i                      { i }
     assert_rule G.seq(:b, :c, G.action(" b + { c + d } ")), m
   end
 
+  def test_bracket_in_curley_kills_kpeg
+    m = match 'a=b c { b + c + "{" }'
+    assert_rule G.seq(:b, :c, G.action(' b + c + "{"')), m
+  end
+
   def test_action_send
     m = match 'a=b c ~d'
     assert_rule G.seq(:b, :c, G.action("d")), m
@@ -423,11 +428,11 @@ fact = fact "*" num
     inst = cg.make(str)
     return inst
   end
-  
+
   def test_allow_ends_with_comment
     path = File.expand_path("../inputs/comments.kpeg", __FILE__)
     parser = KPeg::FormatParser.new File.read(path), true
-    assert parser.parse, true
+    assert true, parser.parse
   end
 
   def test_roundtrip
