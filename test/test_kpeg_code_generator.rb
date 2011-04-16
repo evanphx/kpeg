@@ -1357,6 +1357,8 @@ end
     gram = KPeg.grammar do |g|
       g.root = g.dot
       g.set_variable "bracket", "ast BracketOperator(receiver, argument)"
+      g.set_variable "simple", "ast Simple()"
+      g.set_variable "simple2", "ast Simple2"
     end
 
     str = <<-STR
@@ -1374,9 +1376,23 @@ class Test < KPeg::CompiledParser
       attr_reader :receiver
       attr_reader :argument
     end
+    class Simple < Node
+      def initialize()
+      end
+    end
+    class Simple2 < Node
+      def initialize()
+      end
+    end
   end
   def bracket(receiver, argument)
     AST::BracketOperator.new(receiver, argument)
+  end
+  def simple()
+    AST::Simple.new()
+  end
+  def simple2()
+    AST::Simple2.new()
   end
 
   # root = .

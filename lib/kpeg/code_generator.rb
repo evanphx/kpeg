@@ -63,7 +63,11 @@ module KPeg
 
       methods = []
 
-      @grammar.variables.each do |name, val|
+      vars = @grammar.variables.keys.sort
+
+      vars.each do |name|
+        val = @grammar.variables[name]
+
         if val.index("ast ") == 0
           unless output_node
             code << "\n"

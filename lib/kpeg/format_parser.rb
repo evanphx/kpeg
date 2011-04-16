@@ -2741,40 +2741,77 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # ast_root = ast_constant:c "(" ast_words:w ")" { [c, w] }
+  # ast_root = (ast_constant:c "(" ast_words:w ")" { [c, w] } | ast_constant:c "()"? { [c, []] })
   def _ast_root
 
     _save = self.pos
+    while true # choice
+
+    _save1 = self.pos
     while true # sequence
     _tmp = apply(:_ast_constant)
     c = @result
     unless _tmp
-      self.pos = _save
+      self.pos = _save1
       break
     end
     _tmp = match_string("(")
     unless _tmp
-      self.pos = _save
+      self.pos = _save1
       break
     end
     _tmp = apply(:_ast_words)
     w = @result
     unless _tmp
-      self.pos = _save
+      self.pos = _save1
       break
     end
     _tmp = match_string(")")
     unless _tmp
-      self.pos = _save
+      self.pos = _save1
       break
     end
     @result = begin;  [c, w] ; end
     _tmp = true
     unless _tmp
-      self.pos = _save
+      self.pos = _save1
     end
     break
     end # end sequence
+
+    break if _tmp
+    self.pos = _save
+
+    _save2 = self.pos
+    while true # sequence
+    _tmp = apply(:_ast_constant)
+    c = @result
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    _save3 = self.pos
+    _tmp = match_string("()")
+    unless _tmp
+      _tmp = true
+      self.pos = _save3
+    end
+    unless _tmp
+      self.pos = _save2
+      break
+    end
+    @result = begin;  [c, []] ; end
+    _tmp = true
+    unless _tmp
+      self.pos = _save2
+    end
+    break
+    end # end sequence
+
+    break if _tmp
+    self.pos = _save
+    break
+    end # end choice
 
     set_failed_rule :_ast_root unless _tmp
     return _tmp
@@ -2823,5 +2860,5 @@ class KPeg::FormatParser
   Rules[:_ast_word] = rule_info("ast_word", "< /[A-Za-z_][A-Za-z0-9_]*/ > { text }")
   Rules[:_ast_sp] = rule_info("ast_sp", "(\" \" | \"\\t\")*")
   Rules[:_ast_words] = rule_info("ast_words", "(ast_words:r ast_sp \",\" ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })")
-  Rules[:_ast_root] = rule_info("ast_root", "ast_constant:c \"(\" ast_words:w \")\" { [c, w] }")
+  Rules[:_ast_root] = rule_info("ast_root", "(ast_constant:c \"(\" ast_words:w \")\" { [c, w] } | ast_constant:c \"()\"? { [c, []] })")
 end

@@ -113,3 +113,4 @@ sgl_escape_quote = "\\'" { "'" }
                  | ast_word:w { [w] }
 
         ast_root = ast_constant:c "(" ast_words:w ")" { [c, w] }
+                 | ast_constant:c "()"? { [c, []] }
