@@ -323,9 +323,14 @@ Value   = NUMBER:i                      { i }
     assert_rule G.seq(:b, :c, G.action(" b + { c + d } ")), m
   end
 
-  def test_bracket_in_curley_kills_kpeg
-    m = match 'a=b c { b + c + "{" }'
-    assert_rule G.seq(:b, :c, G.action(' b + c + "{"')), m
+  def test_actions_handle_double_quoted_strings
+    m = match 'a=b c { b + c + "}" }'
+    assert_rule G.seq(:b, :c, G.action(' b + c + "}" ')), m
+  end
+
+  def test_actions_handle_single_quoted_strings
+    m = match "a=b c { b + c + '}' }"
+    assert_rule G.seq(:b, :c, G.action(" b + c + '}' ")), m
   end
 
   def test_action_send
