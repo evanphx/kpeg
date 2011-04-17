@@ -56,7 +56,7 @@ sgl_escape_quote = "\\'" { "'" }
 
      curly_block = curly
            curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
-    nested_paren = "(" (/[^()]+/ | nested_paren)* ")"
+    nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
 
            value = value:v ":" var:n { @g.t(v,n) }
                  | value:v "?" { @g.maybe(v) }

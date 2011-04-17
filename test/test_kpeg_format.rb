@@ -95,6 +95,17 @@ b(p) = x
     assert_equal "(1)", rule.op.arguments
   end
 
+  def test_invoke_with_double_quoted_strings
+    m = match "a=b(\")\")"
+    assert_equal "(\")\")", m.find("a").op.arguments
+  end
+
+  def test_invoke_with_single_quoted_strings
+    m = match "a=b(')')"
+    assert_equal "(')')", m.find("a").op.arguments
+  end
+
+
   def test_invoke_with_multiple_args
     assert_rule G.invoke("b", "(1,2)"), match("a=b(1,2)"), "a"
   end
