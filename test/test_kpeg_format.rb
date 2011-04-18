@@ -359,6 +359,11 @@ Value   = NUMBER:i                      { i }
     assert_rule G.collect(G.seq(:b, :c)), m
   end
 
+  def test_bounds
+    m = match 'a = @< b c >'
+    assert_rule G.bounds(G.seq(:b, :c)), m
+  end
+
   def test_comment
     m = match "a=b # this is a comment\n"
     assert_rule G.ref('b'), m

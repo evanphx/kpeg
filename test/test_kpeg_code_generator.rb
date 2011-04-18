@@ -1301,6 +1301,56 @@ end
     assert_equal "hello", code.result
   end
 
+  def test_bounds
+    gram = KPeg.grammar do |g|
+      g.root = g.seq(g.bounds("hello"), g.action(" bounds "))
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # root = @< "hello" > { bounds }
+  def _root
+
+    _save = self.pos
+    while true # sequence
+      _bounds_start = self.pos
+      _tmp = match_string("hello")
+      if _tmp
+        bounds = [_bounds_start, self.pos]
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  bounds ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", "@< \\\"hello\\\" > { bounds }")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    code = cg.make("hello")
+    assert code.parse
+    assert_equal [0,5], code.result
+  end
+
   def test_parse_error
     gram = KPeg.grammar do |g|
       g.world = "world"

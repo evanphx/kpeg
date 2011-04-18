@@ -12,7 +12,9 @@ module KPeg
 
   def self.load_grammar(file, log=false)
     parser = KPeg::FormatParser.new File.read(file)
-    parser.parse
+    if !parser.parse
+      parser.raise_error
+    end
 
     return parser.grammar
   end

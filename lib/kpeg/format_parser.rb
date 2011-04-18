@@ -339,37 +339,37 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("#")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    while true
+      _tmp = match_string("#")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
 
-    _save2 = self.pos
-    while true # sequence
-    _save3 = self.pos
-    _tmp = apply(:_eof)
-    _tmp = _tmp ? nil : true
-    self.pos = _save3
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = get_byte
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+        _save2 = self.pos
+        while true # sequence
+          _save3 = self.pos
+          _tmp = apply(:_eof)
+          _tmp = _tmp ? nil : true
+          self.pos = _save3
+          unless _tmp
+            self.pos = _save2
+            break
+          end
+          _tmp = get_byte
+          unless _tmp
+            self.pos = _save2
+          end
+          break
+        end # end sequence
 
-    break unless _tmp
-    end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
     end # end sequence
 
     set_failed_rule :_eof_comment unless _tmp
@@ -381,42 +381,42 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("#")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    while true
+      _tmp = match_string("#")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
 
-    _save2 = self.pos
-    while true # sequence
-    _save3 = self.pos
-    _tmp = apply(:_eol)
-    _tmp = _tmp ? nil : true
-    self.pos = _save3
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = get_byte
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+        _save2 = self.pos
+        while true # sequence
+          _save3 = self.pos
+          _tmp = apply(:_eol)
+          _tmp = _tmp ? nil : true
+          self.pos = _save3
+          unless _tmp
+            self.pos = _save2
+            break
+          end
+          _tmp = get_byte
+          unless _tmp
+            self.pos = _save2
+          end
+          break
+        end # end sequence
 
-    break unless _tmp
-    end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_eol)
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:_eol)
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_comment unless _tmp
@@ -428,16 +428,16 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # choice
-    _tmp = match_string(" ")
-    break if _tmp
-    self.pos = _save
-    _tmp = match_string("\t")
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_eol)
-    break if _tmp
-    self.pos = _save
-    break
+      _tmp = match_string(" ")
+      break if _tmp
+      self.pos = _save
+      _tmp = match_string("\t")
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_eol)
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_space unless _tmp
@@ -448,18 +448,18 @@ class KPeg::FormatParser
   def __hyphen_
     while true
 
-    _save1 = self.pos
-    while true # choice
-    _tmp = apply(:_space)
-    break if _tmp
-    self.pos = _save1
-    _tmp = apply(:_comment)
-    break if _tmp
-    self.pos = _save1
-    break
-    end # end choice
+      _save1 = self.pos
+      while true # choice
+        _tmp = apply(:_space)
+        break if _tmp
+        self.pos = _save1
+        _tmp = apply(:_comment)
+        break if _tmp
+        self.pos = _save1
+        break
+      end # end choice
 
-    break unless _tmp
+      break unless _tmp
     end
     _tmp = true
     set_failed_rule :__hyphen_ unless _tmp
@@ -478,32 +478,32 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
+      _text_start = self.pos
 
-    _save1 = self.pos
-    while true # choice
-    _tmp = match_string("-")
-    break if _tmp
-    self.pos = _save1
-    _tmp = scan(/\A(?-mix:[a-zA-Z][\-_a-zA-Z0-9]*)/)
-    break if _tmp
-    self.pos = _save1
-    break
-    end # end choice
+      _save1 = self.pos
+      while true # choice
+        _tmp = match_string("-")
+        break if _tmp
+        self.pos = _save1
+        _tmp = scan(/\A(?-mix:[a-zA-Z][\-_a-zA-Z0-9]*)/)
+        break if _tmp
+        self.pos = _save1
+        break
+      end # end choice
 
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_var unless _tmp
@@ -515,21 +515,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[a-zA-Z_][a-zA-Z0-9_]*)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[a-zA-Z_][a-zA-Z0-9_]*)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_method unless _tmp
@@ -542,96 +542,96 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = match_string("\\\"")
-    unless _tmp
-      self.pos = _save1
+      _save1 = self.pos
+      while true # sequence
+        _tmp = match_string("\\\"")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  '"' ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save2 = self.pos
+      while true # sequence
+        _tmp = match_string("\\n")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  "\n" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save3 = self.pos
+      while true # sequence
+        _tmp = match_string("\\t")
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        @result = begin;  "\t" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save3
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save4 = self.pos
+      while true # sequence
+        _tmp = match_string("\\b")
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        @result = begin;  "\b" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save4
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save5 = self.pos
+      while true # sequence
+        _tmp = match_string("\\\\")
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        @result = begin;  "\\" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save5
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
       break
-    end
-    @result = begin;  '"' ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-
-    _save2 = self.pos
-    while true # sequence
-    _tmp = match_string("\\n")
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  "\n" ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-
-    _save3 = self.pos
-    while true # sequence
-    _tmp = match_string("\\t")
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    @result = begin;  "\t" ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save3
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-
-    _save4 = self.pos
-    while true # sequence
-    _tmp = match_string("\\b")
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    @result = begin;  "\b" ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save4
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-
-    _save5 = self.pos
-    while true # sequence
-    _tmp = match_string("\\\\")
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    @result = begin;  "\\" ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save5
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-    break
     end # end choice
 
     set_failed_rule :_dbl_escapes unless _tmp
@@ -643,21 +643,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[^\\"]+)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[^\\"]+)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_dbl_seq unless _tmp
@@ -669,58 +669,58 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _save1 = self.pos
-    _ary = []
+      _save1 = self.pos
+      _ary = []
 
-    _save2 = self.pos
-    while true # choice
-    _tmp = apply(:_dbl_escapes)
-    s = @result
-    break if _tmp
-    self.pos = _save2
-    _tmp = apply(:_dbl_seq)
-    s = @result
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+      _save2 = self.pos
+      while true # choice
+        _tmp = apply(:_dbl_escapes)
+        s = @result
+        break if _tmp
+        self.pos = _save2
+        _tmp = apply(:_dbl_seq)
+        s = @result
+        break if _tmp
+        self.pos = _save2
+        break
+      end # end choice
 
-    if _tmp
-      _ary << @result
-      while true
-    
-    _save3 = self.pos
-    while true # choice
-    _tmp = apply(:_dbl_escapes)
-    s = @result
-    break if _tmp
-    self.pos = _save3
-    _tmp = apply(:_dbl_seq)
-    s = @result
-    break if _tmp
-    self.pos = _save3
-    break
-    end # end choice
+      if _tmp
+        _ary << @result
+        while true
 
-        _ary << @result if _tmp
-        break unless _tmp
+          _save3 = self.pos
+          while true # choice
+            _tmp = apply(:_dbl_escapes)
+            s = @result
+            break if _tmp
+            self.pos = _save3
+            _tmp = apply(:_dbl_seq)
+            s = @result
+            break if _tmp
+            self.pos = _save3
+            break
+          end # end choice
+
+          _ary << @result if _tmp
+          break unless _tmp
+        end
+        _tmp = true
+        @result = _ary
+      else
+        self.pos = _save1
       end
+      ary = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  ary ; end
       _tmp = true
-      @result = _ary
-    else
-      self.pos = _save1
-    end
-    ary = @result
-    unless _tmp
-      self.pos = _save
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  ary ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_dbl_not_quote unless _tmp
@@ -732,28 +732,28 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("\"")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("\"")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_dbl_not_quote)
+      s = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("\"")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  @g.str(s.join) ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:_dbl_not_quote)
-    s = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = match_string("\"")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  @g.str(s.join) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_dbl_string unless _tmp
@@ -765,17 +765,17 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("\\'")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("\\'")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  "'" ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  "'" ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_sgl_escape_quote unless _tmp
@@ -787,21 +787,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[^'])/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[^'])/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_sgl_seq unless _tmp
@@ -813,54 +813,54 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _save1 = self.pos
-    _ary = []
+      _save1 = self.pos
+      _ary = []
 
-    _save2 = self.pos
-    while true # choice
-    _tmp = apply(:_sgl_escape_quote)
-    break if _tmp
-    self.pos = _save2
-    _tmp = apply(:_sgl_seq)
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+      _save2 = self.pos
+      while true # choice
+        _tmp = apply(:_sgl_escape_quote)
+        break if _tmp
+        self.pos = _save2
+        _tmp = apply(:_sgl_seq)
+        break if _tmp
+        self.pos = _save2
+        break
+      end # end choice
 
-    if _tmp
-      _ary << @result
-      while true
-    
-    _save3 = self.pos
-    while true # choice
-    _tmp = apply(:_sgl_escape_quote)
-    break if _tmp
-    self.pos = _save3
-    _tmp = apply(:_sgl_seq)
-    break if _tmp
-    self.pos = _save3
-    break
-    end # end choice
+      if _tmp
+        _ary << @result
+        while true
 
-        _ary << @result if _tmp
-        break unless _tmp
+          _save3 = self.pos
+          while true # choice
+            _tmp = apply(:_sgl_escape_quote)
+            break if _tmp
+            self.pos = _save3
+            _tmp = apply(:_sgl_seq)
+            break if _tmp
+            self.pos = _save3
+            break
+          end # end choice
+
+          _ary << @result if _tmp
+          break unless _tmp
+        end
+        _tmp = true
+        @result = _ary
+      else
+        self.pos = _save1
       end
+      segs = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  segs.join ; end
       _tmp = true
-      @result = _ary
-    else
-      self.pos = _save1
-    end
-    segs = @result
-    unless _tmp
-      self.pos = _save
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  segs.join ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_sgl_not_quote unless _tmp
@@ -872,28 +872,28 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("'")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("'")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_sgl_not_quote)
+      s = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("'")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  @g.str(s) ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:_sgl_not_quote)
-    s = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = match_string("'")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  @g.str(s) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_sgl_string unless _tmp
@@ -905,13 +905,13 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # choice
-    _tmp = apply(:_dbl_string)
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_sgl_string)
-    break if _tmp
-    self.pos = _save
-    break
+      _tmp = apply(:_dbl_string)
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_sgl_string)
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_string unless _tmp
@@ -923,53 +923,53 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _save1 = self.pos
+      _text_start = self.pos
+      _save1 = self.pos
 
-    _save2 = self.pos
-    while true # choice
-    _tmp = match_string("\\/")
-    break if _tmp
-    self.pos = _save2
-    _tmp = scan(/\A(?-mix:[^\/])/)
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+      _save2 = self.pos
+      while true # choice
+        _tmp = match_string("\\/")
+        break if _tmp
+        self.pos = _save2
+        _tmp = scan(/\A(?-mix:[^\/])/)
+        break if _tmp
+        self.pos = _save2
+        break
+      end # end choice
 
-    if _tmp
-      while true
-    
-    _save3 = self.pos
-    while true # choice
-    _tmp = match_string("\\/")
-    break if _tmp
-    self.pos = _save3
-    _tmp = scan(/\A(?-mix:[^\/])/)
-    break if _tmp
-    self.pos = _save3
-    break
-    end # end choice
+      if _tmp
+        while true
 
-        break unless _tmp
+          _save3 = self.pos
+          while true # choice
+            _tmp = match_string("\\/")
+            break if _tmp
+            self.pos = _save3
+            _tmp = scan(/\A(?-mix:[^\/])/)
+            break if _tmp
+            self.pos = _save3
+            break
+          end # end choice
+
+          break unless _tmp
+        end
+        _tmp = true
+      else
+        self.pos = _save1
       end
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
       _tmp = true
-    else
-      self.pos = _save1
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_not_slash unless _tmp
@@ -981,32 +981,32 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    while true
-    _save2 = self.pos
-    _tmp = get_byte
-    if _tmp
-      unless _tmp >= 97 and _tmp <= 122
-        self.pos = _save2
-        _tmp = nil
+      _text_start = self.pos
+      while true
+        _save2 = self.pos
+        _tmp = get_byte
+        if _tmp
+          unless _tmp >= 97 and _tmp <= 122
+            self.pos = _save2
+            _tmp = nil
+          end
+        end
+        break unless _tmp
       end
-    end
-    break unless _tmp
-    end
-    _tmp = true
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _tmp = true
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_regexp_opts unless _tmp
@@ -1018,34 +1018,34 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("/")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("/")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_not_slash)
+      body = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("/")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_regexp_opts)
+      opts = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  @g.reg body, opts ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:_not_slash)
-    body = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = match_string("/")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = apply(:_regexp_opts)
-    opts = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  @g.reg body, opts ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_regexp unless _tmp
@@ -1057,21 +1057,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[a-zA-Z0-9])/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[a-zA-Z0-9])/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_char unless _tmp
@@ -1083,39 +1083,39 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("[")
-    unless _tmp
-      self.pos = _save
+      _tmp = match_string("[")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_char)
+      l = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("-")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_char)
+      r = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("]")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  @g.range(l,r) ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:_char)
-    l = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = match_string("-")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = apply(:_char)
-    r = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = match_string("]")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  @g.range(l,r) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_char_range unless _tmp
@@ -1127,21 +1127,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[1-9][0-9]*)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[1-9][0-9]*)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_range_num unless _tmp
@@ -1153,32 +1153,32 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
+      _text_start = self.pos
 
-    _save1 = self.pos
-    while true # choice
-    _tmp = apply(:_range_num)
-    break if _tmp
-    self.pos = _save1
-    _tmp = apply(:_kleene)
-    break if _tmp
-    self.pos = _save1
-    break
-    end # end choice
+      _save1 = self.pos
+      while true # choice
+        _tmp = apply(:_range_num)
+        break if _tmp
+        self.pos = _save1
+        _tmp = apply(:_kleene)
+        break if _tmp
+        self.pos = _save1
+        break
+      end # end choice
 
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_range_elem unless _tmp
@@ -1191,105 +1191,105 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = match_string("[")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_range_elem)
-    l = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(",")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_range_elem)
-    r = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string("]")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = match_string("[")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_range_elem)
+        l = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(",")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_range_elem)
+        r = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string("]")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = match_string("[")
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_range_num)
-    e = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = match_string("]")
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  [e.to_i, e.to_i] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = match_string("[")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_range_num)
+        e = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = match_string("]")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [e.to_i, e.to_i] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    break
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_mult_range unless _tmp
@@ -1303,51 +1303,54 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # curly = "{" < (/[^{}]+/ | curly)* > "}" { @g.action(text) }
+  # curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
   def _curly
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("{")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _text_start = self.pos
-    while true
+      _tmp = match_string("{")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _text_start = self.pos
+      while true
 
-    _save2 = self.pos
-    while true # choice
-    _tmp = scan(/\A(?-mix:[^{}]+)/)
-    break if _tmp
-    self.pos = _save2
-    _tmp = apply(:_curly)
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+        _save2 = self.pos
+        while true # choice
+          _tmp = scan(/\A(?-mix:[^{}"']+)/)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_string)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_curly)
+          break if _tmp
+          self.pos = _save2
+          break
+        end # end choice
 
-    break unless _tmp
-    end
-    _tmp = true
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+        break unless _tmp
+      end
+      _tmp = true
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("}")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  @g.action(text) ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = match_string("}")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  @g.action(text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_curly unless _tmp
@@ -1359,557 +1362,596 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = match_string("(")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    while true
+      _tmp = match_string("(")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
 
-    _save2 = self.pos
-    while true # choice
-    _tmp = scan(/\A(?-mix:[^()]+)/)
-    break if _tmp
-    self.pos = _save2
-    _tmp = apply(:_nested_paren)
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+        _save2 = self.pos
+        while true # choice
+          _tmp = scan(/\A(?-mix:[^()]+)/)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_nested_paren)
+          break if _tmp
+          self.pos = _save2
+          break
+        end # end choice
 
-    break unless _tmp
-    end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string(")")
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = match_string(")")
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_nested_paren unless _tmp
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(":")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_var)
-    n = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  @g.t(v,n) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(":")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_var)
+        n = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  @g.t(v,n) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = match_string("?")
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  @g.maybe(v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = match_string("?")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  @g.maybe(v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save3 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = match_string("+")
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    @result = begin;  @g.many(v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save3
-    end
-    break
-    end # end sequence
+      _save3 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = match_string("+")
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        @result = begin;  @g.many(v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save3
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save4 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    _tmp = match_string("*")
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    @result = begin;  @g.kleene(v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save4
-    end
-    break
-    end # end sequence
+      _save4 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        _tmp = match_string("*")
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        @result = begin;  @g.kleene(v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save4
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save5 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = apply(:_mult_range)
-    r = @result
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    @result = begin;  @g.multiple(v, *r) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save5
-    end
-    break
-    end # end sequence
+      _save5 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = apply(:_mult_range)
+        r = @result
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        @result = begin;  @g.multiple(v, *r) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save5
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save6 = self.pos
-    while true # sequence
-    _tmp = match_string("&")
-    unless _tmp
-      self.pos = _save6
-      break
-    end
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save6
-      break
-    end
-    @result = begin;  @g.andp(v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save6
-    end
-    break
-    end # end sequence
+      _save6 = self.pos
+      while true # sequence
+        _tmp = match_string("&")
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        @result = begin;  @g.andp(v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save6
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save7 = self.pos
-    while true # sequence
-    _tmp = match_string("!")
-    unless _tmp
-      self.pos = _save7
-      break
-    end
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save7
-      break
-    end
-    @result = begin;  @g.notp(v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save7
-    end
-    break
-    end # end sequence
+      _save7 = self.pos
+      while true # sequence
+        _tmp = match_string("!")
+        unless _tmp
+          self.pos = _save7
+          break
+        end
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save7
+          break
+        end
+        @result = begin;  @g.notp(v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save7
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save8 = self.pos
-    while true # sequence
-    _tmp = match_string("(")
-    unless _tmp
-      self.pos = _save8
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save8
-      break
-    end
-    _tmp = apply(:_expression)
-    o = @result
-    unless _tmp
-      self.pos = _save8
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save8
-      break
-    end
-    _tmp = match_string(")")
-    unless _tmp
-      self.pos = _save8
-      break
-    end
-    @result = begin;  o ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save8
-    end
-    break
-    end # end sequence
+      _save8 = self.pos
+      while true # sequence
+        _tmp = match_string("(")
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        _tmp = apply(:_expression)
+        o = @result
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        _tmp = match_string(")")
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        @result = begin;  o ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save8
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save9 = self.pos
-    while true # sequence
-    _tmp = match_string("<")
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    _tmp = apply(:_expression)
-    o = @result
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    _tmp = match_string(">")
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    @result = begin;  @g.collect(o) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save9
-    end
-    break
-    end # end sequence
+      _save9 = self.pos
+      while true # sequence
+        _tmp = match_string("@<")
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        _tmp = apply(:_expression)
+        o = @result
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        _tmp = match_string(">")
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        @result = begin;  @g.bounds(o) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save9
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_curly_block)
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save10 = self.pos
-    while true # sequence
-    _tmp = match_string("~")
-    unless _tmp
-      self.pos = _save10
-      break
-    end
-    _tmp = apply(:_method)
-    m = @result
-    unless _tmp
-      self.pos = _save10
-      break
-    end
-    _text_start = self.pos
-    _save11 = self.pos
-    _tmp = apply(:_nested_paren)
-    unless _tmp
-      _tmp = true
-      self.pos = _save11
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save10
-      break
-    end
-    @result = begin;  @g.action("#{m}#{text}") ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save10
-    end
-    break
-    end # end sequence
+      _save10 = self.pos
+      while true # sequence
+        _tmp = match_string("<")
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        _tmp = apply(:_expression)
+        o = @result
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        _tmp = match_string(">")
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        @result = begin;  @g.collect(o) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save10
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_curly_block)
+      break if _tmp
+      self.pos = _save
 
-    _save12 = self.pos
-    while true # sequence
-    _tmp = match_string(".")
-    unless _tmp
-      self.pos = _save12
-      break
-    end
-    @result = begin;  @g.dot ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save12
-    end
-    break
-    end # end sequence
+      _save11 = self.pos
+      while true # sequence
+        _tmp = match_string("~")
+        unless _tmp
+          self.pos = _save11
+          break
+        end
+        _tmp = apply(:_method)
+        m = @result
+        unless _tmp
+          self.pos = _save11
+          break
+        end
+        _text_start = self.pos
+        _save12 = self.pos
+        _tmp = apply(:_nested_paren)
+        unless _tmp
+          _tmp = true
+          self.pos = _save12
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save11
+          break
+        end
+        @result = begin;  @g.action("#{m}#{text}") ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save11
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save13 = self.pos
-    while true # sequence
-    _tmp = match_string("@")
-    unless _tmp
-      self.pos = _save13
-      break
-    end
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save13
-      break
-    end
-    _save14 = self.pos
+      _save13 = self.pos
+      while true # sequence
+        _tmp = match_string(".")
+        unless _tmp
+          self.pos = _save13
+          break
+        end
+        @result = begin;  @g.dot ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save13
+        end
+        break
+      end # end sequence
 
-    _save15 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save15
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save15
-    end
-    break
-    end # end sequence
+      break if _tmp
+      self.pos = _save
 
-    _tmp = _tmp ? nil : true
-    self.pos = _save14
-    unless _tmp
-      self.pos = _save13
-      break
-    end
-    @result = begin;  @g.invoke(name) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save13
-    end
-    break
-    end # end sequence
+      _save14 = self.pos
+      while true # sequence
+        _tmp = match_string("@")
+        unless _tmp
+          self.pos = _save14
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save14
+          break
+        end
+        _save15 = self.pos
 
-    break if _tmp
-    self.pos = _save
+        _save16 = self.pos
+        while true # sequence
+          _tmp = apply(:__hyphen_)
+          unless _tmp
+            self.pos = _save16
+            break
+          end
+          _tmp = match_string("=")
+          unless _tmp
+            self.pos = _save16
+          end
+          break
+        end # end sequence
 
-    _save16 = self.pos
-    while true # sequence
-    _tmp = match_string("^")
-    unless _tmp
-      self.pos = _save16
-      break
-    end
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save16
-      break
-    end
-    _text_start = self.pos
-    _save17 = self.pos
-    _tmp = apply(:_nested_paren)
-    unless _tmp
-      _tmp = true
-      self.pos = _save17
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save16
-      break
-    end
-    @result = begin;  @g.foreign_invoke("parent", name, text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save16
-    end
-    break
-    end # end sequence
+        _tmp = _tmp ? nil : true
+        self.pos = _save15
+        unless _tmp
+          self.pos = _save14
+          break
+        end
+        @result = begin;  @g.invoke(name) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save14
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save18 = self.pos
-    while true # sequence
-    _tmp = match_string("%")
-    unless _tmp
-      self.pos = _save18
-      break
-    end
-    _tmp = apply(:_var)
-    gram = @result
-    unless _tmp
-      self.pos = _save18
-      break
-    end
-    _tmp = match_string(".")
-    unless _tmp
-      self.pos = _save18
-      break
-    end
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save18
-      break
-    end
-    _text_start = self.pos
-    _save19 = self.pos
-    _tmp = apply(:_nested_paren)
-    unless _tmp
-      _tmp = true
-      self.pos = _save19
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save18
-      break
-    end
-    @result = begin;  @g.foreign_invoke(gram, name, text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save18
-    end
-    break
-    end # end sequence
+      _save17 = self.pos
+      while true # sequence
+        _tmp = match_string("^")
+        unless _tmp
+          self.pos = _save17
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save17
+          break
+        end
+        _text_start = self.pos
+        _save18 = self.pos
+        _tmp = apply(:_nested_paren)
+        unless _tmp
+          _tmp = true
+          self.pos = _save18
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save17
+          break
+        end
+        @result = begin;  @g.foreign_invoke("parent", name, text) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save17
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save20 = self.pos
-    while true # sequence
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save20
-      break
-    end
-    _text_start = self.pos
-    _save21 = self.pos
-    _tmp = apply(:_nested_paren)
-    unless _tmp
-      _tmp = true
-      self.pos = _save21
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save20
-      break
-    end
-    _save22 = self.pos
+      _save19 = self.pos
+      while true # sequence
+        _tmp = match_string("%")
+        unless _tmp
+          self.pos = _save19
+          break
+        end
+        _tmp = apply(:_var)
+        gram = @result
+        unless _tmp
+          self.pos = _save19
+          break
+        end
+        _tmp = match_string(".")
+        unless _tmp
+          self.pos = _save19
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save19
+          break
+        end
+        _text_start = self.pos
+        _save20 = self.pos
+        _tmp = apply(:_nested_paren)
+        unless _tmp
+          _tmp = true
+          self.pos = _save20
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save19
+          break
+        end
+        @result = begin;  @g.foreign_invoke(gram, name, text) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save19
+        end
+        break
+      end # end sequence
 
-    _save23 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save23
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save23
-    end
-    break
-    end # end sequence
+      break if _tmp
+      self.pos = _save
 
-    _tmp = _tmp ? nil : true
-    self.pos = _save22
-    unless _tmp
-      self.pos = _save20
-      break
-    end
-    @result = begin;  text.empty? ? @g.ref(name) : @g.invoke(name, text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save20
-    end
-    break
-    end # end sequence
+      _save21 = self.pos
+      while true # sequence
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save21
+          break
+        end
+        _text_start = self.pos
+        _save22 = self.pos
+        _tmp = apply(:_nested_paren)
+        unless _tmp
+          _tmp = true
+          self.pos = _save22
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save21
+          break
+        end
+        _save23 = self.pos
 
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_char_range)
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_regexp)
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_string)
-    break if _tmp
-    self.pos = _save
-    break
+        _save24 = self.pos
+        while true # sequence
+          _tmp = apply(:__hyphen_)
+          unless _tmp
+            self.pos = _save24
+            break
+          end
+          _tmp = match_string("=")
+          unless _tmp
+            self.pos = _save24
+          end
+          break
+        end # end sequence
+
+        _tmp = _tmp ? nil : true
+        self.pos = _save23
+        unless _tmp
+          self.pos = _save21
+          break
+        end
+        @result = begin;  text.empty? ? @g.ref(name) : @g.invoke(name, text) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save21
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_char_range)
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_regexp)
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_string)
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_value unless _tmp
@@ -1922,28 +1964,28 @@ class KPeg::FormatParser
 
     _save1 = self.pos
     while true # choice
-    _tmp = apply(:_space)
-    break if _tmp
-    self.pos = _save1
-    _tmp = apply(:_comment)
-    break if _tmp
-    self.pos = _save1
-    break
+      _tmp = apply(:_space)
+      break if _tmp
+      self.pos = _save1
+      _tmp = apply(:_comment)
+      break if _tmp
+      self.pos = _save1
+      break
     end # end choice
 
     if _tmp
       while true
-    
-    _save2 = self.pos
-    while true # choice
-    _tmp = apply(:_space)
-    break if _tmp
-    self.pos = _save2
-    _tmp = apply(:_comment)
-    break if _tmp
-    self.pos = _save2
-    break
-    end # end choice
+
+        _save2 = self.pos
+        while true # choice
+          _tmp = apply(:_space)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_comment)
+          break if _tmp
+          self.pos = _save2
+          break
+        end # end choice
 
         break unless _tmp
       end
@@ -1961,69 +2003,69 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_values)
-    s = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_spaces)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_value)
-    v = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  @g.seq(s, v) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_values)
+        s = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_spaces)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_value)
+        v = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  @g.seq(s, v) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:_value)
-    l = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_spaces)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_value)
-    r = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  @g.seq(l, r) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_value)
+        l = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_spaces)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_value)
+        r = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  @g.seq(l, r) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_value)
-    break if _tmp
-    self.pos = _save
-    break
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_value)
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_values unless _tmp
@@ -2035,33 +2077,33 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save
+      _tmp = apply(:__hyphen_)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("|")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:__hyphen_)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_values)
+      v = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  v ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = match_string("|")
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = apply(:_values)
-    v = @result
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    @result = begin;  v ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_choose_cont unless _tmp
@@ -2074,48 +2116,48 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_values)
-    v = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _save2 = self.pos
-    _ary = []
-    _tmp = apply(:_choose_cont)
-    if _tmp
-      _ary << @result
-      while true
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_values)
+        v = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _save2 = self.pos
+        _ary = []
         _tmp = apply(:_choose_cont)
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-    else
-      self.pos = _save2
-    end
-    alts = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  @g.any(v, *alts) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+        if _tmp
+          _ary << @result
+          while true
+            _tmp = apply(:_choose_cont)
+            _ary << @result if _tmp
+            break unless _tmp
+          end
+          _tmp = true
+          @result = _ary
+        else
+          self.pos = _save2
+        end
+        alts = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  @g.any(v, *alts) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    _tmp = apply(:_values)
-    break if _tmp
-    self.pos = _save
-    break
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_values)
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_expression unless _tmp
@@ -2128,75 +2170,75 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_args)
-    a = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(",")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_var)
-    n = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  a + [n] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_args)
+        a = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(",")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_var)
+        n = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  a + [n] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_var)
-    n = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  [n] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_var)
+        n = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [n] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    break
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_args unless _tmp
@@ -2209,301 +2251,301 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_var)
-    v = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string("(")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_args)
-    a = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(")")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_expression)
-    o = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  @g.set(v, o, a) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_var)
+        v = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string("(")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_args)
+        a = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(")")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string("=")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_expression)
+        o = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  @g.set(v, o, a) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_var)
-    v = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_expression)
-    o = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  @g.set(v, o) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_var)
+        v = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = match_string("=")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_expression)
+        o = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  @g.set(v, o) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save3 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = match_string("%")
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[::A-Za-z0-9_]+)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save3
-      break
-    end
-    @result = begin;  @g.add_foreign_grammar(name, text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save3
-    end
-    break
-    end # end sequence
+      _save3 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = match_string("%")
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = match_string("=")
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        _text_start = self.pos
+        _tmp = scan(/\A(?-mix:[::A-Za-z0-9_]+)/)
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save3
+          break
+        end
+        @result = begin;  @g.add_foreign_grammar(name, text) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save3
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save4 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    _tmp = match_string("%%")
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    _tmp = apply(:_curly)
-    act = @result
-    unless _tmp
-      self.pos = _save4
-      break
-    end
-    @result = begin;  @g.add_setup act ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save4
-    end
-    break
-    end # end sequence
+      _save4 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        _tmp = match_string("%%")
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        _tmp = apply(:_curly)
+        act = @result
+        unless _tmp
+          self.pos = _save4
+          break
+        end
+        @result = begin;  @g.add_setup act ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save4
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save5 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = match_string("%%")
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = apply(:_var)
-    name = @result
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = match_string("=")
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    _text_start = self.pos
-    _save6 = self.pos
+      _save5 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = match_string("%%")
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = match_string("=")
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        _text_start = self.pos
+        _save6 = self.pos
 
-    _save7 = self.pos
-    while true # sequence
-    _save8 = self.pos
-    _tmp = match_string("\n")
-    _tmp = _tmp ? nil : true
-    self.pos = _save8
-    unless _tmp
-      self.pos = _save7
-      break
-    end
-    _tmp = get_byte
-    unless _tmp
-      self.pos = _save7
-    end
-    break
-    end # end sequence
+        _save7 = self.pos
+        while true # sequence
+          _save8 = self.pos
+          _tmp = match_string("\n")
+          _tmp = _tmp ? nil : true
+          self.pos = _save8
+          unless _tmp
+            self.pos = _save7
+            break
+          end
+          _tmp = get_byte
+          unless _tmp
+            self.pos = _save7
+          end
+          break
+        end # end sequence
 
-    if _tmp
-      while true
-    
-    _save9 = self.pos
-    while true # sequence
-    _save10 = self.pos
-    _tmp = match_string("\n")
-    _tmp = _tmp ? nil : true
-    self.pos = _save10
-    unless _tmp
-      self.pos = _save9
-      break
-    end
-    _tmp = get_byte
-    unless _tmp
-      self.pos = _save9
-    end
-    break
-    end # end sequence
+        if _tmp
+          while true
 
-        break unless _tmp
-      end
-      _tmp = true
-    else
-      self.pos = _save6
-    end
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save5
-      break
-    end
-    @result = begin;  @g.set_variable(name, text) ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save5
-    end
-    break
-    end # end sequence
+            _save9 = self.pos
+            while true # sequence
+              _save10 = self.pos
+              _tmp = match_string("\n")
+              _tmp = _tmp ? nil : true
+              self.pos = _save10
+              unless _tmp
+                self.pos = _save9
+                break
+              end
+              _tmp = get_byte
+              unless _tmp
+                self.pos = _save9
+              end
+              break
+            end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    break
+            break unless _tmp
+          end
+          _tmp = true
+        else
+          self.pos = _save6
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save5
+          break
+        end
+        @result = begin;  @g.set_variable(name, text) ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save5
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_statement unless _tmp
@@ -2515,35 +2557,35 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply(:_statement)
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _save1 = self.pos
+      _tmp = apply(:_statement)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _save1 = self.pos
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _tmp = apply(:_statements)
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_statements)
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    unless _tmp
-      _tmp = true
-      self.pos = _save1
-    end
-    unless _tmp
-      self.pos = _save
-    end
-    break
+      unless _tmp
+        _tmp = true
+        self.pos = _save1
+      end
+      unless _tmp
+        self.pos = _save
+      end
+      break
     end # end sequence
 
     set_failed_rule :_statements unless _tmp
@@ -2565,31 +2607,31 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _tmp = apply(:_statements)
-    unless _tmp
-      self.pos = _save
+      _tmp = apply(:_statements)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:__hyphen_)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _save1 = self.pos
+      _tmp = apply(:_eof_comment)
+      unless _tmp
+        _tmp = true
+        self.pos = _save1
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_eof)
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    _tmp = apply(:__hyphen_)
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _save1 = self.pos
-    _tmp = apply(:_eof_comment)
-    unless _tmp
-      _tmp = true
-      self.pos = _save1
-    end
-    unless _tmp
-      self.pos = _save
-      break
-    end
-    _tmp = apply(:_eof)
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_root unless _tmp
@@ -2601,21 +2643,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[A-Z][A-Za-z0-9_]*)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[A-Z][A-Za-z0-9_]*)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_ast_constant unless _tmp
@@ -2627,21 +2669,21 @@ class KPeg::FormatParser
 
     _save = self.pos
     while true # sequence
-    _text_start = self.pos
-    _tmp = scan(/\A(?-mix:[A-Za-z_][A-Za-z0-9_]*)/)
-    if _tmp
-      text = get_text(_text_start)
-    end
-    unless _tmp
-      self.pos = _save
+      _text_start = self.pos
+      _tmp = scan(/\A(?-mix:[A-Za-z_][A-Za-z0-9_]*)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
       break
-    end
-    @result = begin;  text ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save
-    end
-    break
     end # end sequence
 
     set_failed_rule :_ast_word unless _tmp
@@ -2652,18 +2694,18 @@ class KPeg::FormatParser
   def _ast_sp
     while true
 
-    _save1 = self.pos
-    while true # choice
-    _tmp = match_string(" ")
-    break if _tmp
-    self.pos = _save1
-    _tmp = match_string("\t")
-    break if _tmp
-    self.pos = _save1
-    break
-    end # end choice
+      _save1 = self.pos
+      while true # choice
+        _tmp = match_string(" ")
+        break if _tmp
+        self.pos = _save1
+        _tmp = match_string("\t")
+        break if _tmp
+        self.pos = _save1
+        break
+      end # end choice
 
-    break unless _tmp
+      break unless _tmp
     end
     _tmp = true
     set_failed_rule :_ast_sp unless _tmp
@@ -2676,65 +2718,65 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_ast_words)
-    r = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_ast_sp)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(",")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_ast_sp)
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_ast_word)
-    w = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  r + [w] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_ast_words)
+        r = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_ast_sp)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(",")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_ast_sp)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_ast_word)
+        w = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  r + [w] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:_ast_word)
-    w = @result
-    unless _tmp
-      self.pos = _save2
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_ast_word)
+        w = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [w] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
       break
-    end
-    @result = begin;  [w] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
-
-    break if _tmp
-    self.pos = _save
-    break
     end # end choice
 
     set_failed_rule :_ast_words unless _tmp
@@ -2747,70 +2789,70 @@ class KPeg::FormatParser
     _save = self.pos
     while true # choice
 
-    _save1 = self.pos
-    while true # sequence
-    _tmp = apply(:_ast_constant)
-    c = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string("(")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = apply(:_ast_words)
-    w = @result
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    _tmp = match_string(")")
-    unless _tmp
-      self.pos = _save1
-      break
-    end
-    @result = begin;  [c, w] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save1
-    end
-    break
-    end # end sequence
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_ast_constant)
+        c = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string("(")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_ast_words)
+        w = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(")")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  [c, w] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
+      break if _tmp
+      self.pos = _save
 
-    _save2 = self.pos
-    while true # sequence
-    _tmp = apply(:_ast_constant)
-    c = @result
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    _save3 = self.pos
-    _tmp = match_string("()")
-    unless _tmp
-      _tmp = true
-      self.pos = _save3
-    end
-    unless _tmp
-      self.pos = _save2
-      break
-    end
-    @result = begin;  [c, []] ; end
-    _tmp = true
-    unless _tmp
-      self.pos = _save2
-    end
-    break
-    end # end sequence
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_ast_constant)
+        c = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _save3 = self.pos
+        _tmp = match_string("()")
+        unless _tmp
+          _tmp = true
+          self.pos = _save3
+        end
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [c, []] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-    break if _tmp
-    self.pos = _save
-    break
+      break if _tmp
+      self.pos = _save
+      break
     end # end choice
 
     set_failed_rule :_ast_root unless _tmp
@@ -2844,9 +2886,9 @@ class KPeg::FormatParser
   Rules[:_range_elem] = rule_info("range_elem", "< (range_num | kleene) > { text }")
   Rules[:_mult_range] = rule_info("mult_range", "(\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] } | \"[\" - range_num:e - \"]\" { [e.to_i, e.to_i] })")
   Rules[:_curly_block] = rule_info("curly_block", "curly")
-  Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}]+/ | curly)* > \"}\" { @g.action(text) }")
+  Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()]+/ | nested_paren)* \")\"")
-  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
+  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
   Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")

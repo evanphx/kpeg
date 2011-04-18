@@ -296,6 +296,12 @@ module KPeg
         code << indentify("if _tmp\n", indent)
         code << indentify("  text = get_text(_text_start)\n", indent)
         code << indentify("end\n", indent)
+      when Bounds
+        code << indentify("_bounds_start = self.pos\n", indent)
+        output_op code, op.op, indent
+        code << indentify("if _tmp\n", indent)
+        code << indentify("  bounds = [_bounds_start, self.pos]\n", indent)
+        code << indentify("end\n", indent)
       else
         raise "Unknown op - #{op.class}"
       end

@@ -66,6 +66,7 @@ sgl_escape_quote = "\\'" { "'" }
                  | "&" value:v { @g.andp(v) }
                  | "!" value:v { @g.notp(v) }
                  | "(" - expression:o - ")" { o }
+                 | "@<" - expression:o - ">" { @g.bounds(o) }
                  | "<" - expression:o - ">" { @g.collect(o) }
                  | curly_block
                  | "~" method:m < nested_paren? >

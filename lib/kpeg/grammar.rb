@@ -604,6 +604,28 @@ module KPeg
     end
   end
 
+  class Bounds < Operator
+    def initialize(op)
+      super()
+      @op = op
+    end
+
+    attr_reader :op
+
+    def ==(obj)
+      case obj
+      when Bounds
+        @op == obj.op
+      else
+        super
+      end
+    end
+
+    def inspect
+      inspect_type "bounds", @op.inspect
+    end
+  end
+
   class Grammar
     def initialize
       @rules = {}
@@ -817,6 +839,10 @@ module KPeg
 
     def collect(op)
       Collect.new Grammar.resolve(op)
+    end
+
+    def bounds(op)
+      Bounds.new Grammar.resolve(op)
     end
   end
 

@@ -163,6 +163,10 @@ module KPeg
         io.print "< "
         render_op io, op.op
         io.print " >"
+      when Bounds
+        io.print "@< "
+        render_op io, op.op
+        io.print " >"
       else
         raise "Unknown op type - #{op.class}"
       end
