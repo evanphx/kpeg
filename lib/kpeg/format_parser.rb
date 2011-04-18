@@ -20,8 +20,8 @@ class KPeg::FormatParser
     end
 
     attr_reader :string
-    attr_reader :result, :failing_rule_offset
-    attr_accessor :pos
+    attr_reader :failing_rule_offset
+    attr_accessor :result, :pos
 
     # STANDALONE START
     def current_column(target=pos)
@@ -234,6 +234,7 @@ class KPeg::FormatParser
       begin
         if val = __send__(rule, *args)
           other.pos = @pos
+          other.result = @result
         else
           other.set_failed_rule "#{self.class}##{rule}"
         end
@@ -536,7 +537,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # dbl_escapes = ("\\\"" { '"' } | "\\n" { "\n" } | "\\t" { "\t" } | "\\b" { "\b" } | "\\\\" { "\\" })
+  # dbl_escapes = ("n" { "\n" } | "s" { " " } | "r" { "\r" } | "t" { "\t" } | "v" { "\v" } | "f" { "\f" } | "b" { "\b" } | "a" { "\a" } | "e" { "\e" } | "\\" { "\\" } | "\"" { "\"" } | num_escapes)
   def _dbl_escapes
 
     _save = self.pos
@@ -544,12 +545,12 @@ class KPeg::FormatParser
 
       _save1 = self.pos
       while true # sequence
-        _tmp = match_string("\\\"")
+        _tmp = match_string("n")
         unless _tmp
           self.pos = _save1
           break
         end
-        @result = begin;  '"' ; end
+        @result = begin;  "\n" ; end
         _tmp = true
         unless _tmp
           self.pos = _save1
@@ -562,12 +563,12 @@ class KPeg::FormatParser
 
       _save2 = self.pos
       while true # sequence
-        _tmp = match_string("\\n")
+        _tmp = match_string("s")
         unless _tmp
           self.pos = _save2
           break
         end
-        @result = begin;  "\n" ; end
+        @result = begin;  " " ; end
         _tmp = true
         unless _tmp
           self.pos = _save2
@@ -580,12 +581,12 @@ class KPeg::FormatParser
 
       _save3 = self.pos
       while true # sequence
-        _tmp = match_string("\\t")
+        _tmp = match_string("r")
         unless _tmp
           self.pos = _save3
           break
         end
-        @result = begin;  "\t" ; end
+        @result = begin;  "\r" ; end
         _tmp = true
         unless _tmp
           self.pos = _save3
@@ -598,12 +599,12 @@ class KPeg::FormatParser
 
       _save4 = self.pos
       while true # sequence
-        _tmp = match_string("\\b")
+        _tmp = match_string("t")
         unless _tmp
           self.pos = _save4
           break
         end
-        @result = begin;  "\b" ; end
+        @result = begin;  "\t" ; end
         _tmp = true
         unless _tmp
           self.pos = _save4
@@ -616,12 +617,12 @@ class KPeg::FormatParser
 
       _save5 = self.pos
       while true # sequence
-        _tmp = match_string("\\\\")
+        _tmp = match_string("v")
         unless _tmp
           self.pos = _save5
           break
         end
-        @result = begin;  "\\" ; end
+        @result = begin;  "\v" ; end
         _tmp = true
         unless _tmp
           self.pos = _save5
@@ -631,10 +632,182 @@ class KPeg::FormatParser
 
       break if _tmp
       self.pos = _save
+
+      _save6 = self.pos
+      while true # sequence
+        _tmp = match_string("f")
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        @result = begin;  "\f" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save6
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save7 = self.pos
+      while true # sequence
+        _tmp = match_string("b")
+        unless _tmp
+          self.pos = _save7
+          break
+        end
+        @result = begin;  "\b" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save7
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save8 = self.pos
+      while true # sequence
+        _tmp = match_string("a")
+        unless _tmp
+          self.pos = _save8
+          break
+        end
+        @result = begin;  "\a" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save8
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save9 = self.pos
+      while true # sequence
+        _tmp = match_string("e")
+        unless _tmp
+          self.pos = _save9
+          break
+        end
+        @result = begin;  "\e" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save9
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save10 = self.pos
+      while true # sequence
+        _tmp = match_string("\\")
+        unless _tmp
+          self.pos = _save10
+          break
+        end
+        @result = begin;  "\\" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save10
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save11 = self.pos
+      while true # sequence
+        _tmp = match_string("\"")
+        unless _tmp
+          self.pos = _save11
+          break
+        end
+        @result = begin;  "\"" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save11
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      _tmp = apply(:_num_escapes)
+      break if _tmp
+      self.pos = _save
       break
     end # end choice
 
     set_failed_rule :_dbl_escapes unless _tmp
+    return _tmp
+  end
+
+  # num_escapes = (< /[0-7]{3}/ > { [text.to_i(8)].pack("U") } | "x" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack("U") })
+  def _num_escapes
+
+    _save = self.pos
+    while true # choice
+
+      _save1 = self.pos
+      while true # sequence
+        _text_start = self.pos
+        _tmp = scan(/\A(?-mix:[0-7]{3})/)
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  [text.to_i(8)].pack("U") ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save2 = self.pos
+      while true # sequence
+        _tmp = match_string("x")
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _text_start = self.pos
+        _tmp = scan(/\A(?-mix:[0-9a-fA-F]{2})/)
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [text.to_i(16)].pack("U") ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      break
+    end # end choice
+
+    set_failed_rule :_num_escapes unless _tmp
     return _tmp
   end
 
@@ -664,58 +837,52 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # dbl_not_quote = (dbl_escapes:s | dbl_seq:s)+:ary { ary }
+  # dbl_not_quote = ("\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
   def _dbl_not_quote
 
     _save = self.pos
     while true # sequence
-      _save1 = self.pos
       _ary = []
+      while true
 
-      _save2 = self.pos
-      while true # choice
-        _tmp = apply(:_dbl_escapes)
-        s = @result
-        break if _tmp
-        self.pos = _save2
-        _tmp = apply(:_dbl_seq)
-        s = @result
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
-
-      if _tmp
-        _ary << @result
-        while true
+        _save2 = self.pos
+        while true # choice
 
           _save3 = self.pos
-          while true # choice
+          while true # sequence
+            _tmp = match_string("\\")
+            unless _tmp
+              self.pos = _save3
+              break
+            end
             _tmp = apply(:_dbl_escapes)
             s = @result
-            break if _tmp
-            self.pos = _save3
-            _tmp = apply(:_dbl_seq)
-            s = @result
-            break if _tmp
-            self.pos = _save3
+            unless _tmp
+              self.pos = _save3
+            end
             break
-          end # end choice
+          end # end sequence
 
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_dbl_seq)
+          s = @result
+          break if _tmp
+          self.pos = _save2
+          break
+        end # end choice
+
+        _ary << @result if _tmp
+        break unless _tmp
       end
+      _tmp = true
+      @result = _ary
       ary = @result
       unless _tmp
         self.pos = _save
         break
       end
-      @result = begin;  ary ; end
+      @result = begin;  Array(ary) ; end
       _tmp = true
       unless _tmp
         self.pos = _save
@@ -808,54 +975,36 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # sgl_not_quote = (sgl_escape_quote | sgl_seq)+:segs { segs.join }
+  # sgl_not_quote = (sgl_escape_quote | sgl_seq)*:segs { Array(segs) }
   def _sgl_not_quote
 
     _save = self.pos
     while true # sequence
-      _save1 = self.pos
       _ary = []
+      while true
 
-      _save2 = self.pos
-      while true # choice
-        _tmp = apply(:_sgl_escape_quote)
-        break if _tmp
-        self.pos = _save2
-        _tmp = apply(:_sgl_seq)
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+        _save2 = self.pos
+        while true # choice
+          _tmp = apply(:_sgl_escape_quote)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_sgl_seq)
+          break if _tmp
+          self.pos = _save2
+          break
+        end # end choice
 
-      if _tmp
-        _ary << @result
-        while true
-
-          _save3 = self.pos
-          while true # choice
-            _tmp = apply(:_sgl_escape_quote)
-            break if _tmp
-            self.pos = _save3
-            _tmp = apply(:_sgl_seq)
-            break if _tmp
-            self.pos = _save3
-            break
-          end # end choice
-
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
+        _ary << @result if _tmp
+        break unless _tmp
       end
+      _tmp = true
+      @result = _ary
       segs = @result
       unless _tmp
         self.pos = _save
         break
       end
-      @result = begin;  segs.join ; end
+      @result = begin;  Array(segs) ; end
       _tmp = true
       unless _tmp
         self.pos = _save
@@ -867,7 +1016,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # sgl_string = "'" sgl_not_quote:s "'" { @g.str(s) }
+  # sgl_string = "'" sgl_not_quote:s "'" { @g.str(s.join) }
   def _sgl_string
 
     _save = self.pos
@@ -888,7 +1037,7 @@ class KPeg::FormatParser
         self.pos = _save
         break
       end
-      @result = begin;  @g.str(s) ; end
+      @result = begin;  @g.str(s.join) ; end
       _tmp = true
       unless _tmp
         self.pos = _save
@@ -2871,14 +3020,15 @@ class KPeg::FormatParser
   Rules[:_kleene] = rule_info("kleene", "\"*\"")
   Rules[:_var] = rule_info("var", "< (\"-\" | /[a-zA-Z][\\-_a-zA-Z0-9]*/) > { text }")
   Rules[:_method] = rule_info("method", "< /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }")
-  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"\\\\\\\"\" { '\"' } | \"\\\\n\" { \"\\n\" } | \"\\\\t\" { \"\\t\" } | \"\\\\b\" { \"\\b\" } | \"\\\\\\\\\" { \"\\\\\" })")
+  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"n\" { \"\\n\" } | \"s\" { \" \" } | \"r\" { \"\\r\" } | \"t\" { \"\\t\" } | \"v\" { \"\\v\" } | \"f\" { \"\\f\" } | \"b\" { \"\\b\" } | \"a\" { \"\\a\" } | \"e\" { \"\\e\" } | \"\\\\\" { \"\\\\\" } | \"\\\"\" { \"\\\"\" } | num_escapes)")
+  Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack(\"U\") })")
   Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
-  Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(dbl_escapes:s | dbl_seq:s)+:ary { ary }")
+  Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(\"\\\\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }")
   Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")
   Rules[:_sgl_escape_quote] = rule_info("sgl_escape_quote", "\"\\\\'\" { \"'\" }")
   Rules[:_sgl_seq] = rule_info("sgl_seq", "< /[^']/ > { text }")
-  Rules[:_sgl_not_quote] = rule_info("sgl_not_quote", "(sgl_escape_quote | sgl_seq)+:segs { segs.join }")
-  Rules[:_sgl_string] = rule_info("sgl_string", "\"'\" sgl_not_quote:s \"'\" { @g.str(s) }")
+  Rules[:_sgl_not_quote] = rule_info("sgl_not_quote", "(sgl_escape_quote | sgl_seq)*:segs { Array(segs) }")
+  Rules[:_sgl_string] = rule_info("sgl_string", "\"'\" sgl_not_quote:s \"'\" { @g.str(s.join) }")
   Rules[:_string] = rule_info("string", "(dbl_string | sgl_string)")
   Rules[:_not_slash] = rule_info("not_slash", "< (\"\\\\/\" | /[^\\/]/)+ > { text }")
   Rules[:_regexp_opts] = rule_info("regexp_opts", "< [a-z]* > { text }")
