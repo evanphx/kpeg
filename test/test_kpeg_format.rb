@@ -140,6 +140,7 @@ b(p) = x
   end
 
   def test_string
+    assert_rule G.str(""), match('a=""')
     assert_rule G.str("hello"), match('a="hello"')
     assert_rule G.str("h\"ello"), match('a="h\"ello"')
   end

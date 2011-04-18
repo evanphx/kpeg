@@ -31,12 +31,12 @@
                  | "\\b"  { "\b" }
                  | "\\\\" { "\\" }
          dbl_seq = < /[^\\"]+/ > { text }
-   dbl_not_quote = (dbl_escapes:s | dbl_seq:s)+:ary { ary }
+   dbl_not_quote = (dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
       dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
 sgl_escape_quote = "\\'" { "'" }
          sgl_seq = < /[^']/ > { text }
-   sgl_not_quote = (sgl_escape_quote | sgl_seq)+:segs { segs.join }
-      sgl_string = "'" sgl_not_quote:s "'" { @g.str(s) }
+   sgl_not_quote = (sgl_escape_quote | sgl_seq)*:segs { Array(segs) }
+      sgl_string = "'" sgl_not_quote:s "'" { @g.str(s.join) }
           string = dbl_string
                  | sgl_string
 
