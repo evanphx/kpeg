@@ -1357,7 +1357,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # nested_paren = "(" (/[^()]+/ | nested_paren)* ")"
+  # nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
   def _nested_paren
 
     _save = self.pos
@@ -1371,7 +1371,10 @@ class KPeg::FormatParser
 
         _save2 = self.pos
         while true # choice
-          _tmp = scan(/\A(?-mix:[^()]+)/)
+          _tmp = scan(/\A(?-mix:[^()"']+)/)
+          break if _tmp
+          self.pos = _save2
+          _tmp = apply(:_string)
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_nested_paren)
@@ -2887,7 +2890,7 @@ class KPeg::FormatParser
   Rules[:_mult_range] = rule_info("mult_range", "(\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] } | \"[\" - range_num:e - \"]\" { [e.to_i, e.to_i] })")
   Rules[:_curly_block] = rule_info("curly_block", "curly")
   Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
-  Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()]+/ | nested_paren)* \")\"")
+  Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()\"']+/ | string | nested_paren)* \")\"")
   Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
   Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
