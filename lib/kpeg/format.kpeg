@@ -25,13 +25,22 @@
              var = < "-" | /[a-zA-Z][\-_a-zA-Z0-9]*/ > { text }
           method = < /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }
 
-     dbl_escapes = "\\\"" { '"' }
-                 | "\\n"  { "\n" }
-                 | "\\t"  { "\t" }
-                 | "\\b"  { "\b" }
-                 | "\\\\" { "\\" }
+     dbl_escapes = "n" { "\n" }
+                 | "s" { " " }
+                 | "r" { "\r" }
+                 | "t" { "\t" }
+                 | "v" { "\v" }
+                 | "f" { "\f" }
+                 | "b" { "\b" }
+                 | "a" { "\a" }
+                 | "e" { "\e" }
+                 | "\\" { "\\" }
+                 | "\"" { "\"" }
+                 | num_escapes
+     num_escapes = < /[0-7]{3}/ > { [text.to_i(8)].pack("U") }
+                 | "x" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack("U") }
          dbl_seq = < /[^\\"]+/ > { text }
-   dbl_not_quote = (dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
+   dbl_not_quote = ("\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
       dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
 sgl_escape_quote = "\\'" { "'" }
          sgl_seq = < /[^']/ > { text }
