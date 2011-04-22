@@ -15,10 +15,14 @@ All grammars start with with the class/module name that will be your parser
 
     %% name = Example::Parser
 
-After that a block of ruby code can be defined that will be added into the class body of your parser. Attributes that are defines in this block can be accessed within your parser as instance variables
+After that a block of ruby code can be defined that will be added into the class body of your parser. Attributes that are defined in this block can be accessed within your parser as instance variables. Methods can also be defined in this block and used in action blocks as well.
 
     %% {
       attr_accessor :something_cool
+      
+      def something_awesome
+        # do something awesome
+      end
     }
 
 ### Defining literals
@@ -36,58 +40,66 @@ Literals can also accept multiple definitions
 
     vowel = "a" | "e" | "i" | "o" | "u"
     alpha = /[A-Z]/ | /[a-z]/
-    
 
 ### Defining Rules for Values
 
 Before you can start parsing a string you will need to define rules that you will use to accept or reject that string. There are many different types of rules available in kpeg 
 
 The most basic of these rules is a string capture
-  
+
     alpha = < /[A-Za-z]/ > { text }
-    
+
 
 While this looks very much like the ALPHA literal defined above it differs in one important way, the text captured by the rule defined between the < and > symbols will be set as the text variable in block that follows. You can also explicitly define the variable that you would like but only with existing rules or literals.
-    
+
     letter = alpha:a { a }
-    
+
 Additionally blocks can return true or false values based upon an expression within the block. To return true if a test passes do the following:
 
     match_greater_than_10 = < num:n > &{ n > 10 }
-    
+
 To test and return a false value if the test passes do the following:
 
     do_not_match_greater_than_10 = < num:n > !{ n > 10 }
-    
+
 Rules can also act like functions and take parameters. An example of this is lifted from the [Email List Validator](https://github.com/larb/email_address_validator), where an ascii value is passed in and the character is evaluated against it returning a true if it matches
-    
+
     d(num) = <.> &{ text[0] == num }
 
 Rules support some regular expression syntax for matching
- 
+
 + maybe ?
-+ many 
-+ kleene * 
-+ groupings () 
++ many +
++ kleene *
++ groupings ()
 
 Examples
 
     letters = alpha+
     words = alpha+ space* period?
     sentence = (letters+ | space+)+
-    
+
 Kpeg also allows a rule to define the acceptable number of matches in the form of a range. In regular expressions this is often denoted with syntax like {0,3}. Kpeg uses this syntax to accomplish match ranges [min, max].
 
     matches_3_to_5_times = letter[3,5]
     matches_3_to_any_times = letter[3,*]
-  
-    
+
 ### Defining Actions
 
 Illustrated above in some of the examples, kpeg allows you to perform actions based upon a match that are described in block provided or in the rule definition itself.
 
     num = /[1-9][0-9]*/
     sum = < num:n1 "+" num:n2 > { n1 + n2 }
+
+As of version 0.8 an alternate syntax has been added for calling defined methods as actions.
+
+    %% {
+      def add(n1, n2){
+        n1 + n2
+      }
+    }
+    num = /[1-9][0-9]*/
+    sum = < num:n1 "+" num:n2 > ~add(n1, n2)
 
 ### Referencing an external grammar
 
@@ -100,7 +112,7 @@ Once you have the generated parser, include that file into your new grammar
     %{
       require "literals.kpeg.rb"
     }
-    
+
 Then create a variable to hold to foreign interface and pass it the class name of your parser. In this case my parser class name is Literal 
 
     %foreign_grammer = Literal
@@ -114,21 +126,21 @@ You can then use rules defined in the foreign grammar in the local grammar file 
 Kpeg allows comments to be added to the grammar file by using the # symbol
 
     # This is a comment in my grammar
-    
+
 ## Generating and running your parser
 
 Before you can generate your parser you will need to define a root rule. This will be the first rule run against the string provided to the parser
 
     root = sentence
-    
+
 To generate the parser run the kpeg command with the kpeg file(s) as an argument. This will generate a ruby file with the same name as your grammar file.
 
     kpeg example.kpeg
-    
+
 Include your generated parser file into an application that you want to use the parser in and run it. Create a new instance of the parser and pass in the string you want to evaluate. When parse is called on the parser instance it will return a true if the sting is matched, or false if it doesn't. 
 
     require "example.kpeg.rb"
-    
+
     parser = Example::Parser.new(string_to_evaluate)
     parser.parse
 
@@ -139,6 +151,20 @@ Per vito, you can get the current line or current column in the following way
     line = { current_line }
     column = { current_column }
     foo = line:line ... { # use line here }
+
+## AST Generation
+
+As of Kpeg 0.8 a parser can now generate an AST. To define an AST node use the following syntax
+
+    %% assign = ast Assignment(name, value)
+
+Once you have a defined AST node, it can be used in your grammar like so
+
+    assignment = identifier:i space* = space* value:v ~assign(i,v)
+
+This will create a new Assign node that you can add into your AST.
+
+For a good example of usage check out [Talon](https://github.com/evanphx/talon)
 
 ## Examples
 
@@ -153,3 +179,5 @@ There are several examples available in the /examples directory. The upper parse
 [Callisto](https://github.com/dwaite/Callisto)
 
 [Doodle](https://github.com/vito/doodle)
+
+[Kanbanpad](https://kanbanpad.com) (uses kpeg for parsing of the 'enter something' bar)

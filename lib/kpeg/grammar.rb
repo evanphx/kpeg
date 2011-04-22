@@ -814,7 +814,7 @@ module KPeg
     def invoke(name, args=nil)
       InvokeRule.new name.to_s, args
     end
-    
+
     # Invoke a rule defined on a foreign grammar
     # == Parameters:
     # gram::
