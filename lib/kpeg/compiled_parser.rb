@@ -32,8 +32,8 @@ module KPeg
     end
 
     attr_reader :string
-    attr_reader :result, :failing_rule_offset
-    attr_accessor :pos
+    attr_reader :failing_rule_offset
+    attr_accessor :result, :pos
 
     include Position
 
@@ -218,6 +218,7 @@ module KPeg
       begin
         if val = __send__(rule, *args)
           other.pos = @pos
+          other.result = @result
         else
           other.set_failed_rule "#{self.class}##{rule}"
         end
