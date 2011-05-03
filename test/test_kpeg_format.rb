@@ -457,7 +457,7 @@ fact = fact "*" num
   def test_allow_ends_with_comment
     path = File.expand_path("../inputs/comments.kpeg", __FILE__)
     parser = KPeg::FormatParser.new File.read(path), true
-    assert true, parser.parse
+    assert_equal true, parser.parse
   end
 
   def test_roundtrip
