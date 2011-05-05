@@ -396,13 +396,14 @@ module KPeg
   end
 
   class RuleReference < Operator
-    def initialize(name, grammar=nil)
+    def initialize(name, grammar=nil, args=nil)
       super()
       @rule_name = name
       @grammar = grammar
+      @arguments = args
     end
 
-    attr_reader :rule_name
+    attr_reader :rule_name, :arguments
 
     def match(x)
       if @grammar and @grammar != x.grammar
@@ -421,14 +422,19 @@ module KPeg
     def ==(obj)
       case obj
       when RuleReference
-        @rule_name == obj.rule_name
+        @rule_name == obj.rule_name and @arguments == obj.arguments
       else
         super
       end
     end
 
     def inspect
-      inspect_type "ref", @rule_name
+      if @arguments
+        body = "#{@rule_name} #{@arguments}"
+      else
+        body = @rule_name
+      end
+      inspect_type "ref", body
     end
   end
 
@@ -807,8 +813,8 @@ module KPeg
       NotPredicate.new Grammar.resolve(node)
     end
 
-    def ref(name, other_grammar=nil)
-      RuleReference.new name.to_s, other_grammar
+    def ref(name, other_grammar=nil, args=nil)
+      RuleReference.new name.to_s, other_grammar, args
     end
 
     def invoke(name, args=nil)
