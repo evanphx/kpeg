@@ -81,13 +81,14 @@ sgl_escape_quote = "\\'" { "'" }
                  | "~" method:m < nested_paren? >
                    { @g.action("#{m}#{text}") }
                  | "." { @g.dot }
-                 | "@" var:name !(- "=") { @g.invoke(name) }
+                 | "@" var:name < nested_paren? > !(- "=")
+                   { @g.invoke(name, text.empty? ? nil : text) }
                  | "^" var:name < nested_paren? >
                    { @g.foreign_invoke("parent", name, text) }
                  | "%" var:gram "." var:name < nested_paren? >
                    { @g.foreign_invoke(gram, name, text) }
                  | var:name < nested_paren? > !(- "=")
-                   { text.empty? ? @g.ref(name) : @g.invoke(name, text) }
+                   { @g.ref(name, nil, text.empty? ? nil : text) }
                  | char_range
                  | regexp
                  | string

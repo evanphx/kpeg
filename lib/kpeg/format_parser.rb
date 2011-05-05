@@ -245,6 +245,43 @@ class KPeg::FormatParser
       end
     end
 
+    def apply_with_args(rule, *args)
+      memo_key = [rule, args]
+      if m = @memoizations[memo_key][@pos]
+        m.inc!
+
+        prev = @pos
+        @pos = m.pos
+        if m.ans.kind_of? LeftRecursive
+          m.ans.detected = true
+          return nil
+        end
+
+        @result = m.result
+
+        return m.ans
+      else
+        lr = LeftRecursive.new(false)
+        m = MemoEntry.new(lr, @pos)
+        @memoizations[memo_key][@pos] = m
+        start_pos = @pos
+
+        ans = __send__ rule, *args
+
+        m.move! ans, @pos, @result
+
+        # Don't bother trying to grow the left recursion
+        # if it's failing straight away (thus there is no seed)
+        if ans and lr.detected
+          return grow_lr(rule, args, start_pos, m)
+        else
+          return ans
+        end
+
+        return ans
+      end
+    end
+
     def apply(rule)
       if m = @memoizations[rule][@pos]
         m.inc!
@@ -272,7 +309,7 @@ class KPeg::FormatParser
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
         if ans and lr.detected
-          return grow_lr(rule, start_pos, m)
+          return grow_lr(rule, nil, start_pos, m)
         else
           return ans
         end
@@ -281,12 +318,16 @@ class KPeg::FormatParser
       end
     end
 
-    def grow_lr(rule, start_pos, m)
+    def grow_lr(rule, args, start_pos, m)
       while true
         @pos = start_pos
         @result = m.result
 
-        ans = __send__ rule
+        if args
+          ans = __send__ rule, *args
+        else
+          ans = __send__ rule
+        end
         return nil unless ans
 
         break if @pos <= m.pos
@@ -1550,7 +1591,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name !(- "=") { @g.invoke(name) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name < nested_paren? > !(- "=") { @g.invoke(name, text.empty? ? nil : text) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
@@ -1920,29 +1961,43 @@ class KPeg::FormatParser
           self.pos = _save14
           break
         end
+        _text_start = self.pos
         _save15 = self.pos
-
+        _tmp = apply(:_nested_paren)
+        unless _tmp
+          _tmp = true
+          self.pos = _save15
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save14
+          break
+        end
         _save16 = self.pos
+
+        _save17 = self.pos
         while true # sequence
           _tmp = apply(:__hyphen_)
           unless _tmp
-            self.pos = _save16
+            self.pos = _save17
             break
           end
           _tmp = match_string("=")
           unless _tmp
-            self.pos = _save16
+            self.pos = _save17
           end
           break
         end # end sequence
 
         _tmp = _tmp ? nil : true
-        self.pos = _save15
+        self.pos = _save16
         unless _tmp
           self.pos = _save14
           break
         end
-        @result = begin;  @g.invoke(name) ; end
+        @result = begin;  @g.invoke(name, text.empty? ? nil : text) ; end
         _tmp = true
         unless _tmp
           self.pos = _save14
@@ -1953,37 +2008,37 @@ class KPeg::FormatParser
       break if _tmp
       self.pos = _save
 
-      _save17 = self.pos
+      _save18 = self.pos
       while true # sequence
         _tmp = match_string("^")
         unless _tmp
-          self.pos = _save17
+          self.pos = _save18
           break
         end
         _tmp = apply(:_var)
         name = @result
         unless _tmp
-          self.pos = _save17
+          self.pos = _save18
           break
         end
         _text_start = self.pos
-        _save18 = self.pos
+        _save19 = self.pos
         _tmp = apply(:_nested_paren)
         unless _tmp
           _tmp = true
-          self.pos = _save18
+          self.pos = _save19
         end
         if _tmp
           text = get_text(_text_start)
         end
         unless _tmp
-          self.pos = _save17
+          self.pos = _save18
           break
         end
         @result = begin;  @g.foreign_invoke("parent", name, text) ; end
         _tmp = true
         unless _tmp
-          self.pos = _save17
+          self.pos = _save18
         end
         break
       end # end sequence
@@ -1991,48 +2046,48 @@ class KPeg::FormatParser
       break if _tmp
       self.pos = _save
 
-      _save19 = self.pos
+      _save20 = self.pos
       while true # sequence
         _tmp = match_string("%")
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
           break
         end
         _tmp = apply(:_var)
         gram = @result
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
           break
         end
         _tmp = match_string(".")
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
           break
         end
         _tmp = apply(:_var)
         name = @result
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
           break
         end
         _text_start = self.pos
-        _save20 = self.pos
+        _save21 = self.pos
         _tmp = apply(:_nested_paren)
         unless _tmp
           _tmp = true
-          self.pos = _save20
+          self.pos = _save21
         end
         if _tmp
           text = get_text(_text_start)
         end
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
           break
         end
         @result = begin;  @g.foreign_invoke(gram, name, text) ; end
         _tmp = true
         unless _tmp
-          self.pos = _save19
+          self.pos = _save20
         end
         break
       end # end sequence
@@ -2040,54 +2095,54 @@ class KPeg::FormatParser
       break if _tmp
       self.pos = _save
 
-      _save21 = self.pos
+      _save22 = self.pos
       while true # sequence
         _tmp = apply(:_var)
         name = @result
         unless _tmp
-          self.pos = _save21
+          self.pos = _save22
           break
         end
         _text_start = self.pos
-        _save22 = self.pos
+        _save23 = self.pos
         _tmp = apply(:_nested_paren)
         unless _tmp
           _tmp = true
-          self.pos = _save22
+          self.pos = _save23
         end
         if _tmp
           text = get_text(_text_start)
         end
         unless _tmp
-          self.pos = _save21
+          self.pos = _save22
           break
         end
-        _save23 = self.pos
-
         _save24 = self.pos
+
+        _save25 = self.pos
         while true # sequence
           _tmp = apply(:__hyphen_)
           unless _tmp
-            self.pos = _save24
+            self.pos = _save25
             break
           end
           _tmp = match_string("=")
           unless _tmp
-            self.pos = _save24
+            self.pos = _save25
           end
           break
         end # end sequence
 
         _tmp = _tmp ? nil : true
-        self.pos = _save23
+        self.pos = _save24
         unless _tmp
-          self.pos = _save21
+          self.pos = _save22
           break
         end
-        @result = begin;  text.empty? ? @g.ref(name) : @g.invoke(name, text) ; end
+        @result = begin;  @g.ref(name, nil, text.empty? ? nil : text) ; end
         _tmp = true
         unless _tmp
-          self.pos = _save21
+          self.pos = _save22
         end
         break
       end # end sequence
@@ -3041,7 +3096,7 @@ class KPeg::FormatParser
   Rules[:_curly_block] = rule_info("curly_block", "curly")
   Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()\"']+/ | string | nested_paren)* \")\"")
-  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name !(- \"=\") { @g.invoke(name) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { text.empty? ? @g.ref(name) : @g.invoke(name, text) } | char_range | regexp | string)")
+  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name < nested_paren? > !(- \"=\") { @g.invoke(name, text.empty? ? nil : text) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
   Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
