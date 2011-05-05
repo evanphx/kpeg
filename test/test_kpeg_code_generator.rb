@@ -799,7 +799,7 @@ class Test < KPeg::CompiledParser
     return _tmp
   end
 
-  # root = greeting(1,2)
+  # root = @greeting(1,2)
   def _root
     _tmp = _greeting(1,2)
     set_failed_rule :_root unless _tmp
@@ -808,7 +808,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
-  Rules[:_root] = rule_info("root", "greeting(1,2)")
+  Rules[:_root] = rule_info("root", "@greeting(1,2)")
 end
     STR
 

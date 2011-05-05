@@ -36,7 +36,7 @@ class TestKPegGrammarRenderer < Test::Unit::TestCase
     gr = KPeg::GrammarRenderer.new(gram)
     gr.render(io)
 
-    assert_equal "root = greeting(1,2)\n", io.string
+    assert_equal "root = @greeting(1,2)\n", io.string
   end
 
   def test_foreign_invoke

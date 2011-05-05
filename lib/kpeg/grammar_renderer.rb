@@ -132,10 +132,14 @@ module KPeg
           render_op io, op.op
         end
       when RuleReference
-        io.print op.rule_name
-      when InvokeRule
         if op.arguments
           io.print "#{op.rule_name}#{op.arguments}"
+        else
+          io.print "#{op.rule_name}"
+        end
+      when InvokeRule
+        if op.arguments
+          io.print "@#{op.rule_name}#{op.arguments}"
         else
           io.print "@#{op.rule_name}"
         end

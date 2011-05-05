@@ -263,7 +263,11 @@ module KPeg
         code << indentify("_tmp = _tmp ? nil : true\n", indent)
         code << indentify("self.pos = #{ss}\n", indent)
       when RuleReference
-        code << indentify("_tmp = apply(:#{method_name op.rule_name})\n", indent)
+        if op.arguments
+          code << indentify("_tmp = apply_with_args(:#{method_name op.rule_name}, #{op.arguments[1..-2]})\n", indent)
+        else
+          code << indentify("_tmp = apply(:#{method_name op.rule_name})\n", indent)
+        end
       when InvokeRule
         if op.arguments
           code << indentify("_tmp = #{method_name op.rule_name}#{op.arguments}\n", indent)

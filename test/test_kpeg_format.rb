@@ -27,6 +27,10 @@ class TestKPegFormat < Test::Unit::TestCase
     assert_rule G.ref("b"), match("a=b"), "a"
   end
 
+  def test_apply_with_arg
+    assert_rule G.ref("b", nil, "(x)"), match("a=b(x)"), "a"
+  end
+
   def test_invoke
     assert_rule G.invoke("b"), match("a=@b"), "a"
   end
@@ -107,7 +111,7 @@ b(p) = x
 
 
   def test_invoke_with_multiple_args
-    assert_rule G.invoke("b", "(1,2)"), match("a=b(1,2)"), "a"
+    assert_rule G.invoke("b", "(1,2)"), match("a=@b(1,2)"), "a"
   end
 
   def test_invoke_foreign_rule
