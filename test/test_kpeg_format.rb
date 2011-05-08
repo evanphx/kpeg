@@ -147,8 +147,12 @@ b(p) = x
     assert_rule G.str(""), match('a=""')
     assert_rule G.str("hello"), match('a="hello"')
     assert_rule G.str("hello\ngoodbye"), match('a="hello\ngoodbye"')
-    assert_rule G.str("\n\s\r\t\v\f\b\a\r\\\"\012\x1b"),
-                match('a="\n\s\r\t\v\f\b\a\r\\\\\\"\012\x1b"')
+    assert_rule G.str("hello\n\0goodbye"), match('a="hello\n\0goodbye"')
+    assert_rule G.str("hello\n\017goodbye"), match('a="hello\n\017goodbye"')
+    assert_rule G.str("hello\n\017goodbye"), match('a="hello\n\017goodbye"')
+    assert_rule G.str("hello\n\9goodbye"), match('a="hello\n\9goodbye"')
+    assert_rule G.str("\n\s\r\t\v\f\b\a\r\\\"\0172\x1b"),
+                match('a="\n\s\r\t\v\f\b\a\r\\\\\\"\0172\x1b"')
     assert_rule G.str("h\"ello"), match('a="h\"ello"')
   end
 
