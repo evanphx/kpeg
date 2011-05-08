@@ -578,7 +578,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # dbl_escapes = ("n" { "\n" } | "s" { " " } | "r" { "\r" } | "t" { "\t" } | "v" { "\v" } | "f" { "\f" } | "b" { "\b" } | "a" { "\a" } | "e" { "\e" } | "\\" { "\\" } | "\"" { "\"" } | num_escapes)
+  # dbl_escapes = ("n" { "\n" } | "s" { " " } | "r" { "\r" } | "t" { "\t" } | "v" { "\v" } | "f" { "\f" } | "b" { "\b" } | "a" { "\a" } | "e" { "\e" } | "\\" { "\\" } | "\"" { "\"" } | num_escapes | < . > { text })
   def _dbl_escapes
 
     _save = self.pos
@@ -784,6 +784,28 @@ class KPeg::FormatParser
       _tmp = apply(:_num_escapes)
       break if _tmp
       self.pos = _save
+
+      _save12 = self.pos
+      while true # sequence
+        _text_start = self.pos
+        _tmp = get_byte
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save12
+          break
+        end
+        @result = begin;  text ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save12
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
       break
     end # end choice
 
@@ -791,7 +813,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # num_escapes = (< /[0-7]{3}/ > { [text.to_i(8)].pack("U") } | "x" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack("U") })
+  # num_escapes = (< /[0-7]{1,3}/ > { [text.to_i(8)].pack("U") } | "x" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack("U") })
   def _num_escapes
 
     _save = self.pos
@@ -800,7 +822,7 @@ class KPeg::FormatParser
       _save1 = self.pos
       while true # sequence
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[0-7]{3})/)
+        _tmp = scan(/\A(?-mix:[0-7]{1,3})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -3075,8 +3097,8 @@ class KPeg::FormatParser
   Rules[:_kleene] = rule_info("kleene", "\"*\"")
   Rules[:_var] = rule_info("var", "< (\"-\" | /[a-zA-Z][\\-_a-zA-Z0-9]*/) > { text }")
   Rules[:_method] = rule_info("method", "< /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }")
-  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"n\" { \"\\n\" } | \"s\" { \" \" } | \"r\" { \"\\r\" } | \"t\" { \"\\t\" } | \"v\" { \"\\v\" } | \"f\" { \"\\f\" } | \"b\" { \"\\b\" } | \"a\" { \"\\a\" } | \"e\" { \"\\e\" } | \"\\\\\" { \"\\\\\" } | \"\\\"\" { \"\\\"\" } | num_escapes)")
-  Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack(\"U\") })")
+  Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"n\" { \"\\n\" } | \"s\" { \" \" } | \"r\" { \"\\r\" } | \"t\" { \"\\t\" } | \"v\" { \"\\v\" } | \"f\" { \"\\f\" } | \"b\" { \"\\b\" } | \"a\" { \"\\a\" } | \"e\" { \"\\e\" } | \"\\\\\" { \"\\\\\" } | \"\\\"\" { \"\\\"\" } | num_escapes | < . > { text })")
+  Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{1,3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack(\"U\") })")
   Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
   Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(\"\\\\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }")
   Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")
