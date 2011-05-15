@@ -1,0 +1,14 @@
+%% name = LuaString
+
+%% {
+  attr_accessor :result
+}
+
+
+equals = < "="* > { text }
+
+equal_ending(start) = "]" equals:x &{ x == start } "]"
+
+root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {
+         @result = text
+       }
