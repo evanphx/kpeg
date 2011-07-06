@@ -16,6 +16,7 @@ module KPeg
       @string = str
       @pos = 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
+      @refargs = Array.new
       @result = nil
       @failed_rule = nil
       @failing_rule_offset = -1

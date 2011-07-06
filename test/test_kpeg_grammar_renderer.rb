@@ -15,6 +15,39 @@ class TestKPegGrammarRenderer < Test::Unit::TestCase
     assert_equal 'hello\\"bob\\"', KPeg::GrammarRenderer.escape(str)
   end
 
+  def test_ref
+    gram = KPeg.grammar do |g|
+      g.root = g.ref("foo")
+    end
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = foo\n", io.string
+  end
+
+  def test_ref_with_args
+    gram = KPeg.grammar do |g|
+      g.root = g.ref("foo", nil, ["baz"])
+    end
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = foo(baz)\n", io.string
+  end
+
+  def test_ref_with_rule_args
+    gram = KPeg.grammar do |g|
+      g.root = g.ref("foo", nil, ["22", g.any(g.ref("a"), g.ref("z"))])
+    end
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    assert_equal "root = foo(22, &(a | z))\n", io.string
+  end
+
   def test_invoke
     gram = KPeg.grammar do |g|
       g.root = g.invoke("greeting")
