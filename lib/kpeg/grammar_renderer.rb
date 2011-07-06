@@ -133,7 +133,17 @@ module KPeg
         end
       when RuleReference
         if op.arguments
-          io.print "#{op.rule_name}#{op.arguments}"
+          args = op.arguments.map { |arg|
+            if String === arg
+              arg
+            else
+              iop = StringIO.new
+              iop.print '&'
+              render_op iop, arg
+              iop.string
+            end
+          }.join(', ')
+          io.print "#{op.rule_name}(#{args})"
         else
           io.print "#{op.rule_name}"
         end

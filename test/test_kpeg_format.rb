@@ -28,7 +28,7 @@ class TestKPegFormat < Test::Unit::TestCase
   end
 
   def test_apply_with_arg
-    assert_rule G.ref("b", nil, "(x)"), match("a=b(x)"), "a"
+    assert_rule G.ref("b", nil, ["x"]), match("a=b(x)"), "a"
   end
 
   def test_invoke
@@ -96,17 +96,17 @@ b(p) = x
   def test_invoke_with_arg
     gram = match("a=b(1)")
     rule = gram.find "a"
-    assert_equal "(1)", rule.op.arguments
+    assert_equal ["1"], rule.op.arguments
   end
 
   def test_invoke_with_double_quoted_strings
     m = match "a=b(\")\")"
-    assert_equal "(\")\")", m.find("a").op.arguments
+    assert_equal ["\")\""], m.find("a").op.arguments
   end
 
   def test_invoke_with_single_quoted_strings
     m = match "a=b(')')"
-    assert_equal "(')')", m.find("a").op.arguments
+    assert_equal ["')'"], m.find("a").op.arguments
   end
 
 

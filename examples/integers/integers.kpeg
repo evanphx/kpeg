@@ -1,0 +1,30 @@
+%% name = IntegerParser
+
+root = integer !.
+
+integer = </[+-]/>? (hexadecimal | binary | octal | decimal):i 
+          { "-" == text && -i || i }
+#
+# In this rule, the d parameter is being used as a rule reference.
+# So the digits rule is generic enough to be used by the rules 
+# defined bellow.
+#
+digits(d, base) = < d+ ("_"+ d+)* > { text.gsub('_', '').to_i(base) }
+
+# A decimal is a reference to the _digits_ rule parametrized
+# with a regex rule and the fixnum 10.
+#
+# Note that like in ruby, when you prepend something with an &
+# it will be converted into a Proc (in this case the first 
+# argument is a rule that is converted to a proc)
+# Unlike in ruby, you can place &'ed arguments not only as
+# the last argument.
+
+decimal = digits(&/[0-9]/, 10)
+
+hexadecimal = "0" /[xX]/ digits(&/[0-9a-fA-F]/, 16)
+
+octal = "0" /[oO]/? digits(&/[0-7]/, 8)
+
+binary = "0" /[bB]/ digits(& "0" | "1", 2)
+

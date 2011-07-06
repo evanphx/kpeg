@@ -430,7 +430,14 @@ module KPeg
 
     def inspect
       if @arguments
-        body = "#{@rule_name} #{@arguments}"
+        args= @arguments.map { |arg|
+          if String === arg
+            arg
+          else
+            "&" + arg.inspect
+          end
+        }.join(', ')
+        body = "#{@rule_name} (#{args})"
       else
         body = @rule_name
       end
@@ -464,7 +471,7 @@ module KPeg
 
     def inspect
       if @arguments
-        body = "#{@rule_name} #{@arguments}"
+        body = "#{@rule_name} #{args}"
       else
         body = @rule_name
       end

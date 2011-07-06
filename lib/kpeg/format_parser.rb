@@ -1,359 +1,6 @@
-class KPeg::FormatParser
-# STANDALONE START
-    def setup_parser(str, debug=false)
-      @string = str
-      @pos = 0
-      @memoizations = Hash.new { |h,k| h[k] = {} }
-      @result = nil
-      @failed_rule = nil
-      @failing_rule_offset = -1
+require 'kpeg/compiled_parser'
 
-      setup_foreign_grammar
-    end
-
-    # This is distinct from setup_parser so that a standalone parser
-    # can redefine #initialize and still have access to the proper
-    # parser setup code.
-    #
-    def initialize(str, debug=false)
-      setup_parser(str, debug)
-    end
-
-    attr_reader :string
-    attr_reader :failing_rule_offset
-    attr_accessor :result, :pos
-
-    # STANDALONE START
-    def current_column(target=pos)
-      if c = string.rindex("\n", target-1)
-        return target - c - 1
-      end
-
-      target + 1
-    end
-
-    def current_line(target=pos)
-      cur_offset = 0
-      cur_line = 0
-
-      string.each_line do |line|
-        cur_line += 1
-        cur_offset += line.size
-        return cur_line if cur_offset >= target
-      end
-
-      -1
-    end
-
-    def lines
-      lines = []
-      string.each_line { |l| lines << l }
-      lines
-    end
-
-    #
-
-    def get_text(start)
-      @string[start..@pos-1]
-    end
-
-    def show_pos
-      width = 10
-      if @pos < width
-        "#{@pos} (\"#{@string[0,@pos]}\" @ \"#{@string[@pos,width]}\")"
-      else
-        "#{@pos} (\"... #{@string[@pos - width, width]}\" @ \"#{@string[@pos,width]}\")"
-      end
-    end
-
-    def failure_info
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      if @failed_rule.kind_of? Symbol
-        info = self.class::Rules[@failed_rule]
-        "line #{l}, column #{c}: failed rule '#{info.name}' = '#{info.rendered}'"
-      else
-        "line #{l}, column #{c}: failed rule '#{@failed_rule}'"
-      end
-    end
-
-    def failure_caret
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      line = lines[l-1]
-      "#{line}\n#{' ' * (c - 1)}^"
-    end
-
-    def failure_character
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-      lines[l-1][c-1, 1]
-    end
-
-    def failure_oneline
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      char = lines[l-1][c-1, 1]
-
-      if @failed_rule.kind_of? Symbol
-        info = self.class::Rules[@failed_rule]
-        "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
-      else
-        "@#{l}:#{c} failed rule '#{@failed_rule}', got '#{char}'"
-      end
-    end
-
-    class ParseError < RuntimeError
-    end
-
-    def raise_error
-      raise ParseError, failure_oneline
-    end
-
-    def show_error(io=STDOUT)
-      error_pos = @failing_rule_offset
-      line_no = current_line(error_pos)
-      col_no = current_column(error_pos)
-
-      io.puts "On line #{line_no}, column #{col_no}:"
-
-      if @failed_rule.kind_of? Symbol
-        info = self.class::Rules[@failed_rule]
-        io.puts "Failed to match '#{info.rendered}' (rule '#{info.name}')"
-      else
-        io.puts "Failed to match rule '#{@failed_rule}'"
-      end
-
-      io.puts "Got: #{string[error_pos,1].inspect}"
-      line = lines[line_no-1]
-      io.puts "=> #{line}"
-      io.print(" " * (col_no + 3))
-      io.puts "^"
-    end
-
-    def set_failed_rule(name)
-      if @pos > @failing_rule_offset
-        @failed_rule = name
-        @failing_rule_offset = @pos
-      end
-    end
-
-    attr_reader :failed_rule
-
-    def match_string(str)
-      len = str.size
-      if @string[pos,len] == str
-        @pos += len
-        return str
-      end
-
-      return nil
-    end
-
-    def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
-        return true
-      end
-
-      return nil
-    end
-
-    if "".respond_to? :getbyte
-      def get_byte
-        if @pos >= @string.size
-          return nil
-        end
-
-        s = @string.getbyte @pos
-        @pos += 1
-        s
-      end
-    else
-      def get_byte
-        if @pos >= @string.size
-          return nil
-        end
-
-        s = @string[@pos]
-        @pos += 1
-        s
-      end
-    end
-
-    def parse(rule=nil)
-      if !rule
-        _root ? true : false
-      else
-        # This is not shared with code_generator.rb so this can be standalone
-        method = rule.gsub("-","_hyphen_")
-        __send__("_#{method}") ? true : false
-      end
-    end
-
-    class LeftRecursive
-      def initialize(detected=false)
-        @detected = detected
-      end
-
-      attr_accessor :detected
-    end
-
-    class MemoEntry
-      def initialize(ans, pos)
-        @ans = ans
-        @pos = pos
-        @uses = 1
-        @result = nil
-      end
-
-      attr_reader :ans, :pos, :uses, :result
-
-      def inc!
-        @uses += 1
-      end
-
-      def move!(ans, pos, result)
-        @ans = ans
-        @pos = pos
-        @result = result
-      end
-    end
-
-    def external_invoke(other, rule, *args)
-      old_pos = @pos
-      old_string = @string
-
-      @pos = other.pos
-      @string = other.string
-
-      begin
-        if val = __send__(rule, *args)
-          other.pos = @pos
-          other.result = @result
-        else
-          other.set_failed_rule "#{self.class}##{rule}"
-        end
-        val
-      ensure
-        @pos = old_pos
-        @string = old_string
-      end
-    end
-
-    def apply_with_args(rule, *args)
-      memo_key = [rule, args]
-      if m = @memoizations[memo_key][@pos]
-        m.inc!
-
-        prev = @pos
-        @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
-          return nil
-        end
-
-        @result = m.result
-
-        return m.ans
-      else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
-        @memoizations[memo_key][@pos] = m
-        start_pos = @pos
-
-        ans = __send__ rule, *args
-
-        m.move! ans, @pos, @result
-
-        # Don't bother trying to grow the left recursion
-        # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
-          return grow_lr(rule, args, start_pos, m)
-        else
-          return ans
-        end
-
-        return ans
-      end
-    end
-
-    def apply(rule)
-      if m = @memoizations[rule][@pos]
-        m.inc!
-
-        prev = @pos
-        @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
-          return nil
-        end
-
-        @result = m.result
-
-        return m.ans
-      else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
-        @memoizations[rule][@pos] = m
-        start_pos = @pos
-
-        ans = __send__ rule
-
-        m.move! ans, @pos, @result
-
-        # Don't bother trying to grow the left recursion
-        # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
-          return grow_lr(rule, nil, start_pos, m)
-        else
-          return ans
-        end
-
-        return ans
-      end
-    end
-
-    def grow_lr(rule, args, start_pos, m)
-      while true
-        @pos = start_pos
-        @result = m.result
-
-        if args
-          ans = __send__ rule, *args
-        else
-          ans = __send__ rule
-        end
-        return nil unless ans
-
-        break if @pos <= m.pos
-
-        m.move! ans, @pos, @result
-      end
-
-      @result = m.result
-      @pos = m.pos
-      return m.ans
-    end
-
-    class RuleInfo
-      def initialize(name, rendered)
-        @name = name
-        @rendered = rendered
-      end
-
-      attr_reader :name, :rendered
-    end
-
-    def self.rule_info(name, rendered)
-      RuleInfo.new(name, rendered)
-    end
-
-    #
+class KPeg::FormatParser < KPeg::CompiledParser
 
 
     require 'kpeg/grammar'
@@ -367,7 +14,6 @@ class KPeg::FormatParser
     alias_method :grammar, :g
 
 
-  def setup_foreign_grammar; end
 
   # eol = "\n"
   def _eol
@@ -1613,7 +1259,228 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name < nested_paren? > !(- "=") { @g.invoke(name, text.empty? ? nil : text) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)
+  # ref_args = "(" - ref_args_list?:list - ")" { list }
+  def _ref_args
+
+    _save = self.pos
+    while true # sequence
+      _tmp = match_string("(")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:__hyphen_)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _save1 = self.pos
+      _tmp = apply(:_ref_args_list)
+      @result = nil unless _tmp
+      unless _tmp
+        _tmp = true
+        self.pos = _save1
+      end
+      list = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:__hyphen_)
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string(")")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  list ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_ref_args unless _tmp
+    return _tmp
+  end
+
+  # ref_args_list = (ref_args_list:v - "," - ref_arg:a { v + [a] } | ref_arg:a { [a] })
+  def _ref_args_list
+
+    _save = self.pos
+    while true # choice
+
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_ref_args_list)
+        v = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = match_string(",")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_ref_arg)
+        a = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  v + [a] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_ref_arg)
+        a = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  [a] ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      break
+    end # end choice
+
+    set_failed_rule :_ref_args_list unless _tmp
+    return _tmp
+  end
+
+  # ref_arg = ("&" - expression:e { e } | < (/[^,()"']+/ | string | nested_paren)+ > { text })
+  def _ref_arg
+
+    _save = self.pos
+    while true # choice
+
+      _save1 = self.pos
+      while true # sequence
+        _tmp = match_string("&")
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        _tmp = apply(:_expression)
+        e = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  e ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save2 = self.pos
+      while true # sequence
+        _text_start = self.pos
+        _save3 = self.pos
+
+        _save4 = self.pos
+        while true # choice
+          _tmp = scan(/\A(?-mix:[^,()"']+)/)
+          break if _tmp
+          self.pos = _save4
+          _tmp = apply(:_string)
+          break if _tmp
+          self.pos = _save4
+          _tmp = apply(:_nested_paren)
+          break if _tmp
+          self.pos = _save4
+          break
+        end # end choice
+
+        if _tmp
+          while true
+
+            _save5 = self.pos
+            while true # choice
+              _tmp = scan(/\A(?-mix:[^,()"']+)/)
+              break if _tmp
+              self.pos = _save5
+              _tmp = apply(:_string)
+              break if _tmp
+              self.pos = _save5
+              _tmp = apply(:_nested_paren)
+              break if _tmp
+              self.pos = _save5
+              break
+            end # end choice
+
+            break unless _tmp
+          end
+          _tmp = true
+        else
+          self.pos = _save3
+        end
+        if _tmp
+          text = get_text(_text_start)
+        end
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  text ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      break
+    end # end choice
+
+    set_failed_rule :_ref_arg unless _tmp
+    return _tmp
+  end
+
+  # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name < nested_paren? > !(- "=") { @g.invoke(name, text.empty? ? nil : text) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name ref_args?:args !(- "=") { @g.ref(name, nil, args) } | char_range | regexp | string)
   def _value
 
     _save = self.pos
@@ -2125,16 +1992,14 @@ class KPeg::FormatParser
           self.pos = _save22
           break
         end
-        _text_start = self.pos
         _save23 = self.pos
-        _tmp = apply(:_nested_paren)
+        _tmp = apply(:_ref_args)
+        @result = nil unless _tmp
         unless _tmp
           _tmp = true
           self.pos = _save23
         end
-        if _tmp
-          text = get_text(_text_start)
-        end
+        args = @result
         unless _tmp
           self.pos = _save22
           break
@@ -2161,7 +2026,7 @@ class KPeg::FormatParser
           self.pos = _save22
           break
         end
-        @result = begin;  @g.ref(name, nil, text.empty? ? nil : text) ; end
+        @result = begin;  @g.ref(name, nil, args) ; end
         _tmp = true
         unless _tmp
           self.pos = _save22
@@ -3118,7 +2983,10 @@ class KPeg::FormatParser
   Rules[:_curly_block] = rule_info("curly_block", "curly")
   Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()\"']+/ | string | nested_paren)* \")\"")
-  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name < nested_paren? > !(- \"=\") { @g.invoke(name, text.empty? ? nil : text) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)")
+  Rules[:_ref_args] = rule_info("ref_args", "\"(\" - ref_args_list?:list - \")\" { list }")
+  Rules[:_ref_args_list] = rule_info("ref_args_list", "(ref_args_list:v - \",\" - ref_arg:a { v + [a] } | ref_arg:a { [a] })")
+  Rules[:_ref_arg] = rule_info("ref_arg", "(\"&\" - expression:e { e } | < (/[^,()\"']+/ | string | nested_paren)+ > { text })")
+  Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name < nested_paren? > !(- \"=\") { @g.invoke(name, text.empty? ? nil : text) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name ref_args?:args !(- \"=\") { @g.ref(name, nil, args) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
   Rules[:_values] = rule_info("values", "(values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)")
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")

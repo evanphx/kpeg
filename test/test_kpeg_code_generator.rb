@@ -743,6 +743,104 @@ end
     assert cg.parse("hello")
   end
 
+  def test_ref_with_args
+    gram = KPeg.grammar do |g|
+      g.set("greeting", "hello", ["world"])
+      g.root = g.ref("greeting", nil, ["42"])
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # greeting = "hello"
+  def _greeting(world)
+    _tmp = match_string("hello")
+    set_failed_rule :_greeting unless _tmp
+    return _tmp
+  end
+
+  # root = greeting(42)
+  def _root
+    _tmp = apply_with_args(:_greeting, 42)
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
+  Rules[:_root] = rule_info("root", "greeting(42)")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
+  def test_ref_with_rule_args
+    gram = KPeg.grammar do |g|
+      g.set("greeting", [g.ref("hello"), g.str("world"), g.ref("hello")], ["hello"])
+      g.root = g.ref("greeting", nil, [g.str("hello")])
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # greeting = hello "world" hello
+  def _greeting(hello)
+
+    _save = self.pos
+    while true # sequence
+      _tmp = hello.call()
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = match_string("world")
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = hello.call()
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_greeting unless _tmp
+    return _tmp
+  end
+
+  # root = greeting(&"hello")
+  def _root
+    _tmp = apply_with_args(:_greeting, (@refargs[0] ||= Proc.new {
+      _tmp = match_string("hello")
+      _tmp
+    }))
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_greeting] = rule_info("greeting", "hello \\\"world\\\" hello")
+  Rules[:_root] = rule_info("root", "greeting(&\\\"hello\\\")")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("helloworldhello")
+  end
+
   def test_invoke
     gram = KPeg.grammar do |g|
       g.greeting = "hello"

@@ -10,6 +10,7 @@ module KPeg
       @saves = 0
       @output = nil
       @standalone = false
+      @refargs = 0
     end
 
     attr_accessor :standalone
@@ -96,7 +97,7 @@ module KPeg
     end
     
     # Default indent is 4 spaces (indent=2)
-    def output_op(code, op, indent=2)
+    def output_op(code, op, params, indent=2)
       case op
       when Dot
         code << indentify("_tmp = get_byte\n", indent)
@@ -139,7 +140,7 @@ module KPeg
         code << indentify("#{ss} = self.pos\n", indent)
         code << indentify("while true # choice\n", indent)
         op.ops.each_with_index do |n,idx|
-          output_op code, n, (indent+1)
+          output_op code, n, params, (indent+1)
           
           code << indentify("  break if _tmp\n", indent)
           code << indentify("  self.pos = #{ss}\n", indent)
@@ -152,7 +153,7 @@ module KPeg
         ss = save()
         if op.min == 0 and op.max == 1
           code << indentify("#{ss} = self.pos\n", indent)
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
           if op.save_values
             code << indentify("@result = nil unless _tmp\n", indent)
           end
@@ -166,7 +167,7 @@ module KPeg
           end
 
           code << indentify("while true\n", indent)
-          output_op code, op.op, (indent+1)
+          output_op code, op.op, params, (indent+1)
           if op.save_values
             code << indentify("  _ary << @result if _tmp\n", indent)
           end
@@ -183,13 +184,13 @@ module KPeg
           if op.save_values
             code << indentify("_ary = []\n", indent)
           end
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
           code << indentify("if _tmp\n", indent)
           if op.save_values
             code << indentify("  _ary << @result\n", indent)
           end
           code << indentify("  while true\n", indent)
-          output_op code, op.op, (indent+2)
+          output_op code, op.op, params, (indent+2)
           if op.save_values
             code << indentify("    _ary << @result if _tmp\n", indent)
           end
@@ -206,7 +207,7 @@ module KPeg
           code << indentify("#{ss} = self.pos\n", indent)
           code << indentify("_count = 0\n", indent)
           code << indentify("while true\n", indent)
-          output_op code, op.op, (indent+1)
+          output_op code, op.op, params, (indent+1)
           code << indentify("  if _tmp\n", indent)
           code << indentify("    _count += 1\n", indent)
           code << indentify("    break if _count == #{op.max}\n", indent)
@@ -228,7 +229,7 @@ module KPeg
         code << indentify("#{ss} = self.pos\n", indent)
         code << indentify("while true # sequence\n", indent)
         op.ops.each_with_index do |n, idx|
-          output_op code, n, (indent+1)
+          output_op code, n, params, (indent+1)
 
           if idx == op.ops.size - 1
             code << indentify("  unless _tmp\n", indent)
@@ -249,7 +250,7 @@ module KPeg
         if op.op.kind_of? Action
           code << indentify("_tmp = begin; #{op.op.action}; end\n", indent)
         else
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
         end
         code << indentify("self.pos = #{ss}\n", indent)
       when NotPredicate
@@ -258,15 +259,31 @@ module KPeg
         if op.op.kind_of? Action
           code << indentify("_tmp = begin; #{op.op.action}; end\n", indent)
         else
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
         end
         code << indentify("_tmp = _tmp ? nil : true\n", indent)
         code << indentify("self.pos = #{ss}\n", indent)
       when RuleReference
-        if op.arguments
-          code << indentify("_tmp = apply_with_args(:#{method_name op.rule_name}, #{op.arguments[1..-2]})\n", indent)
+        args = op.arguments && op.arguments.map { |a|
+          if String === a
+            a
+          else
+            c = "(@refargs[#{@refargs}] ||= Proc.new {\n"
+            @refargs += 1
+            output_op(c, a, params, indent+1)
+            c << indentify("_tmp\n", indent+1)
+            c << indentify("})", indent)
+            c
+          end
+        }.join(', ')
+        if params && params.include?(op.rule_name)
+          code << indentify("_tmp = #{op.rule_name}.call(#{args})\n", indent)
         else
-          code << indentify("_tmp = apply(:#{method_name op.rule_name})\n", indent)
+          if args
+            code << indentify("_tmp = apply_with_args(:#{method_name op.rule_name}, #{args})\n", indent)
+          else
+            code << indentify("_tmp = apply(:#{method_name op.rule_name})\n", indent)
+          end
         end
       when InvokeRule
         if op.arguments
@@ -282,10 +299,10 @@ module KPeg
         end
       when Tag
         if op.tag_name and !op.tag_name.empty?
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
           code << indentify("#{op.tag_name} = @result\n", indent)
         else
-          output_op code, op.op, indent
+          output_op code, op.op, params, indent
         end
       when Action
         code << indentify("@result = begin; ", indent)
@@ -296,13 +313,13 @@ module KPeg
         code << indentify("_tmp = true\n", indent)
       when Collect
         code << indentify("_text_start = self.pos\n", indent)
-        output_op code, op.op, indent
+        output_op code, op.op, params, indent
         code << indentify("if _tmp\n", indent)
         code << indentify("  text = get_text(_text_start)\n", indent)
         code << indentify("end\n", indent)
       when Bounds
         code << indentify("_bounds_start = self.pos\n", indent)
-        output_op code, op.op, indent
+        output_op code, op.op, params, indent
         code << indentify("if _tmp\n", indent)
         code << indentify("  bounds = [_bounds_start, self.pos]\n", indent)
         code << indentify("end\n", indent)
@@ -394,7 +411,7 @@ module KPeg
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end
 
-        output_op code, rule.op
+        output_op code, rule.op, rule.arguments
         if @debug
           code << "    if _tmp\n"
           code << "      puts \"   OK #{name} @ \#{show_pos}\\n\"\n"

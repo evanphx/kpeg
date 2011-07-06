@@ -68,6 +68,12 @@ sgl_escape_quote = "\\'" { "'" }
            curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
     nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
 
+          ref_args = "(" - ref_args_list?:list - ")" { list }
+     ref_args_list = ref_args_list:v - "," - ref_arg:a { v + [a] }
+                   | ref_arg:a { [a] }
+          ref_arg  = "&" - expression:e { e }
+                   | < (/[^,()"']+/ | string | nested_paren)+ > { text }
+
            value = value:v ":" var:n { @g.t(v,n) }
                  | value:v "?" { @g.maybe(v) }
                  | value:v "+" { @g.many(v) }
@@ -88,8 +94,8 @@ sgl_escape_quote = "\\'" { "'" }
                    { @g.foreign_invoke("parent", name, text) }
                  | "%" var:gram "." var:name < nested_paren? >
                    { @g.foreign_invoke(gram, name, text) }
-                 | var:name < nested_paren? > !(- "=")
-                   { @g.ref(name, nil, text.empty? ? nil : text) }
+                 | var:name ref_args?:args !(- "=")
+                   { @g.ref(name, nil, args) }
                  | char_range
                  | regexp
                  | string
