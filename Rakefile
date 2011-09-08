@@ -21,5 +21,6 @@ end
 
 desc "rebuild parser"
 task :parser do
+  sh "ruby -Ilib bin/kpeg -o lib/kpeg/string_escape.rb -f lib/kpeg/string_escape.kpeg"
   sh "ruby -Ilib bin/kpeg -o lib/kpeg/format_parser.rb -s -f lib/kpeg/format.kpeg"
 end
