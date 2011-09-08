@@ -12,15 +12,9 @@ segment = < /[\w ]+/ > { text } # Don't use \s because that matchs \n
         | "\"" { "\\\"" }
         | < . > { text }
 
-segments = segment:s segments:r { "#{s}#{r}" }
-         | segment
-
-root = segments:s { @text = s }
+root = segment*:s { @text = s.join }
 
 embed_seg = "#" { "\\#" }
           | segment
 
-embed_segs = embed_seg:s embed_segs:r { "#{s}#{r}" }
-           | embed_seg
-
-embed = embed_segs:s { @text = s }
+embed = embed_seg*:s { @text = s.join }
