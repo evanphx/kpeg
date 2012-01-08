@@ -170,12 +170,16 @@ module KPeg
     end
 
     def parse(rule=nil)
+      # We invoke the rules indirectly via apply
+      # instead of by just calling them as methods because
+      # if the rules use left recursion, apply needs to
+      # manage that.
+
       if !rule
-        _root ? true : false
+        apply(:_root)
       else
-        # This is not shared with code_generator.rb so this can be standalone
         method = rule.gsub("-","_hyphen_")
-        __send__("_#{method}") ? true : false
+        apply :"_#{method}"
       end
     end
 
