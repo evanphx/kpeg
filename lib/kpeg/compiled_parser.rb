@@ -183,32 +183,24 @@ module KPeg
       end
     end
 
-    class LeftRecursive
-      def initialize(detected=false)
-        @detected = detected
-      end
-
-      attr_accessor :detected
-    end
-
     class MemoEntry
       def initialize(ans, pos)
         @ans = ans
         @pos = pos
-        @uses = 1
         @result = nil
+        @set = false
+        @left_rec = false
       end
 
-      attr_reader :ans, :pos, :uses, :result
-
-      def inc!
-        @uses += 1
-      end
+      attr_reader :ans, :pos, :result, :set
+      attr_accessor :left_rec
 
       def move!(ans, pos, result)
         @ans = ans
         @pos = pos
         @result = result
+        @set = true
+        @left_rec = false
       end
     end
 
@@ -236,12 +228,10 @@ module KPeg
     def apply_with_args(rule, *args)
       memo_key = [rule, args]
       if m = @memoizations[memo_key][@pos]
-        m.inc!
-
         prev = @pos
         @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
+        if !m.set
+          m.left_rec = true
           return nil
         end
 
@@ -249,18 +239,19 @@ module KPeg
 
         return m.ans
       else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
+        m = MemoEntry.new(nil, @pos)
         @memoizations[memo_key][@pos] = m
         start_pos = @pos
 
         ans = __send__ rule, *args
 
+        lr = m.left_rec
+
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
+        if ans and lr
           return grow_lr(rule, args, start_pos, m)
         else
           return ans
@@ -272,12 +263,10 @@ module KPeg
 
     def apply(rule)
       if m = @memoizations[rule][@pos]
-        m.inc!
-
         prev = @pos
         @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
+        if !m.set
+          m.left_rec = true
           return nil
         end
 
@@ -285,18 +274,19 @@ module KPeg
 
         return m.ans
       else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
+        m = MemoEntry.new(nil, @pos)
         @memoizations[rule][@pos] = m
         start_pos = @pos
 
         ans = __send__ rule
 
+        lr = m.left_rec
+
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
+        if ans and lr
           return grow_lr(rule, nil, start_pos, m)
         else
           return ans
