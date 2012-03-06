@@ -1370,6 +1370,38 @@ end
     assert_equal 5, code.failing_rule_offset
   end
 
+  def test_directive_footer
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.directives['footer'] = g.action("\n# require 'some/subclass'\n")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+class Test < KPeg::CompiledParser
+
+  # root = .
+  def _root
+    _tmp = get_byte
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", ".")
+end
+
+# require 'some/subclass'
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
   def test_directive_header
     gram = KPeg.grammar do |g|
       g.root = g.dot

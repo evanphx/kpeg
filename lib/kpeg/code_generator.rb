@@ -426,6 +426,10 @@ module KPeg
 
       code << "end\n"
 
+      if footer = @grammar.directives['footer']
+        code << footer.action
+      end
+
       @output = code.join
     end
 
