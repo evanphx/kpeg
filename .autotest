@@ -1,0 +1,10 @@
+require 'autotest/restart'
+
+Autotest.add_hook :run_command do |at|
+  system "#{Gem.ruby} -rubygems #{Gem.bin_path 'rake', 'rake'} parser"
+end
+
+Autotest.add_hook :initialize do |at|
+  at.testlib = 'minitest/unit'
+end
+
