@@ -1,6 +1,13 @@
 require 'rake/testtask'
+require 'rubygems/package_task'
 
 $:.unshift "lib"
+
+spec = Gem::Specification.load 'kpeg.gemspec'
+Gem::PackageTask.new spec do |t|
+  t.need_tar = false
+  t.need_zip = false
+end
 
 task :default => :test
 
