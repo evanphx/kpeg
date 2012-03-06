@@ -634,6 +634,7 @@ module KPeg
 
   class Grammar
     def initialize
+      @directives = {}
       @rules = {}
       @rule_order = []
       @setup_actions = []
@@ -641,8 +642,17 @@ module KPeg
       @variables = {}
     end
 
+    attr_reader :directives
     attr_reader :rules, :rule_order, :setup_actions, :foreign_grammars
     attr_reader :variables
+
+    def add_directive(name, body)
+      if @directives.include? name
+        warn "directive #{name.inspect} appears more than once"
+      end
+
+      @directives[name] = body
+    end
 
     def add_setup(act)
       @setup_actions << act

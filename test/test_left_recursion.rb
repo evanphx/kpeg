@@ -1,10 +1,10 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/format_parser'
 require 'kpeg/code_generator'
 require 'stringio'
 
-class TestKPegLeftRecursion < Test::Unit::TestCase
+class TestKPegLeftRecursion < MiniTest::Unit::TestCase
   GRAMMAR = <<-'STR'
 
   name = name:n "[]" { [:array, n] }

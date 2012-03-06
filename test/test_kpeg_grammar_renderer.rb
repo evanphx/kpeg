@@ -1,9 +1,9 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/grammar_renderer'
 require 'stringio'
 
-class TestKPegGrammarRenderer < Test::Unit::TestCase
+class TestKPegGrammarRenderer < MiniTest::Unit::TestCase
   def test_escape
     str = "hello\nbob"
     assert_equal 'hello\nbob', KPeg::GrammarRenderer.escape(str)

@@ -119,8 +119,10 @@ end
 cg = KPeg::CodeGenerator.new name, grammar
 cg.standalone = options[:standalone]
 
-File.open new_path, "w" do |f|
-  f << cg.output
+output = cg.output
+
+open new_path, "w" do |io|
+  io << output
 end
 
 puts "Wrote #{name} to #{new_path}"

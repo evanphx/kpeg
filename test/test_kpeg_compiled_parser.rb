@@ -1,9 +1,9 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/compiled_parser'
 require 'stringio'
 
-class TestKPegCompiledParser < Test::Unit::TestCase
+class TestKPegCompiledParser < MiniTest::Unit::TestCase
 
   gram = <<-GRAM
   letter = [a-z]

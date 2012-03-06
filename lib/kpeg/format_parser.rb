@@ -186,41 +186,37 @@ class KPeg::FormatParser
     end
 
     def parse(rule=nil)
+      # We invoke the rules indirectly via apply
+      # instead of by just calling them as methods because
+      # if the rules use left recursion, apply needs to
+      # manage that.
+
       if !rule
-        _root ? true : false
+        apply(:_root)
       else
-        # This is not shared with code_generator.rb so this can be standalone
         method = rule.gsub("-","_hyphen_")
-        __send__("_#{method}") ? true : false
+        apply :"_#{method}"
       end
-    end
-
-    class LeftRecursive
-      def initialize(detected=false)
-        @detected = detected
-      end
-
-      attr_accessor :detected
     end
 
     class MemoEntry
       def initialize(ans, pos)
         @ans = ans
         @pos = pos
-        @uses = 1
         @result = nil
+        @set = false
+        @left_rec = false
       end
 
-      attr_reader :ans, :pos, :uses, :result
-
-      def inc!
-        @uses += 1
-      end
+      attr_reader :ans, :pos, :result, :set
+      attr_accessor :left_rec
 
       def move!(ans, pos, result)
         @ans = ans
         @pos = pos
         @result = result
+        @set = true
+        @left_rec = false
       end
     end
 
@@ -248,12 +244,10 @@ class KPeg::FormatParser
     def apply_with_args(rule, *args)
       memo_key = [rule, args]
       if m = @memoizations[memo_key][@pos]
-        m.inc!
-
         prev = @pos
         @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
+        if !m.set
+          m.left_rec = true
           return nil
         end
 
@@ -261,18 +255,19 @@ class KPeg::FormatParser
 
         return m.ans
       else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
+        m = MemoEntry.new(nil, @pos)
         @memoizations[memo_key][@pos] = m
         start_pos = @pos
 
         ans = __send__ rule, *args
 
+        lr = m.left_rec
+
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
+        if ans and lr
           return grow_lr(rule, args, start_pos, m)
         else
           return ans
@@ -284,12 +279,10 @@ class KPeg::FormatParser
 
     def apply(rule)
       if m = @memoizations[rule][@pos]
-        m.inc!
-
         prev = @pos
         @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
+        if !m.set
+          m.left_rec = true
           return nil
         end
 
@@ -297,18 +290,19 @@ class KPeg::FormatParser
 
         return m.ans
       else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
+        m = MemoEntry.new(nil, @pos)
         @memoizations[rule][@pos] = m
         start_pos = @pos
 
         ans = __send__ rule
 
+        lr = m.left_rec
+
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
+        if ans and lr
           return grow_lr(rule, nil, start_pos, m)
         else
           return ans
@@ -2474,7 +2468,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - curly:act { @g.add_directive name, act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
 
     _save = self.pos
@@ -2701,32 +2695,77 @@ class KPeg::FormatParser
           self.pos = _save5
           break
         end
-        _tmp = match_string("=")
+        _tmp = apply(:_curly)
+        act = @result
         unless _tmp
           self.pos = _save5
+          break
+        end
+        @result = begin;  @g.add_directive name, act ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save5
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save6 = self.pos
+      while true # sequence
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        _tmp = match_string("%%")
+        unless _tmp
+          self.pos = _save6
           break
         end
         _tmp = apply(:__hyphen_)
         unless _tmp
-          self.pos = _save5
+          self.pos = _save6
+          break
+        end
+        _tmp = apply(:_var)
+        name = @result
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        _tmp = match_string("=")
+        unless _tmp
+          self.pos = _save6
+          break
+        end
+        _tmp = apply(:__hyphen_)
+        unless _tmp
+          self.pos = _save6
           break
         end
         _text_start = self.pos
-        _save6 = self.pos
-
         _save7 = self.pos
+
+        _save8 = self.pos
         while true # sequence
-          _save8 = self.pos
+          _save9 = self.pos
           _tmp = match_string("\n")
           _tmp = _tmp ? nil : true
-          self.pos = _save8
+          self.pos = _save9
           unless _tmp
-            self.pos = _save7
+            self.pos = _save8
             break
           end
           _tmp = get_byte
           unless _tmp
-            self.pos = _save7
+            self.pos = _save8
           end
           break
         end # end sequence
@@ -2734,19 +2773,19 @@ class KPeg::FormatParser
         if _tmp
           while true
 
-            _save9 = self.pos
+            _save10 = self.pos
             while true # sequence
-              _save10 = self.pos
+              _save11 = self.pos
               _tmp = match_string("\n")
               _tmp = _tmp ? nil : true
-              self.pos = _save10
+              self.pos = _save11
               unless _tmp
-                self.pos = _save9
+                self.pos = _save10
                 break
               end
               _tmp = get_byte
               unless _tmp
-                self.pos = _save9
+                self.pos = _save10
               end
               break
             end # end sequence
@@ -2755,19 +2794,19 @@ class KPeg::FormatParser
           end
           _tmp = true
         else
-          self.pos = _save6
+          self.pos = _save7
         end
         if _tmp
           text = get_text(_text_start)
         end
         unless _tmp
-          self.pos = _save5
+          self.pos = _save6
           break
         end
         @result = begin;  @g.set_variable(name, text) ; end
         _tmp = true
         unless _tmp
-          self.pos = _save5
+          self.pos = _save6
         end
         break
       end # end sequence
@@ -3124,7 +3163,7 @@ class KPeg::FormatParser
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
   Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
   Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
-  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[::A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - curly:act { @g.add_directive name, act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
   Rules[:_root] = rule_info("root", "statements - eof_comment? eof")

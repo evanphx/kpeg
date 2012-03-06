@@ -1,11 +1,11 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'
 require 'stringio'
 require 'rubygems'
 
-class TestKPegFormat < Test::Unit::TestCase
+class TestKPegFormat < MiniTest::Unit::TestCase
   G = KPeg::Grammar.new
 
   gram = File.read File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
@@ -384,6 +384,51 @@ Value   = NUMBER:i                      { i }
   def test_comment_span
     m = match "a=b # this is a comment\n   c"
     assert_rule G.seq(G.ref('b'), G.ref("c")), m
+  end
+
+  def test_parser_directive
+    m = match <<-GRAMMAR
+%% header {
+# coding: UTF-8
+}
+
+a=b
+    GRAMMAR
+
+    assert_rule G.ref("b"), m
+
+    expected = {
+      "header" => KPeg::Action.new("\n# coding: UTF-8\n")
+    }
+
+    assert_equal expected, m.directives
+  end
+
+  def test_parser_directive_duplicate
+    m = nil
+
+    out, err = capture_io do
+      m = match <<-GRAMMAR
+%% header {
+# coding: UTF-8
+}
+
+a=b
+
+%% header {
+# coding: ISO-8859-1
+}
+      GRAMMAR
+    end
+
+    assert_empty out
+    assert_equal "directive \"header\" appears more than once\n", err
+
+    expected = {
+      "header" => KPeg::Action.new("\n# coding: ISO-8859-1\n")
+    }
+
+    assert_equal expected, m.directives
   end
 
   def test_parser_setup

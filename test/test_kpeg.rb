@@ -1,8 +1,8 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'stringio'
 
-class TestKPeg < Test::Unit::TestCase
+class TestKPeg < MiniTest::Unit::TestCase
   def assert_match(m, str)
     assert_kind_of KPeg::MatchString, m
     assert_equal str, m.string

@@ -1,10 +1,10 @@
-require 'test/unit'
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/format_parser'
 require 'kpeg/code_generator'
 require 'stringio'
 
-class TestKPegCodeGenerator < Test::Unit::TestCase
+class TestKPegCodeGenerator < MiniTest::Unit::TestCase
   GRAMMAR = <<-'STR'
 Stmt    = - Expr:e EOL                  { @answers << e }
         | ( !EOL . )* EOL               { puts "error" }

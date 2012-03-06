@@ -19,6 +19,6 @@ Gem::Specification.new do |s|
   s.test_files    = Dir["test/**/*.rb"]
   s.bindir = "bin"
   s.executables = ["kpeg"]
-  s.require_paths = ["lib"]
   s.add_development_dependency "rake"
+  s.add_development_dependency "minitest", "~> 2.11"
 end

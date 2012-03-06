@@ -323,8 +323,16 @@ module KPeg
 
     def output
       return @output if @output
+
+      code = []
+
+      if header = @grammar.directives['header']
+        code << header.action.strip
+        code << "\n"
+      end
+
       if @standalone
-        code = "class #{@name}\n"
+        code << "class #{@name}\n"
 
         unless cp = standalone_region(
                     File.expand_path("../compiled_parser.rb", __FILE__))
@@ -341,7 +349,7 @@ module KPeg
         cp.gsub!(/include Position/, pp)
         code << cp << "\n"
       else
-        code =  "require 'kpeg/compiled_parser'\n\n"
+        code << "require 'kpeg/compiled_parser'\n\n"
         code << "class #{@name} < KPeg::CompiledParser\n"
       end
 
@@ -417,7 +425,8 @@ module KPeg
       end
 
       code << "end\n"
-      @output = code
+
+      @output = code.join
     end
 
     def make(str)

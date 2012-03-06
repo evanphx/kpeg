@@ -1,11 +1,11 @@
+require 'minitest/autorun'
 require 'kpeg'
 require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'
 require 'kpeg/code_generator'
 require 'stringio'
-require 'test/unit'
 
-class TestKPegRoundtrip < Test::Unit::TestCase
+class TestKPegRoundtrip < MiniTest::Unit::TestCase
   PATH = File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
   def test_roundtrip
     data = File.read(PATH)

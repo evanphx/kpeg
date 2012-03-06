@@ -108,6 +108,7 @@ sgl_escape_quote = "\\'" { "'" }
                  | - "%" var:name - "=" - < /[::A-Za-z0-9_]+/ >
                    { @g.add_foreign_grammar(name, text) }
                  | - "%%" - curly:act { @g.add_setup act }
+                 | - "%%" - var:name - curly:act { @g.add_directive name, act }
                  | - "%%" - var:name - "=" - < (!"\n" .)+ >
                    { @g.set_variable(name, text) }
       statements = statement (- statements)?
