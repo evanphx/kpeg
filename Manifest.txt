@@ -1,5 +1,4 @@
 .autotest
-Gemfile
 History.txt
 LICENSE
 Manifest.txt
