@@ -1,4 +1,7 @@
 module KPeg
+
+  VERSION = "0.8.5"
+
   def self.grammar
     g = Grammar.new
     yield g

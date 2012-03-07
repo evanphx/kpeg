@@ -1,20 +1,20 @@
-require 'rake/testtask'
-require 'rubygems/package_task'
+# -*- ruby -*-
 
-$:.unshift "lib"
+require 'rubygems'
+require 'hoe'
 
-spec = Gem::Specification.load 'kpeg.gemspec'
-Gem::PackageTask.new spec do |t|
-  t.need_tar = false
-  t.need_zip = false
-end
+Hoe.plugin :bundler
+Hoe.plugin :gemspec
+Hoe.plugin :git
+Hoe.plugin :minitest
+Hoe.plugin :travis
 
-task :default => :test
+Hoe.spec 'kpeg' do
+  developer 'Eric Hodel', 'drbrain@segment7.net'
 
-desc "Run tests"
-Rake::TestTask.new do |t|
-  t.test_files = FileList['test/test*.rb']
-  t.verbose = true
+  rdoc_locations << 'docs.seattlerb.org:/data/www/docs.seattlerb.org/kpeg/'
+
+  self.readme_file = 'README.rdoc'
 end
 
 task :grammar do
@@ -26,8 +26,10 @@ task :grammar do
   gr.render(STDOUT)
 end
 
-desc "rebuild parser"
+desc "build the parser"
 task :parser do
-  sh "ruby -Ilib bin/kpeg -o lib/kpeg/string_escape.rb -f lib/kpeg/string_escape.kpeg"
-  sh "ruby -Ilib bin/kpeg -o lib/kpeg/format_parser.rb -s -f lib/kpeg/format.kpeg"
+  ruby "-Ilib bin/kpeg -o lib/kpeg/string_escape.rb -f lib/kpeg/string_escape.kpeg"
+  ruby "-Ilib bin/kpeg -o lib/kpeg/format_parser.rb -s -f lib/kpeg/format.kpeg"
 end
+
+# vim: syntax=ruby

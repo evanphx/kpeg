@@ -5,6 +5,6 @@ Autotest.add_hook :run_command do |at|
 end
 
 Autotest.add_hook :initialize do |at|
-  at.testlib = 'minitest/unit'
+  at.testlib = 'minitest/autorun'
 end
 
