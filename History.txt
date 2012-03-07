@@ -2,7 +2,9 @@
 
 * Minor enhancements
   * Added arbitrary directives to the kpeg grammar
+
       %% directive_name { ... }
+
   * Added header and footer directives to the kpeg code formatter.  These
     appear above and below all other output, respectively:
 
