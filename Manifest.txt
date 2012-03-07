@@ -21,6 +21,7 @@ examples/upper/README.md
 examples/upper/upper.kpeg
 examples/upper/upper.rb
 kpeg.gemspec
+lib/hoe/kpeg.rb
 lib/kpeg.rb
 lib/kpeg/code_generator.rb
 lib/kpeg/compiled_parser.rb
