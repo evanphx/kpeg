@@ -10,6 +10,7 @@ Hoe.plugin :minitest
 Hoe.plugin :travis
 
 Hoe.spec 'kpeg' do
+  self.readme_file = "README.rdoc"
   developer 'Evan Phoenix', 'evan@fallingsnow.net'
 end
 
