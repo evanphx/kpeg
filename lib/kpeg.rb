@@ -1,6 +1,6 @@
 module KPeg
 
-  VERSION = "0.8.5"
+  VERSION = "0.9.0"
 
   def self.grammar
     g = Grammar.new
