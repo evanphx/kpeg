@@ -11,10 +11,6 @@ Hoe.plugin :travis
 
 Hoe.spec 'kpeg' do
   developer 'Eric Hodel', 'drbrain@segment7.net'
-
-  rdoc_locations << 'docs.seattlerb.org:/data/www/docs.seattlerb.org/kpeg/'
-
-  self.readme_file = 'README.rdoc'
 end
 
 task :grammar do
