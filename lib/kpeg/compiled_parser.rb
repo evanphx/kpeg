@@ -228,7 +228,6 @@ module KPeg
     def apply_with_args(rule, *args)
       memo_key = [rule, args]
       if m = @memoizations[memo_key][@pos]
-        prev = @pos
         @pos = m.pos
         if !m.set
           m.left_rec = true
@@ -263,7 +262,6 @@ module KPeg
 
     def apply(rule)
       if m = @memoizations[rule][@pos]
-        prev = @pos
         @pos = m.pos
         if !m.set
           m.left_rec = true

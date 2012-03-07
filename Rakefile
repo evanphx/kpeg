@@ -29,10 +29,16 @@ rule ".rb" => ".kpeg" do |t|
   ruby "-Ilib bin/kpeg -s -o #{t.name} -f #{t.source}"
 end
 
-desc "build the parser"
-task :parser => %w[
+PARSER_FILES = %w[
   lib/kpeg/string_escape.rb
   lib/kpeg/format_parser.rb
 ]
+
+PARSER_FILES.map do |parser_file|
+  file parser_file => 'lib/kpeg/compiled_parser.rb'
+end
+
+desc "build the parser"
+task :parser => PARSER_FILES
 
 # vim: syntax=ruby
