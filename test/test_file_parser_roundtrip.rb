@@ -6,7 +6,7 @@ require 'kpeg/code_generator'
 require 'stringio'
 
 class TestKPegRoundtrip < MiniTest::Unit::TestCase
-  PATH = File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
+  PATH = File.expand_path("../../lib/kpeg/format_parser.kpeg", __FILE__)
   def test_roundtrip
     data = File.read(PATH)
 

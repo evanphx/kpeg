@@ -24,7 +24,7 @@ kpeg.gemspec
 lib/kpeg.rb
 lib/kpeg/code_generator.rb
 lib/kpeg/compiled_parser.rb
-lib/kpeg/format.kpeg
+lib/kpeg/format_parser.kpeg
 lib/kpeg/format_parser.rb
 lib/kpeg/grammar.rb
 lib/kpeg/grammar_renderer.rb

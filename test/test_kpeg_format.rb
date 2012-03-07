@@ -8,7 +8,7 @@ require 'rubygems'
 class TestKPegFormat < MiniTest::Unit::TestCase
   G = KPeg::Grammar.new
 
-  gram = File.read File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
+  gram = File.read File.expand_path("../../lib/kpeg/format_parser.kpeg", __FILE__)
   KPeg.compile gram, "TestParser", self
 
   def match(str, gram=nil, log=false)
@@ -514,7 +514,7 @@ fact = fact "*" num
   end
 
   def test_roundtrip
-    path = File.expand_path("../../lib/kpeg/format.kpeg", __FILE__)
+    path = File.expand_path("../../lib/kpeg/format_parser.kpeg", __FILE__)
     parser = KPeg::FormatParser.new File.read(path)
     assert parser.parse, "Unable to parse"
 

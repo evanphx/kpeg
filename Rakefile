@@ -10,8 +10,10 @@ Hoe.plugin :minitest
 Hoe.plugin :travis
 
 Hoe.spec 'kpeg' do
-  developer 'Eric Hodel', 'drbrain@segment7.net'
+  developer 'Evan Phoenix', 'evan@fallingsnow.net'
 end
+
+task :test => :parser
 
 task :grammar do
   require 'kpeg'
@@ -22,10 +24,14 @@ task :grammar do
   gr.render(STDOUT)
 end
 
-desc "build the parser"
-task :parser do
-  ruby "-Ilib bin/kpeg -o lib/kpeg/string_escape.rb -f lib/kpeg/string_escape.kpeg"
-  ruby "-Ilib bin/kpeg -o lib/kpeg/format_parser.rb -s -f lib/kpeg/format.kpeg"
+rule ".rb" => ".kpeg" do |t|
+  ruby "-Ilib bin/kpeg -s -o #{t.name} -f #{t.source}"
 end
+
+desc "build the parser"
+task :parser => %w[
+  lib/kpeg/string_escape.rb
+  lib/kpeg/format_parser.rb
+]
 
 # vim: syntax=ruby
