@@ -185,6 +185,9 @@ header::
   Placed before any generated code
 pre-class::
   Placed before the class definition to provide a class comment
+footer::
+  Placed after the end of the class (for requiring files dependent upon the
+  parser's namespace
 
 == Generating and running your parser
 

@@ -3174,5 +3174,5 @@ class KPeg::FormatParser
   Rules[:_ast_sp] = rule_info("ast_sp", "(\" \" | \"\\t\")*")
   Rules[:_ast_words] = rule_info("ast_words", "(ast_words:r ast_sp \",\" ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })")
   Rules[:_ast_root] = rule_info("ast_root", "(ast_constant:c \"(\" ast_words:w \")\" { [c, w] } | ast_constant:c \"()\"? { [c, []] })")
-  # :stopdoc:
+  # :startdoc:
 end

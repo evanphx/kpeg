@@ -1,4 +1,4 @@
-=== 1.1
+=== 0.10
 
 * Minor enhancements
   * In standalone parsers generation of a default initialize method may be
@@ -6,12 +6,13 @@
 
       %% custom_initialize = true
   * Added a pre-class directive for adding class comments
+  * Generated code is now surrounded by startdoc/stopdoc.
 
 * Bug fixes
   * Hoe plugin now overwrites generated files
   * Directives and variables now round-trip through KPeg::GrammarRenderer
 
-=== 1.0 / 2012-04-06
+=== 0.9 / 2012-04-06
 
 * Minor enhancements
   * Added arbitrary directives to the kpeg grammar

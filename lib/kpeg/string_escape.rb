@@ -603,5 +603,5 @@ class KPeg::StringEscape
   Rules[:_root] = rule_info("root", "segment*:s { @text = s.join }")
   Rules[:_embed_seg] = rule_info("embed_seg", "(\"\#\" { \"\\\\\#\" } | segment)")
   Rules[:_embed] = rule_info("embed", "embed_seg*:s { @text = s.join }")
-  # :stopdoc:
+  # :startdoc:
 end

@@ -14,6 +14,7 @@ class TestKPegCodeGenerator < MiniTest::Unit::TestCase
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = .
   def _root
@@ -24,6 +25,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 
@@ -43,6 +45,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"
   def _root
@@ -53,6 +56,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"")
+  # :startdoc:
 end
     STR
 
@@ -72,6 +76,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = /[0-9]/
   def _root
@@ -82,6 +87,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "/[0-9]/")
+  # :startdoc:
 end
     STR
 
@@ -104,6 +110,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = /./
   def _root
@@ -114,6 +121,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "/./")
+  # :startdoc:
 end
     STR
     else
@@ -121,6 +129,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = /./u
   def _root
@@ -131,6 +140,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "/./u")
+  # :startdoc:
 end
     STR
     end
@@ -151,6 +161,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = [a-z]
   def _root
@@ -168,6 +179,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "[a-z]")
+  # :startdoc:
 end
     STR
 
@@ -189,6 +201,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = [a-z] "hello"
   def _root
@@ -220,6 +233,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "[a-z] \\\"hello\\\"")
+  # :startdoc:
 end
     STR
 
@@ -242,6 +256,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = ("hello" | "world")
   def _root
@@ -263,6 +278,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "(\\\"hello\\\" | \\\"world\\\")")
+  # :startdoc:
 end
     STR
 
@@ -298,6 +314,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"?
   def _root
@@ -313,6 +330,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"?")
+  # :startdoc:
 end
     STR
 
@@ -347,6 +365,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"*
   def _root
@@ -361,6 +380,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"*")
+  # :startdoc:
 end
     STR
 
@@ -398,6 +418,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"+
   def _root
@@ -418,6 +439,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"+")
+  # :startdoc:
 end
     STR
 
@@ -462,6 +484,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"[5, 9]
   def _root
@@ -488,6 +511,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"[5, 9]")
+  # :startdoc:
 end
     STR
 
@@ -505,6 +529,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello" "world"
   def _root
@@ -529,6 +554,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\" \\\"world\\\"")
+  # :startdoc:
 end
     STR
 
@@ -561,6 +587,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = &"hello"
   def _root
@@ -573,6 +600,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "&\\\"hello\\\"")
+  # :startdoc:
 end
     STR
 
@@ -598,6 +626,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = &{ !defined? @fail }
   def _root
@@ -610,6 +639,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "&{ !defined? @fail }")
+  # :startdoc:
 end
     STR
 
@@ -636,6 +666,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = !"hello"
   def _root
@@ -649,6 +680,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "!\\\"hello\\\"")
+  # :startdoc:
 end
     STR
 
@@ -674,6 +706,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = !{ defined? @fail }
   def _root
@@ -687,6 +720,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "!{ defined? @fail }")
+  # :startdoc:
 end
     STR
 
@@ -715,6 +749,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # greeting = "hello"
   def _greeting
@@ -733,6 +768,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
   Rules[:_root] = rule_info("root", "greeting")
+  # :startdoc:
 end
     STR
 
@@ -753,6 +789,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # greeting = "hello"
   def _greeting
@@ -771,6 +808,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
   Rules[:_root] = rule_info("root", "@greeting")
+  # :startdoc:
 end
     STR
 
@@ -791,6 +829,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # greeting = "hello"
   def _greeting(a,b)
@@ -809,6 +848,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_greeting] = rule_info("greeting", "\\\"hello\\\"")
   Rules[:_root] = rule_info("root", "@greeting(1,2)")
+  # :startdoc:
 end
     STR
 
@@ -836,6 +876,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
   def setup_foreign_grammar
     @_grammar_blah = TestKPegCodeGenerator::TestParser.new(nil)
   end
@@ -849,6 +890,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "%blah.greeting")
+  # :startdoc:
 end
     STR
 
@@ -869,6 +911,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
   def setup_foreign_grammar
     @_grammar_blah = TestKPegCodeGenerator::TestParser.new(nil)
   end
@@ -882,6 +925,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "%blah.greeting2(1,2)")
+  # :startdoc:
 end
     STR
 
@@ -901,6 +945,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello":t
   def _root
@@ -912,6 +957,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\":t")
+  # :startdoc:
 end
     STR
 
@@ -929,6 +975,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = "hello"
   def _root
@@ -939,6 +986,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "\\\"hello\\\"")
+  # :startdoc:
 end
     STR
 
@@ -957,6 +1005,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # hello = < "hello" > {text}
   def _hello
@@ -1016,6 +1065,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_hello] = rule_info("hello", "< \\\"hello\\\" > {text}")
   Rules[:_root] = rule_info("root", "hello?:lots {lots}")
+  # :startdoc:
 end
     STR
 
@@ -1043,6 +1093,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # hello = < "hello" > {text}
   def _hello
@@ -1103,6 +1154,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_hello] = rule_info("hello", "< \\\"hello\\\" > {text}")
   Rules[:_root] = rule_info("root", "hello*:lots {lots}")
+  # :startdoc:
 end
     STR
 
@@ -1133,6 +1185,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # hello = < "hello" > {text}
   def _hello
@@ -1200,6 +1253,7 @@ class Test < KPeg::CompiledParser
   Rules = {}
   Rules[:_hello] = rule_info("hello", "< \\\"hello\\\" > {text}")
   Rules[:_root] = rule_info("root", "hello+:lots {lots}")
+  # :startdoc:
 end
     STR
 
@@ -1228,6 +1282,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = {3 + 4}
   def _root
@@ -1239,6 +1294,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "{3 + 4}")
+  # :startdoc:
 end
     STR
 
@@ -1260,6 +1316,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = < "hello" > { text }
   def _root
@@ -1289,6 +1346,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "< \\\"hello\\\" > { text }")
+  # :startdoc:
 end
     STR
 
@@ -1310,6 +1368,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = @< "hello" > { bounds }
   def _root
@@ -1339,6 +1398,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", "@< \\\"hello\\\" > { bounds }")
+  # :startdoc:
 end
     STR
 
@@ -1402,6 +1462,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = .
   def _root
@@ -1412,6 +1473,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
 
 # require 'some/subclass'
@@ -1435,6 +1497,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = .
   def _root
@@ -1445,6 +1508,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 
@@ -1466,6 +1530,7 @@ require 'kpeg/compiled_parser'
 
 # some comment
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   # root = .
   def _root
@@ -1476,6 +1541,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 
@@ -1511,6 +1577,7 @@ class Test < KPeg::CompiledParser
 
  attr_reader :foo 
 
+  # :stopdoc:
 
   # root = .
   def _root
@@ -1521,6 +1588,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 
@@ -1572,6 +1640,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   module AST
     class Node; end
@@ -1611,6 +1680,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 
@@ -1632,6 +1702,7 @@ end
 require 'kpeg/compiled_parser'
 
 class Test < KPeg::CompiledParser
+  # :stopdoc:
 
   module MegaAST
     class Node; end
@@ -1657,6 +1728,7 @@ class Test < KPeg::CompiledParser
 
   Rules = {}
   Rules[:_root] = rule_info("root", ".")
+  # :startdoc:
 end
     STR
 

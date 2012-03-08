@@ -334,42 +334,28 @@ module KPeg
 
       code = []
 
-      if header = @grammar.directives['header']
-        code << header.action.strip
-        code << "\n"
+      output_header(code)
+      output_grammar(code)
+      output_footer(code)
+
+      @output = code.join
+    end
+
+    ##
+    # Output of class end and footer
+
+    def output_footer(code)
+      code << "end\n"
+
+      if footer = @grammar.directives['footer']
+        code << footer.action
       end
+    end
 
-      pre_class = @grammar.directives['pre-class']
+    ##
+    # Output of grammar and rules
 
-      if @standalone
-        if pre_class
-          code << pre_class.action.strip
-          code << "\n"
-        end
-        code << "class #{@name}\n"
-
-        cp  = standalone_region("compiled_parser.rb")
-        cpi = standalone_region("compiled_parser.rb", "INITIALIZE")
-        pp  = standalone_region("position.rb")
-
-        cp.gsub!(/include Position/, pp)
-        code << "  # :stopdoc:\n"
-        code << cpi << "\n" unless @grammar.variables['custom_initialize']
-        code << cp  << "\n"
-        code << "  # :startdoc:\n"
-      else
-        code << "require 'kpeg/compiled_parser'\n\n"
-        if pre_class
-          code << pre_class.action.strip
-          code << "\n"
-        end
-        code << "class #{@name} < KPeg::CompiledParser\n"
-      end
-
-      @grammar.setup_actions.each do |act|
-        code << "\n#{act.action}\n\n"
-      end
-
+    def output_grammar(code)
       code << "  # :stopdoc:\n"
       handle_ast(code)
 
@@ -436,14 +422,48 @@ module KPeg
         code << "  Rules[:#{method_name name}] = rule_info(\"#{name}\", \"#{rend}\")\n"
       end
 
-      code << "  # :stopdoc:\n"
-      code << "end\n"
+      code << "  # :startdoc:\n"
+    end
 
-      if footer = @grammar.directives['footer']
-        code << footer.action
+    ##
+    # Output up to the user-defined setup actions
+
+    def output_header(code)
+      if header = @grammar.directives['header']
+        code << header.action.strip
+        code << "\n"
       end
 
-      @output = code.join
+      pre_class = @grammar.directives['pre-class']
+
+      if @standalone
+        if pre_class
+          code << pre_class.action.strip
+          code << "\n"
+        end
+        code << "class #{@name}\n"
+
+        cp  = standalone_region("compiled_parser.rb")
+        cpi = standalone_region("compiled_parser.rb", "INITIALIZE")
+        pp  = standalone_region("position.rb")
+
+        cp.gsub!(/include Position/, pp)
+        code << "  # :stopdoc:\n"
+        code << cpi << "\n" unless @grammar.variables['custom_initialize']
+        code << cp  << "\n"
+        code << "  # :startdoc:\n"
+      else
+        code << "require 'kpeg/compiled_parser'\n\n"
+        if pre_class
+          code << pre_class.action.strip
+          code << "\n"
+        end
+        code << "class #{@name} < KPeg::CompiledParser\n"
+      end
+
+      @grammar.setup_actions.each do |act|
+        code << "\n#{act.action}\n\n"
+      end
     end
 
     def make(str)
