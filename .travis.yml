@@ -2,7 +2,7 @@
 script: rake travis
 before_script:
 - gem install hoe-travis --no-rdoc --no-ri
-- rake travis:before -t
+- rake travis:before
 language: ruby
 notifications:
   email:
