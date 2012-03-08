@@ -501,7 +501,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # var = < ("-" | /[a-zA-Z][\-_a-zA-Z0-9]*/) > { text }
+  # var = < ("-" | /[a-z][\w-]*/i) > { text }
   def _var
 
     _save = self.pos
@@ -513,7 +513,7 @@ class KPeg::FormatParser
         _tmp = match_string("-")
         break if _tmp
         self.pos = _save1
-        _tmp = scan(/\A(?-mix:[a-zA-Z][\-_a-zA-Z0-9]*)/)
+        _tmp = scan(/\A(?i-mx:[a-z][\w-]*)/)
         break if _tmp
         self.pos = _save1
         break
@@ -538,13 +538,13 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # method = < /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }
+  # method = < /[a-z_]\w*/i > { text }
   def _method
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[a-zA-Z_][a-zA-Z0-9_]*)/)
+      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -799,7 +799,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # num_escapes = (< /[0-7]{1,3}/ > { [text.to_i(8)].pack("U") } | "x" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack("U") })
+  # num_escapes = (< /[0-7]{1,3}/ > { [text.to_i(8)].pack("U") } | "x" < /[a-f\d]{2}/i > { [text.to_i(16)].pack("U") })
   def _num_escapes
 
     _save = self.pos
@@ -835,7 +835,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[0-9a-fA-F]{2})/)
+        _tmp = scan(/\A(?i-mx:[a-f\d]{2})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -1250,13 +1250,13 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # char = < /[a-zA-Z0-9]/ > { text }
+  # char = < /[a-z\d]/i > { text }
   def _char
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[a-zA-Z0-9])/)
+      _tmp = scan(/\A(?i-mx:[a-z\d])/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1320,13 +1320,13 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # range_num = < /[1-9][0-9]*/ > { text }
+  # range_num = < /[1-9]\d*/ > { text }
   def _range_num
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[1-9][0-9]*)/)
+      _tmp = scan(/\A(?-mix:[1-9]\d*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -2460,7 +2460,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[:A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - curly:act { @g.add_directive name, act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
+  # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[:\w]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - curly:act { @g.add_directive name, act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
 
     _save = self.pos
@@ -2606,7 +2606,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[:A-Za-z0-9_]+)/)
+        _tmp = scan(/\A(?-mix:[:\w]+)/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -2898,13 +2898,13 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # ast_constant = < /[A-Z][A-Za-z0-9_]*/ > { text }
+  # ast_constant = < /[A-Z]\w*/ > { text }
   def _ast_constant
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[A-Z][A-Za-z0-9_]*)/)
+      _tmp = scan(/\A(?-mix:[A-Z]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -2924,13 +2924,13 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # ast_word = < /[A-Za-z_][A-Za-z0-9_]*/ > { text }
+  # ast_word = < /[a-z_]\w*/i > { text }
   def _ast_word
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[A-Za-z_][A-Za-z0-9_]*)/)
+      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -3126,10 +3126,10 @@ class KPeg::FormatParser
   Rules[:_space] = rule_info("space", "(\" \" | \"\\t\" | eol)")
   Rules[:__hyphen_] = rule_info("-", "(space | comment)*")
   Rules[:_kleene] = rule_info("kleene", "\"*\"")
-  Rules[:_var] = rule_info("var", "< (\"-\" | /[a-zA-Z][\\-_a-zA-Z0-9]*/) > { text }")
-  Rules[:_method] = rule_info("method", "< /[a-zA-Z_][a-zA-Z0-9_]*/ > { text }")
+  Rules[:_var] = rule_info("var", "< (\"-\" | /[a-z][\\w-]*/i) > { text }")
+  Rules[:_method] = rule_info("method", "< /[a-z_]\\w*/i > { text }")
   Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"n\" { \"\\n\" } | \"s\" { \" \" } | \"r\" { \"\\r\" } | \"t\" { \"\\t\" } | \"v\" { \"\\v\" } | \"f\" { \"\\f\" } | \"b\" { \"\\b\" } | \"a\" { \"\\a\" } | \"e\" { \"\\e\" } | \"\\\\\" { \"\\\\\" } | \"\\\"\" { \"\\\"\" } | num_escapes | < . > { text })")
-  Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{1,3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[0-9a-fA-F]{2}/ > { [text.to_i(16)].pack(\"U\") })")
+  Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{1,3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[a-f\\d]{2}/i > { [text.to_i(16)].pack(\"U\") })")
   Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
   Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(\"\\\\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }")
   Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")
@@ -3141,9 +3141,9 @@ class KPeg::FormatParser
   Rules[:_not_slash] = rule_info("not_slash", "< (\"\\\\/\" | /[^\\/]/)+ > { text }")
   Rules[:_regexp_opts] = rule_info("regexp_opts", "< [a-z]* > { text }")
   Rules[:_regexp] = rule_info("regexp", "\"/\" not_slash:body \"/\" regexp_opts:opts { @g.reg body, opts }")
-  Rules[:_char] = rule_info("char", "< /[a-zA-Z0-9]/ > { text }")
+  Rules[:_char] = rule_info("char", "< /[a-z\\d]/i > { text }")
   Rules[:_char_range] = rule_info("char_range", "\"[\" char:l \"-\" char:r \"]\" { @g.range(l,r) }")
-  Rules[:_range_num] = rule_info("range_num", "< /[1-9][0-9]*/ > { text }")
+  Rules[:_range_num] = rule_info("range_num", "< /[1-9]\\d*/ > { text }")
   Rules[:_range_elem] = rule_info("range_elem", "< (range_num | kleene) > { text }")
   Rules[:_mult_range] = rule_info("mult_range", "(\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] } | \"[\" - range_num:e - \"]\" { [e.to_i, e.to_i] })")
   Rules[:_curly_block] = rule_info("curly_block", "curly")
@@ -3155,12 +3155,12 @@ class KPeg::FormatParser
   Rules[:_choose_cont] = rule_info("choose_cont", "- \"|\" - values:v { v }")
   Rules[:_expression] = rule_info("expression", "(values:v choose_cont+:alts { @g.any(v, *alts) } | values)")
   Rules[:_args] = rule_info("args", "(args:a \",\" - var:n - { a + [n] } | - var:n - { [n] })")
-  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[:A-Za-z0-9_]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - curly:act { @g.add_directive name, act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
+  Rules[:_statement] = rule_info("statement", "(- var:v \"(\" args:a \")\" - \"=\" - expression:o { @g.set(v, o, a) } | - var:v - \"=\" - expression:o { @g.set(v, o) } | - \"%\" var:name - \"=\" - < /[:\\w]+/ > { @g.add_foreign_grammar(name, text) } | - \"%%\" - curly:act { @g.add_setup act } | - \"%%\" - var:name - curly:act { @g.add_directive name, act } | - \"%%\" - var:name - \"=\" - < (!\"\\n\" .)+ > { @g.set_variable(name, text) })")
   Rules[:_statements] = rule_info("statements", "statement (- statements)?")
   Rules[:_eof] = rule_info("eof", "!.")
   Rules[:_root] = rule_info("root", "statements - eof_comment? eof")
-  Rules[:_ast_constant] = rule_info("ast_constant", "< /[A-Z][A-Za-z0-9_]*/ > { text }")
-  Rules[:_ast_word] = rule_info("ast_word", "< /[A-Za-z_][A-Za-z0-9_]*/ > { text }")
+  Rules[:_ast_constant] = rule_info("ast_constant", "< /[A-Z]\\w*/ > { text }")
+  Rules[:_ast_word] = rule_info("ast_word", "< /[a-z_]\\w*/i > { text }")
   Rules[:_ast_sp] = rule_info("ast_sp", "(\" \" | \"\\t\")*")
   Rules[:_ast_words] = rule_info("ast_words", "(ast_words:r ast_sp \",\" ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })")
   Rules[:_ast_root] = rule_info("ast_root", "(ast_constant:c \"(\" ast_words:w \")\" { [c, w] } | ast_constant:c \"()\"? { [c, []] })")
