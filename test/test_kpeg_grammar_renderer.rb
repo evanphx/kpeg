@@ -244,7 +244,8 @@ root = .
   def test_variables
     gram = KPeg.grammar do |g|
       g.root = g.dot
-      g.set_variable 'name', "Foo"
+      g.set_variable "name", "Foo"
+      g.set_variable "custom_initialize", "true"
     end
 
     io = StringIO.new
@@ -252,7 +253,9 @@ root = .
     gr.render(io)
 
     expected = <<-TXT
+%% custom_initialize = true
 %% name = Foo
+
 root = .
     TXT
     assert_equal expected, io.string
