@@ -5,6 +5,7 @@
     disabled with the custom_initialize variable:
 
       %% custom_initialize = true
+  * Added a pre-class directive for adding class comments
 
 * Bug fixes
   * Hoe plugin now overwrites generated files

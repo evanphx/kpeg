@@ -1455,6 +1455,49 @@ end
     assert cg.parse("hello")
   end
 
+  def test_directive_pre_class
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.directives['pre-class'] = g.action("\n# some comment\n")
+    end
+
+    str = <<-STR
+require 'kpeg/compiled_parser'
+
+# some comment
+class Test < KPeg::CompiledParser
+
+  # root = .
+  def _root
+    _tmp = get_byte
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_root] = rule_info("root", ".")
+end
+    STR
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    assert_equal str, cg.output
+
+    assert cg.parse("hello")
+  end
+
+  def test_directive_pre_class_standalone
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.directives['pre-class'] = g.action("\n# some comment\n")
+    end
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+    cg.standalone = true
+
+    assert_match %r%^# some comment%, cg.output
+  end
+
   def test_setup_actions
     gram = KPeg.grammar do |g|
       g.root = g.dot

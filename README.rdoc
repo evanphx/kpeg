@@ -183,6 +183,8 @@ Kpeg allows the following directives:
 
 header::
   Placed before any generated code
+pre-class::
+  Placed before the class definition to provide a class comment
 
 == Generating and running your parser
 

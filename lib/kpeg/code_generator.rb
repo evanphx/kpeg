@@ -339,7 +339,13 @@ module KPeg
         code << "\n"
       end
 
+      pre_class = @grammar.directives['pre-class']
+
       if @standalone
+        if pre_class
+          code << pre_class.action.strip
+          code << "\n"
+        end
         code << "class #{@name}\n"
 
         cp  = standalone_region("compiled_parser.rb")
@@ -351,6 +357,10 @@ module KPeg
         code << cp  << "\n"
       else
         code << "require 'kpeg/compiled_parser'\n\n"
+        if pre_class
+          code << pre_class.action.strip
+          code << "\n"
+        end
         code << "class #{@name} < KPeg::CompiledParser\n"
       end
 
