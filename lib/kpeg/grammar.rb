@@ -786,7 +786,7 @@ module KPeg
     end
 
     def maybe(node, &b)
-      op = multiple Grammar.resolve(node), 0, 1, &b
+      multiple Grammar.resolve(node), 0, 1, &b
     end
 
     def many(node, &b)

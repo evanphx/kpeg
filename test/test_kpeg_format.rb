@@ -58,7 +58,7 @@ a = c
 b(p) = x
     STR
 
-    gram = match(str)
+    assert match(str) # HACK what is this testing?
   end
 
   def test_assign_with_multiple_args
@@ -289,7 +289,7 @@ Value   = NUMBER:i                      { i }
         | ID:i !ASSIGN                  { vars[i] }
         | OPEN Expr:i CLOSE             { i }
     STR
-    m = match(str)
+    assert match(str) # HACK what is this testing?
   end
 
   def test_seq

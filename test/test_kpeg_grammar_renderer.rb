@@ -115,8 +115,6 @@ class TestKPegGrammarRenderer < MiniTest::Unit::TestCase
       g.root = g.term
     end
 
-    m = KPeg.match "4*3-8/9", gram
-
     io = StringIO.new
     gr = KPeg::GrammarRenderer.new(gram)
     gr.render(io)
@@ -150,8 +148,6 @@ root = term
                )
       g.root = g.term
     end
-
-    m = KPeg.match "4*3-8/9", gram
 
     io = StringIO.new
     gr = KPeg::GrammarRenderer.new(gram)
