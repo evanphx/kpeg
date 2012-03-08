@@ -314,11 +314,16 @@ module KPeg
     def standalone_region(path, marker = "STANDALONE")
       expanded_path = File.expand_path("../#{path}", __FILE__)
       cp = File.read(expanded_path)
-      start = cp.index("# #{marker} START")
-      fin   = cp.index("# #{marker} END")
+
+      start_marker = "# #{marker} START"
+      end_marker   = /^\s*# #{Regexp.escape marker} END/
+
+      start = cp.index(start_marker) + start_marker.length + 1 # \n
+      fin   = cp.index(end_marker)
 
       unless start and fin
-        abort "#{marker} boundaries in #{path} missing for standalone generation"
+        abort("#{marker} boundaries in #{path} missing " \
+              "for standalone generation")
       end
 
       cp[start..fin]

@@ -1,5 +1,4 @@
 class KPeg::StringEscape
-# INITIALIZE START
 
     # This is distinct from setup_parser so that a standalone parser
     # can redefine #initialize and still have access to the proper
@@ -8,8 +7,7 @@ class KPeg::StringEscape
       setup_parser(str, debug)
     end
 
-    #
-# STANDALONE START
+
 
     # Prepares for parsing +str+.  If you define a custom initialize you must
     # call this method before #parse
@@ -28,7 +26,7 @@ class KPeg::StringEscape
     attr_reader :failing_rule_offset
     attr_accessor :result, :pos
 
-    # STANDALONE START
+    
     def current_column(target=pos)
       if c = string.rindex("\n", target-1)
         return target - c - 1
@@ -56,7 +54,7 @@ class KPeg::StringEscape
       lines
     end
 
-    #
+
 
     def get_text(start)
       @string[start..@pos-1]
@@ -350,7 +348,7 @@ class KPeg::StringEscape
       RuleInfo.new(name, rendered)
     end
 
-    #
+
 
 
   attr_reader :text

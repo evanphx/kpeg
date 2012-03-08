@@ -1,5 +1,4 @@
 class KPeg::FormatParser
-# STANDALONE START
 
     # Prepares for parsing +str+.  If you define a custom initialize you must
     # call this method before #parse
@@ -18,7 +17,7 @@ class KPeg::FormatParser
     attr_reader :failing_rule_offset
     attr_accessor :result, :pos
 
-    # STANDALONE START
+    
     def current_column(target=pos)
       if c = string.rindex("\n", target-1)
         return target - c - 1
@@ -46,7 +45,7 @@ class KPeg::FormatParser
       lines
     end
 
-    #
+
 
     def get_text(start)
       @string[start..@pos-1]
@@ -340,7 +339,7 @@ class KPeg::FormatParser
       RuleInfo.new(name, rendered)
     end
 
-    #
+
 
 
     require 'kpeg/grammar'

@@ -1,6 +1,7 @@
 module KPeg
   module Position
     # STANDALONE START
+
     def current_column(target=pos)
       if c = string.rindex("\n", target-1)
         return target - c - 1

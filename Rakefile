@@ -35,6 +35,8 @@ PARSER_FILES = %w[
 
 PARSER_FILES.map do |parser_file|
   file parser_file => 'lib/kpeg/compiled_parser.rb'
+  file parser_file => 'lib/kpeg/code_generator.rb'
+  file parser_file => 'lib/kpeg/position.rb'
 end
 
 desc "build the parser"

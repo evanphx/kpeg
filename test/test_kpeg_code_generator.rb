@@ -1351,6 +1351,28 @@ end
     assert_equal [0,5], code.result
   end
 
+  def test_standalone_region
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+    end
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+
+    expected = <<-EXPECTED
+
+    # This is distinct from setup_parser so that a standalone parser
+    # can redefine #initialize and still have access to the proper
+    # parser setup code.
+    def initialize(str, debug=false)
+      setup_parser(str, debug)
+    end
+
+    EXPECTED
+
+    assert_equal expected,
+                 cg.standalone_region('compiled_parser.rb', 'INITIALIZE')
+  end
+
   def test_parse_error
     gram = KPeg.grammar do |g|
       g.world = "world"
