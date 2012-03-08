@@ -18,7 +18,7 @@ module KPeg
         io.print "\n"
       end
 
-      @grammar.directives.each do |name, act|
+      @grammar.directives.sort_by { |name,| name }.each do |name, act|
         io.print "%% #{name} {"
         io.print act.action
         io.print "}\n\n"

@@ -206,7 +206,8 @@ root = < [a-z]+ >
   def test_directives
     gram = KPeg.grammar do |g|
       g.root = g.dot
-      g.add_directive 'header', g.action("\n# coding: UTF-8\n")
+      g.add_directive "header", g.action("\n# coding: UTF-8\n")
+      g.add_directive "footer", g.action("\nrequire 'something'\n")
     end
 
     io = StringIO.new
@@ -214,6 +215,10 @@ root = < [a-z]+ >
     gr.render(io)
 
     expected = <<-TXT
+%% footer {
+require 'something'
+}
+
 %% header {
 # coding: UTF-8
 }
