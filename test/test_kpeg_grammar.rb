@@ -4,8 +4,52 @@ require 'kpeg/format_parser'
 require 'kpeg/code_generator'
 require 'stringio'
 
-class TestKPegCodeGenerator < MiniTest::Unit::TestCase
-  GRAMMAR = <<-'STR'
+class TestKpegGrammar < MiniTest::Unit::TestCase
+  LEFT_RECURSION = <<-'STR'
+
+  name = name:n "[]" { [:array, n] }
+       | < /\w+/ > { [:word, text] }
+
+  root = name
+
+  STR
+
+  def test_left_recursion_invoke_rule_directly
+    parc = KPeg::FormatParser.new(LEFT_RECURSION)
+    assert parc.parse, "Unable to parse"
+
+    gram = parc.grammar
+
+    # gr = KPeg::GrammarRenderer.new(gram)
+    # puts
+    # gr.render(STDOUT)
+
+    cg = KPeg::CodeGenerator.new "TestCalc", gram
+
+    code = cg.make("blah[]")
+    assert_equal true, code.parse("name")
+    assert_equal [:array, [:word, "blah"]], code.result
+  end
+
+  def test_left_recursion_invoke_rule_via_another
+    parc = KPeg::FormatParser.new(LEFT_RECURSION)
+    assert parc.parse, "Unable to parse"
+
+    gram = parc.grammar
+
+    # gr = KPeg::GrammarRenderer.new(gram)
+    # puts
+    # gr.render(STDOUT)
+
+    cg = KPeg::CodeGenerator.new "TestCalc", gram
+
+    code = cg.make("blah[]")
+    assert_equal true, code.parse("root")
+    assert_equal [:array, [:word, "blah"]], code.result
+  end
+
+  def test_gen_calc
+    parc = KPeg::FormatParser.new(<<-'STR')
 Stmt    = - Expr:e EOL                  { @answers << e }
         | ( !EOL . )* EOL               { puts "error" }
 
@@ -41,9 +85,6 @@ EOL     = ('\n' | '\r\n' | '\r' | ';') -
 
 root    = Stmt+
   STR
-
-  def test_parse
-    parc = KPeg::FormatParser.new(GRAMMAR)
     assert parc.parse, "Unable to parse"
 
     gram = parc.grammar
@@ -60,4 +101,6 @@ root    = Stmt+
     assert_equal true, code.parse
     assert_equal [7,56,119], code.instance_variable_get(:@answers)
   end
+
 end
+

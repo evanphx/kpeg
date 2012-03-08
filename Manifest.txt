@@ -34,13 +34,12 @@ lib/kpeg/position.rb
 lib/kpeg/string_escape.kpeg
 lib/kpeg/string_escape.rb
 test/inputs/comments.kpeg
-test/test_file_parser_roundtrip.rb
-test/test_gen_calc.rb
 test/test_kpeg.rb
 test/test_kpeg_code_generator.rb
 test/test_kpeg_compiled_parser.rb
 test/test_kpeg_format.rb
+test/test_kpeg_format_parser_round_trip.rb
+test/test_kpeg_grammar.rb
 test/test_kpeg_grammar_renderer.rb
-test/test_left_recursion.rb
 vim/syntax_kpeg/ftdetect/kpeg.vim
 vim/syntax_kpeg/syntax/kpeg.vim
