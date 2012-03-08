@@ -1,4 +1,5 @@
 %% name = KPeg::FormatParser
+%% custom_initialize = true
 
 %% {
     require 'kpeg/grammar'

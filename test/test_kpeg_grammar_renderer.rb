@@ -203,6 +203,26 @@ root = < [a-z]+ >
     assert_equal expected, io.string
   end
 
+  def test_directives
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.add_directive 'header', g.action("\n# coding: UTF-8\n")
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    expected = <<-TXT
+%% header {
+# coding: UTF-8
+}
+
+root = .
+    TXT
+    assert_equal expected, io.string
+  end
+
   def test_setup_actions
     gram = KPeg.grammar do |g|
       g.root = g.dot
@@ -220,7 +240,24 @@ root = .
     TXT
     assert_equal expected, io.string
   end
-  
+
+  def test_variables
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.set_variable 'name', "Foo"
+    end
+
+    io = StringIO.new
+    gr = KPeg::GrammarRenderer.new(gram)
+    gr.render(io)
+
+    expected = <<-TXT
+%% name = Foo
+root = .
+    TXT
+    assert_equal expected, io.string
+  end
+
   def test_multiple_render
     gram = KPeg.grammar do |g|
       g.root = g.multiple("a", 3, 5)

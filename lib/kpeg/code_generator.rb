@@ -90,11 +90,11 @@ module KPeg
         end
       end
     end
-    
+
     def indentify(code, indent)
       "#{"  " * indent}#{code}"
     end
-    
+
     # Default indent is 4 spaces (indent=2)
     def output_op(code, op, indent=2)
       case op
@@ -309,15 +309,18 @@ module KPeg
       else
         raise "Unknown op - #{op.class}"
       end
-
     end
 
-    def standalone_region(path)
-      cp = File.read(path)
-      start = cp.index("# STANDALONE START")
-      fin = cp.index("# STANDALONE END")
+    def standalone_region(path, marker = "STANDALONE")
+      expanded_path = File.expand_path("../#{path}", __FILE__)
+      cp = File.read(expanded_path)
+      start = cp.index("# #{marker} START")
+      fin   = cp.index("# #{marker} END")
 
-      return nil unless start and fin
+      unless start and fin
+        abort "#{marker} boundaries in #{path} missing for standalone generation"
+      end
+
       cp[start..fin]
     end
 
@@ -334,20 +337,13 @@ module KPeg
       if @standalone
         code << "class #{@name}\n"
 
-        unless cp = standalone_region(
-                    File.expand_path("../compiled_parser.rb", __FILE__))
-
-          puts "Standalone failure. Check compiler_parser.rb for proper boundary comments"
-          exit 1
-        end
-
-        unless pp = standalone_region(
-                    File.expand_path("../position.rb", __FILE__))
-          puts "Standalone failure. Check position.rb for proper boundary comments"
-        end
+        cp  = standalone_region("compiled_parser.rb")
+        cpi = standalone_region("compiled_parser.rb", "INITIALIZE")
+        pp  = standalone_region("position.rb")
 
         cp.gsub!(/include Position/, pp)
-        code << cp << "\n"
+        code << cpi << "\n" unless @grammar.variables['custom_initialize']
+        code << cp  << "\n"
       else
         code << "require 'kpeg/compiled_parser'\n\n"
         code << "class #{@name} < KPeg::CompiledParser\n"
@@ -435,7 +431,7 @@ module KPeg
 
     def make(str)
       m = Module.new
-      m.module_eval output
+      m.module_eval output, "(kpeg parser #{@name})"
 
       cls = m.const_get(@name)
       cls.new(str)

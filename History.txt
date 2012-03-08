@@ -1,7 +1,14 @@
-=== 1.0.1
+=== 1.1
+
+* Minor enhancements
+  * In standalone parsers generation of a default initialize method may be
+    disabled with the custom_initialize variable:
+
+      %% custom_initialize = true
 
 * Bug fixes
   * Hoe plugin now overwrites generated files
+  * Directives and variables now round-trip through KPeg::GrammarRenderer
 
 === 1.0 / 2012-04-06
 

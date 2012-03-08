@@ -1466,6 +1466,32 @@ end
     assert cg.parse("hello")
   end
 
+  def test_output_standalone
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+    end
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+    cg.standalone = true
+
+    # if this fails, also change test_variable_custom_initialize
+    assert_match 'def initialize(str, debug=false)', cg.output
+
+    assert cg.parse("hello")
+  end
+
+  def test_variable_custom_initialize
+    gram = KPeg.grammar do |g|
+      g.root = g.dot
+      g.variables['custom_initialize'] = 'whatever'
+    end
+
+    cg = KPeg::CodeGenerator.new "Test", gram
+    cg.standalone = true
+
+    refute_match 'def initialize(str, debug=false)', cg.output
+  end
+
   def test_ast_generation
     gram = KPeg.grammar do |g|
       g.root = g.dot

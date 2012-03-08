@@ -157,6 +157,33 @@ Kpeg allows comments to be added to the grammar file by using the # symbol
 
   # This is a comment in my grammar
 
+=== Variables
+
+A variable looks like this:
+
+  %% name = value
+
+Kpeg allows the following variables that control the output parser:
+
+name::
+  The class name of the generated parser.
+custom_initialize::
+  When built as a standalone parser a default initialize method will not be
+  included.
+
+=== Directives
+
+A directive looks like this:
+
+  %% header {
+    ...
+  }
+
+Kpeg allows the following directives:
+
+header::
+  Placed before any generated code
+
 == Generating and running your parser
 
 Before you can generate your parser you will need to define a root rule. This

@@ -10,6 +10,16 @@ module KPeg
       widest = @grammar.rules.keys.sort { |a,b| a.size <=> b.size }.last
       indent = widest.size
 
+      @grammar.variables.each do |name, value|
+        io.print "%% #{name} = #{value}\n"
+      end
+
+      @grammar.directives.each do |name, act|
+        io.print "%% #{name} {"
+        io.print act.action
+        io.print "}\n\n"
+      end
+
       @grammar.setup_actions.each do |act|
         io.print "%% {"
         io.print act.action

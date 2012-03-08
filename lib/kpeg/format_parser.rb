@@ -1,5 +1,8 @@
 class KPeg::FormatParser
 # STANDALONE START
+
+    # Prepares for parsing +str+.  If you define a custom initialize you must
+    # call this method before #parse
     def setup_parser(str, debug=false)
       @string = str
       @pos = 0
@@ -9,14 +12,6 @@ class KPeg::FormatParser
       @failing_rule_offset = -1
 
       setup_foreign_grammar
-    end
-
-    # This is distinct from setup_parser so that a standalone parser
-    # can redefine #initialize and still have access to the proper
-    # parser setup code.
-    #
-    def initialize(str, debug=false)
-      setup_parser(str, debug)
     end
 
     attr_reader :string
