@@ -1542,6 +1542,9 @@ end
     # if this fails, also change test_variable_custom_initialize
     assert_match 'def initialize(str, debug=false)', cg.output
 
+    assert_match '# :stopdoc:', cg.output
+    assert_match '# :startdoc:', cg.output
+
     assert cg.parse("hello")
   end
 

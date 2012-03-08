@@ -353,8 +353,10 @@ module KPeg
         pp  = standalone_region("position.rb")
 
         cp.gsub!(/include Position/, pp)
+        code << "  # :stopdoc:\n"
         code << cpi << "\n" unless @grammar.variables['custom_initialize']
         code << cp  << "\n"
+        code << "  # :startdoc:\n"
       else
         code << "require 'kpeg/compiled_parser'\n\n"
         if pre_class
@@ -368,6 +370,7 @@ module KPeg
         code << "\n#{act.action}\n\n"
       end
 
+      code << "  # :stopdoc:\n"
       handle_ast(code)
 
       fg = @grammar.foreign_grammars
@@ -433,6 +436,7 @@ module KPeg
         code << "  Rules[:#{method_name name}] = rule_info(\"#{name}\", \"#{rend}\")\n"
       end
 
+      code << "  # :stopdoc:\n"
       code << "end\n"
 
       if footer = @grammar.directives['footer']

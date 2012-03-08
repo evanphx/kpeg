@@ -1,4 +1,6 @@
+require 'kpeg/grammar'
 class KPeg::FormatParser
+  # :stopdoc:
 
     # Prepares for parsing +str+.  If you define a custom initialize you must
     # call this method before #parse
@@ -340,19 +342,27 @@ class KPeg::FormatParser
     end
 
 
+  # :startdoc:
 
 
-    require 'kpeg/grammar'
+
+    ##
+    # Creates a new kpeg format parser for +str+.
 
     def initialize(str, debug=false)
       setup_parser(str, debug)
       @g = KPeg::Grammar.new
     end
 
+    ##
+    # The parsed grammar
+
     attr_reader :g
+
     alias_method :grammar, :g
 
 
+  # :stopdoc:
   def setup_foreign_grammar; end
 
   # eol = "\n"
@@ -3164,4 +3174,5 @@ class KPeg::FormatParser
   Rules[:_ast_sp] = rule_info("ast_sp", "(\" \" | \"\\t\")*")
   Rules[:_ast_words] = rule_info("ast_words", "(ast_words:r ast_sp \",\" ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })")
   Rules[:_ast_root] = rule_info("ast_root", "(ast_constant:c \"(\" ast_words:w \")\" { [c, w] } | ast_constant:c \"()\"? { [c, []] })")
+  # :stopdoc:
 end

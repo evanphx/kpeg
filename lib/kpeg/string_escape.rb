@@ -1,4 +1,5 @@
 class KPeg::StringEscape
+  # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
     # can redefine #initialize and still have access to the proper
@@ -349,11 +350,13 @@ class KPeg::StringEscape
     end
 
 
+  # :startdoc:
 
 
   attr_reader :text
 
 
+  # :stopdoc:
   def setup_foreign_grammar; end
 
   # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
@@ -600,4 +603,5 @@ class KPeg::StringEscape
   Rules[:_root] = rule_info("root", "segment*:s { @text = s.join }")
   Rules[:_embed_seg] = rule_info("embed_seg", "(\"\#\" { \"\\\\\#\" } | segment)")
   Rules[:_embed] = rule_info("embed", "embed_seg*:s { @text = s.join }")
+  # :stopdoc:
 end

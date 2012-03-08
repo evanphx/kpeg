@@ -1,15 +1,25 @@
 %% name = KPeg::FormatParser
 %% custom_initialize = true
 
+%% pre-class {
+require 'kpeg/grammar'
+}
+
 %% {
-    require 'kpeg/grammar'
+
+    ##
+    # Creates a new kpeg format parser for +str+.
 
     def initialize(str, debug=false)
       setup_parser(str, debug)
       @g = KPeg::Grammar.new
     end
 
+    ##
+    # The parsed grammar
+
     attr_reader :g
+
     alias_method :grammar, :g
 }
 
