@@ -1,4 +1,5 @@
 .autotest
+.travis.yml
 History.txt
 LICENSE
 Manifest.txt
