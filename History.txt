@@ -1,4 +1,4 @@
-=== 0.10
+=== 0.10 / 2012-04-16
 
 * Minor enhancements
   * In standalone parsers generation of a default initialize method may be
