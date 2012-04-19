@@ -1661,7 +1661,7 @@ class Test < KPeg::CompiledParser
       end
     end
   end
-  module ASTHelpers
+  module ASTConstruction
     def bracket(receiver, argument)
       AST::BracketOperator.new(receiver, argument)
     end
@@ -1672,7 +1672,7 @@ class Test < KPeg::CompiledParser
       AST::Simple2.new()
     end
   end
-  include ASTHelpers
+  include ASTConstruction
 
   # root = .
   def _root
@@ -1718,12 +1718,12 @@ class Test < KPeg::CompiledParser
       attr_reader :argument
     end
   end
-  module MegaASTHelpers
+  module MegaASTConstruction
     def bracket(receiver, argument)
       MegaAST::BracketOperator.new(receiver, argument)
     end
   end
-  include MegaASTHelpers
+  include MegaASTConstruction
 
   # root = .
   def _root

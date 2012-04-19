@@ -83,14 +83,14 @@ module KPeg
 
       if output_node
         code << "  end\n"
-        code << "  module #{root}Helpers\n"
+        code << "  module #{root}Construction\n"
         methods.each do |short, name, attrs|
           code << "    def #{short}(#{attrs.join(', ')})\n"
           code << "      #{root}::#{name}.new(#{attrs.join(', ')})\n"
           code << "    end\n"
         end
         code << "  end\n"
-        code << "  include #{root}Helpers\n"
+        code << "  include #{root}Construction\n"
       end
     end
 
