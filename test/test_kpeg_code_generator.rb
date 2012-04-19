@@ -1661,15 +1661,18 @@ class Test < KPeg::CompiledParser
       end
     end
   end
-  def bracket(receiver, argument)
-    AST::BracketOperator.new(receiver, argument)
+  module ASTConstruction
+    def bracket(receiver, argument)
+      AST::BracketOperator.new(receiver, argument)
+    end
+    def simple()
+      AST::Simple.new()
+    end
+    def simple2()
+      AST::Simple2.new()
+    end
   end
-  def simple()
-    AST::Simple.new()
-  end
-  def simple2()
-    AST::Simple2.new()
-  end
+  include ASTConstruction
 
   # root = .
   def _root
@@ -1715,9 +1718,12 @@ class Test < KPeg::CompiledParser
       attr_reader :argument
     end
   end
-  def bracket(receiver, argument)
-    MegaAST::BracketOperator.new(receiver, argument)
+  module MegaASTConstruction
+    def bracket(receiver, argument)
+      MegaAST::BracketOperator.new(receiver, argument)
+    end
   end
+  include MegaASTConstruction
 
   # root = .
   def _root
