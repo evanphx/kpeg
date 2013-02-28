@@ -5,8 +5,7 @@ class KPeg::FormatParser
     # Prepares for parsing +str+.  If you define a custom initialize you must
     # call this method before #parse
     def setup_parser(str, debug=false)
-      @string = str
-      @pos = 0
+      set_string str, 0
       @memoizations = Hash.new { |h,k| h[k] = {} }
       @result = nil
       @failed_rule = nil
@@ -51,6 +50,13 @@ class KPeg::FormatParser
 
     def get_text(start)
       @string[start..@pos-1]
+    end
+
+    # Sets the string and current parsing position for the parser.
+    def set_string string, pos
+      @string = string
+      @string_size = string ? string.size : 0
+      @pos = pos
     end
 
     def show_pos
@@ -159,19 +165,19 @@ class KPeg::FormatParser
       return nil
     end
 
-    if "".respond_to? :getbyte
+    if "".respond_to? :ord
       def get_byte
-        if @pos >= @string.size
+        if @pos >= @string_size
           return nil
         end
 
-        s = @string.getbyte @pos
+        s = @string[@pos].ord
         @pos += 1
         s
       end
     else
       def get_byte
-        if @pos >= @string.size
+        if @pos >= @string_size
           return nil
         end
 
@@ -220,8 +226,7 @@ class KPeg::FormatParser
       old_pos = @pos
       old_string = @string
 
-      @pos = other.pos
-      @string = other.string
+      set_string other.string, other.pos
 
       begin
         if val = __send__(rule, *args)
@@ -232,8 +237,7 @@ class KPeg::FormatParser
         end
         val
       ensure
-        @pos = old_pos
-        @string = old_string
+        set_string old_string, old_pos
       end
     end
 
