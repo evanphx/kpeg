@@ -3,7 +3,7 @@ require 'kpeg'
 require 'kpeg/compiled_parser'
 require 'stringio'
 
-class TestKPegCompiledParser < MiniTest::Unit::TestCase
+class TestKPegCompiledParser < Minitest::Test
 
   gram = <<-GRAM
   letter = [a-z]

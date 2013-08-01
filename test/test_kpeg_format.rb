@@ -5,7 +5,7 @@ require 'kpeg/grammar_renderer'
 require 'stringio'
 require 'rubygems'
 
-class TestKPegFormat < MiniTest::Unit::TestCase
+class TestKPegFormat < Minitest::Test
   G = KPeg::Grammar.new
 
   gram = File.read File.expand_path("../../lib/kpeg/format_parser.kpeg", __FILE__)

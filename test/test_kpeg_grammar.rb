@@ -4,7 +4,7 @@ require 'kpeg/format_parser'
 require 'kpeg/code_generator'
 require 'stringio'
 
-class TestKpegGrammar < MiniTest::Unit::TestCase
+class TestKpegGrammar < Minitest::Test
   LEFT_RECURSION = <<-'STR'
 
   name = name:n "[]" { [:array, n] }

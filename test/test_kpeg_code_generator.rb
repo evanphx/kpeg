@@ -4,7 +4,7 @@ require 'kpeg'
 require 'kpeg/code_generator'
 require 'stringio'
 
-class TestKPegCodeGenerator < MiniTest::Unit::TestCase
+class TestKPegCodeGenerator < Minitest::Test
   def test_dot
     gram = KPeg.grammar do |g|
       g.root = g.dot

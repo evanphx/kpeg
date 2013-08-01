@@ -3,7 +3,7 @@ require 'kpeg'
 require 'kpeg/grammar_renderer'
 require 'stringio'
 
-class TestKPegGrammarRenderer < MiniTest::Unit::TestCase
+class TestKPegGrammarRenderer < Minitest::Test
   def test_escape
     str = "hello\nbob"
     assert_equal 'hello\nbob', KPeg::GrammarRenderer.escape(str)
