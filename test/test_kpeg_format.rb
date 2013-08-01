@@ -157,9 +157,9 @@ b(p) = x
   end
 
   def test_regexp
-    assert_rule G.reg(/foo/), match('a=/foo/')
-    assert_rule G.reg(/foo\/bar/), match('a=/foo\/bar/')
-    assert_rule G.reg(/[^"]/), match('a=/[^"]/')
+    assert_rule G.reg('foo'), match('a=/foo/')
+    assert_rule G.reg('foo\\/bar'), match('a=/foo\/bar/')
+    assert_rule G.reg('[^"]'), match('a=/[^"]/')
   end
 
   def test_regexp_options
