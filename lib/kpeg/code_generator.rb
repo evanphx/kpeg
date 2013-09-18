@@ -450,7 +450,7 @@ module KPeg
         cpi = standalone_region("compiled_parser.rb", "INITIALIZE")
         pp  = standalone_region("position.rb")
 
-        cp.gsub!(/include Position/, pp)
+        cp.gsub!(/^\s*include Position/, pp)
         code << "  # :stopdoc:\n"
         code << cpi << "\n" unless @grammar.variables['custom_initialize']
         code << cp  << "\n"
