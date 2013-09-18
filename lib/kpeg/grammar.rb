@@ -834,7 +834,7 @@ module KPeg
     # Invoke a rule defined on a foreign grammar
     # == Parameters:
     # gram::
-    #   The name of the grammar that the rule will be reference from 
+    #   The name of the grammar that the rule will be reference from
     # name::
     #   The name of the rule that will be invoked
     # args::

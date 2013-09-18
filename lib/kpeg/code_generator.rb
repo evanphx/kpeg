@@ -127,7 +127,7 @@ module KPeg
             left  = op.start[0]
             right = op.fin[0]
           end
-          
+
           code << indentify("  unless _tmp >= #{left} and _tmp <= #{right}\n", indent)
           code << indentify("    self.pos = #{ss}\n", indent)
           code << indentify("    _tmp = nil\n", indent)
@@ -143,7 +143,7 @@ module KPeg
         code << indentify("while true # choice\n", indent)
         op.ops.each_with_index do |n,idx|
           output_op code, n, (indent+1)
-          
+
           code << indentify("  break if _tmp\n", indent)
           code << indentify("  self.pos = #{ss}\n", indent)
           if idx == op.ops.size - 1
