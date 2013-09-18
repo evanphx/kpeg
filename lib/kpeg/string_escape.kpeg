@@ -7,6 +7,7 @@
 segment = < /[\w ]+/ > { text } # Don't use \s because that matchs \n
         | "\\" { "\\\\" }
         | "\n" { "\\n" }
+        | "\r" { "\\r" }
         | "\t" { "\\t" }
         | "\b" { "\\b" }
         | "\"" { "\\\"" }

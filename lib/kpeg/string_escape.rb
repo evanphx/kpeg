@@ -363,7 +363,7 @@ class KPeg::StringEscape
   # :stopdoc:
   def setup_foreign_grammar; end
 
-  # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
+  # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\r" { "\\r" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
   def _segment
 
     _save = self.pos
@@ -429,12 +429,12 @@ class KPeg::StringEscape
 
       _save4 = self.pos
       while true # sequence
-        _tmp = match_string("\t")
+        _tmp = match_string("\r")
         unless _tmp
           self.pos = _save4
           break
         end
-        @result = begin;  "\\t" ; end
+        @result = begin;  "\\r" ; end
         _tmp = true
         unless _tmp
           self.pos = _save4
@@ -447,12 +447,12 @@ class KPeg::StringEscape
 
       _save5 = self.pos
       while true # sequence
-        _tmp = match_string("\b")
+        _tmp = match_string("\t")
         unless _tmp
           self.pos = _save5
           break
         end
-        @result = begin;  "\\b" ; end
+        @result = begin;  "\\t" ; end
         _tmp = true
         unless _tmp
           self.pos = _save5
@@ -465,12 +465,12 @@ class KPeg::StringEscape
 
       _save6 = self.pos
       while true # sequence
-        _tmp = match_string("\"")
+        _tmp = match_string("\b")
         unless _tmp
           self.pos = _save6
           break
         end
-        @result = begin;  "\\\"" ; end
+        @result = begin;  "\\b" ; end
         _tmp = true
         unless _tmp
           self.pos = _save6
@@ -483,19 +483,37 @@ class KPeg::StringEscape
 
       _save7 = self.pos
       while true # sequence
+        _tmp = match_string("\"")
+        unless _tmp
+          self.pos = _save7
+          break
+        end
+        @result = begin;  "\\\"" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save7
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save8 = self.pos
+      while true # sequence
         _text_start = self.pos
         _tmp = get_byte
         if _tmp
           text = get_text(_text_start)
         end
         unless _tmp
-          self.pos = _save7
+          self.pos = _save8
           break
         end
         @result = begin;  text ; end
         _tmp = true
         unless _tmp
-          self.pos = _save7
+          self.pos = _save8
         end
         break
       end # end sequence
@@ -603,7 +621,7 @@ class KPeg::StringEscape
   end
 
   Rules = {}
-  Rules[:_segment] = rule_info("segment", "(< /[\\w ]+/ > { text } | \"\\\\\" { \"\\\\\\\\\" } | \"\\n\" { \"\\\\n\" } | \"\\t\" { \"\\\\t\" } | \"\\b\" { \"\\\\b\" } | \"\\\"\" { \"\\\\\\\"\" } | < . > { text })")
+  Rules[:_segment] = rule_info("segment", "(< /[\\w ]+/ > { text } | \"\\\\\" { \"\\\\\\\\\" } | \"\\n\" { \"\\\\n\" } | \"\\r\" { \"\\\\r\" } | \"\\t\" { \"\\\\t\" } | \"\\b\" { \"\\\\b\" } | \"\\\"\" { \"\\\\\\\"\" } | < . > { text })")
   Rules[:_root] = rule_info("root", "segment*:s { @text = s.join }")
   Rules[:_embed_seg] = rule_info("embed_seg", "(\"\#\" { \"\\\\\#\" } | segment)")
   Rules[:_embed] = rule_info("embed", "embed_seg*:s { @text = s.join }")
