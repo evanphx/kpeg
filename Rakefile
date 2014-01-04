@@ -11,6 +11,8 @@ Hoe.plugin :travis
 Hoe.spec 'kpeg' do
   self.readme_file = "README.rdoc"
   developer 'Evan Phoenix', 'evan@fallingsnow.net'
+
+  dependency 'minitest', '~> 5.0', :dev
 end
 
 task :test => :parser
