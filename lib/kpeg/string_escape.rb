@@ -278,8 +278,6 @@ class KPeg::StringEscape
         else
           return ans
         end
-
-        return ans
       end
     end
 
@@ -312,8 +310,6 @@ class KPeg::StringEscape
         else
           return ans
         end
-
-        return ans
       end
     end
 
