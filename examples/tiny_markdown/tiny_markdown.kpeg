@@ -1,0 +1,199 @@
+%% name = TinyMarkdown::Parser
+%% ast-location = ::TinyMarkdown
+%% document = ast DocumentNode(compiler, position, content)
+%% para = ast ParaNode(compiler, position, content)
+%% plain = ast PlainNode(compiler, position, content)
+%% text = ast TextNode(compiler, position, content)
+%% headline = ast HeadlineNode(compiler, position, level, content)
+%% block_quote = ast BlockQuoteNode(compiler, position, content)
+%% verbatim = ast VerbatimNode(compiler, position, content)
+%% horizontal_rule = ast HorizontalRuleNode(compiler, position)
+%% bullet_list = ast BulletListNode(compiler, position, content)
+%% list = ast ListNode(compiler, position, content)
+%% bullet_list_item = ast BulletListItemNode(compiler, position, content)
+%% linebreak = ast LineBreakNode(compiler, position)
+%% inline_element = ast InlineElementNode(compiler, position, name, content)
+
+%% {
+  attr_reader :ast
+
+  class Position
+    attr_accessor :pos, :line, :col
+    def initialize(compiler)
+      @pos = compiler.pos
+      @line = compiler.current_line
+      @col = compiler.current_column
+    end
+  end
+
+  def position
+    Position.new(self)
+  end
+}
+
+root = Start
+
+Start = &. Doc:c { @ast = c  }
+
+Doc =       Block*:c
+            ~document(self, position, c)
+
+Block =     BlankLine*
+            ( BlockQuote
+            | Verbatim
+            | HorizontalRule
+            | Heading
+            | BulletList
+            | Para
+            | Plain )
+
+Para =      NonindentSpace Inlines:a BlankLine+ ~para(self, position, a)
+
+Plain =     Inlines:a ~plain(self, position, a)
+
+AtxInline = !Newline !(Sp '#'* Sp Newline) Inline:c { c }
+
+AtxStart =  < /######|#####|####|###|##|#/ > { text.length }
+
+AtxHeading = AtxStart:level Sp AtxInline+:c (Sp "#"* Sp)?  Newline ~headline(self, position, level, c)
+
+Heading = AtxHeading
+
+BlockQuote = BlockQuoteRaw:c ~block_quote(self, position, c)
+
+BlockQuoteRaw =  ( '>' ' '? Line:c { c })+:cc { cc }
+
+NonblankIndentedLine = !BlankLine IndentedLine:c { c }
+
+VerbatimChunk =  (BlankLine { text(self,position,"\n") } )*:c1
+                 (NonblankIndentedLine:c { [c, text(self,position,"\n")] })+:c2 { c1 + c2.flatten }
+
+Verbatim =     VerbatimChunk+:cc ~verbatim(self, position, cc.flatten)
+
+HorizontalRule = NonindentSpace
+                 ( '*' Sp '*' Sp '*' (Sp '*')*
+                 | '-' Sp '-' Sp '-' (Sp '-')*
+                 | '_' Sp '_' Sp '_' (Sp '_')*)
+                 Sp Newline BlankLine+ ~horizontal_rule(self, position)
+
+Bullet = !HorizontalRule NonindentSpace ('+' | '*' | '-') Spacechar+
+
+BulletList = &Bullet ListTight:c ~bullet_list(self, position, c)
+
+ListTight = ListItemTight+:cc
+            BlankLine* !Bullet
+            { cc }
+
+ListItemTight = Bullet ListBlock:c ~bullet_list_item(self, position, c)
+
+ListBlock = !BlankLine Line:c ListBlockLine*:cc { cc.unshift(c) }
+
+ListBlockLine = !BlankLine
+                !( Indent? Bullet )
+                !HorizontalRule
+                OptionallyIndentedLine
+
+
+
+Inlines  =  ( !Endline Inline:c { c }
+            | Endline:c &Inline { c } )+:cc Endline?
+            { cc }
+
+Inline  = Str
+        | Endline
+        | Space
+        | Strong
+        | Emph
+        | Code
+        | Symbol
+
+Space = Spacechar+:c ~text(self, position, c.join(""))
+
+Str = NormalChar+:c1
+      StrChunk*:c2
+      ~text(self, position, (c1+c2).join(""))
+
+StrChunk = (NormalChar:c { [c] } | '_'+:c1 NormalChar:c2 { c1.push(c2) } )+:cc  { cc.flatten }
+
+
+Endline =   LineBreak | TerminalEndline | NormalEndline
+
+NormalEndline =   Sp Newline !BlankLine !'>' !AtxStart
+                  !(Line ('='+ | '-'+) Newline)
+                  ~text(self, position, "\n")
+
+TerminalEndline = Sp Newline Eof ~text(self, position, "\n")
+
+LineBreak = "  " NormalEndline ~linebreak(self, position)
+
+Symbol =    SpecialChar:c ~text(self, position, c)
+
+
+Emph =      EmphStar | EmphUl
+
+Whitespace = Spacechar | Newline
+
+EmphStar =  '*' !Whitespace
+            ( !'*' Inline:b { b }
+            | StrongStar:b  { b }
+            )+:c
+            '*'
+            ~inline_element(self, position, :em, c)
+
+EmphUl =    '_' !Whitespace
+            ( !'_' Inline:b { b }
+            | StrongUl:b  { b }
+            )+:c
+            '_'
+            ~inline_element(self, position, :em, c)
+
+Strong = StrongStar | StrongUl
+
+StrongStar =    "**" !Whitespace
+                ( !"**" Inline:b { b })+:c
+                "**"
+                ~inline_element(self, position, :strong, c)
+
+StrongUl   =    "__" !Whitespace
+                ( !"__" Inline:b { b })+:c
+                "__"
+                ~inline_element(self, position, :strong, c)
+
+
+
+Ticks1 = < /`/ > !'`' { text }
+Ticks2 = < /``/ > !'`' { text }
+
+Code =  ( Ticks1 Sp
+           ( !'`' Nonspacechar )+:c
+           Sp Ticks1  ~text(self, position, c.join(""))
+        | Ticks2 Sp
+           ( !'``' Nonspacechar )+:c
+           Sp Ticks2 ~text(self, position, c.join(""))
+        ):cc
+       ~inline_element(self, position, :code, [cc])
+
+
+BlankLine =     Sp Newline
+
+Quoted =        '"' (!'"' .)* '"' | '\'' (!'\'' .)* '\''
+Eof =           !.
+Spacechar =     < / |\t/ > { text }
+Nonspacechar =  !Spacechar !Newline <.> { text }
+Newline =       "\n" | "\r" "\n"?
+Sp =            Spacechar*
+Spnl =          Sp (Newline Sp)?
+##SpecialChar =   '~' | '*' | '_' | '`' | '&' | '[' | ']' | '(' | ')' | '<' | '!' | '#' | "\\" | "'" | '"'
+SpecialChar =   < /[~*_`&\[\]()<!#\\'"]/ > { text }
+NormalChar =    !( SpecialChar | Spacechar | Newline ) <.> { text }
+AlphanumericAscii =  < /[A-Za-z0-9]/ > { text }
+Digit =  < /[0-9]/ > { text }
+
+NonindentSpace =    < /   |  | |/ > { text }
+Indent =            < /\t|    / > { text }
+IndentedLine =      Indent Line:c { c }
+OptionallyIndentedLine = Indent? Line
+
+Line =  RawLine:c { c }
+RawLine = ((  < /[^\r\n]*/ > ) Newline { text } |  < /.+/ > Eof { text }):c  ~text(self, position, c)
+

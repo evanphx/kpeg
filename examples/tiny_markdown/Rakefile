@@ -1,0 +1,3 @@
+task :kpeg do
+  sh "kpeg -s -f tiny_markdown.kpeg"
+end
