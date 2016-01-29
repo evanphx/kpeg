@@ -143,13 +143,13 @@ Once you have the generated parser, include that file into your new grammar
 Then create a variable to hold to foreign interface and pass it the class name
 of your parser. In this case my parser class name is Literal 
 
-  %foreign_grammer = Literal
+  %foreign_grammar = Literal
 
 You can then use rules defined in the foreign grammar in the local grammar
 file like so
 
-  sentence = (%foreign_grammer.alpha %foreign_grammer.space*)+
-             %foreign_grammer.period
+  sentence = (%foreign_grammar.alpha %foreign_grammar.space*)+
+             %foreign_grammar.period
 
 === Comments
 
