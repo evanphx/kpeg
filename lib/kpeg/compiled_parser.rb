@@ -265,8 +265,6 @@ module KPeg
         else
           return ans
         end
-
-        return ans
       end
     end
 
@@ -299,8 +297,6 @@ module KPeg
         else
           return ans
         end
-
-        return ans
       end
     end
 

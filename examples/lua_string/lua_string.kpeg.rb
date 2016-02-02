@@ -275,8 +275,6 @@ class LuaString
         else
           return ans
         end
-
-        return ans
       end
     end
 

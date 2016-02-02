@@ -270,8 +270,6 @@ class KPeg::FormatParser
         else
           return ans
         end
-
-        return ans
       end
     end
 
@@ -304,8 +302,6 @@ class KPeg::FormatParser
         else
           return ans
         end
-
-        return ans
       end
     end
 
