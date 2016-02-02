@@ -8,7 +8,7 @@ require 'kpeg/grammar_renderer'
 require 'optparse'
 
 options = {}
-OptionParser.new do |o|
+optparser = OptionParser.new do |o|
   o.banner = "Usage: kpeg [options]"
 
   o.on("-t", "--test", "Syntax check the file only") do |v|
@@ -42,7 +42,14 @@ OptionParser.new do |o|
   o.on("-d", "--debug", "Debug parsing the file") do |v|
     options[:debug] = v
   end
-end.parse!
+end
+
+optparser.parse!
+
+if ARGV.empty?
+  puts optparser.help
+  exit 1
+end
 
 file = ARGV.shift
 
