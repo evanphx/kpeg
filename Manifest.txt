@@ -1,5 +1,7 @@
 .autotest
+.hoeignore
 .travis.yml
+Gemfile
 History.txt
 LICENSE
 Manifest.txt
@@ -17,6 +19,12 @@ examples/lua_string/lua_string.kpeg.rb
 examples/phone_number/README.md
 examples/phone_number/phone_number.kpeg
 examples/phone_number/phone_number.rb
+examples/tiny_markdown/Rakefile
+examples/tiny_markdown/driver.rb
+examples/tiny_markdown/node.rb
+examples/tiny_markdown/sample.md
+examples/tiny_markdown/tiny_markdown.kpeg
+examples/tiny_markdown/tiny_markdown.kpeg.rb
 examples/upper/README.md
 examples/upper/upper.kpeg
 examples/upper/upper.rb
@@ -42,5 +50,6 @@ test/test_kpeg_format.rb
 test/test_kpeg_format_parser_round_trip.rb
 test/test_kpeg_grammar.rb
 test/test_kpeg_grammar_renderer.rb
+test/test_kpeg_string_escape.rb
 vim/syntax_kpeg/ftdetect/kpeg.vim
 vim/syntax_kpeg/syntax/kpeg.vim
