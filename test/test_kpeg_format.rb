@@ -431,6 +431,25 @@ a=b
     assert_equal expected, m.directives
   end
 
+  def test_parser_directive_single_quote
+    m = match <<-GRAMMAR
+%% header {
+# It's a bug I found
+}
+
+a=b
+    GRAMMAR
+
+    assert_rule G.ref("b"), m
+
+    expected = {
+      "header" => KPeg::Action.new("\n# It's a bug I found\n")
+    }
+
+    assert_equal expected, m.directives
+  end
+  
+
   def test_parser_setup
     m = match "%% { def initialize; end }\na=b"
     assert_rule G.ref("b"), m

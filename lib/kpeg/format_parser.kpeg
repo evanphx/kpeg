@@ -77,7 +77,7 @@ sgl_escape_quote = "\\'" { "'" }
                  | "[" - range_num:e - "]" { [e.to_i, e.to_i] }
 
      curly_block = curly
-           curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
+           curly = "{" < (spaces | /[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
     nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
 
            value = value:v ":" var:n { @g.t(v,n) }
