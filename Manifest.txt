@@ -1,12 +1,15 @@
 .autotest
+.bundle/config
 .hoeignore
 .travis.yml
 Gemfile
+Gemfile.lock
 History.txt
 LICENSE
 Manifest.txt
 README.rdoc
 Rakefile
+appveyor.yml
 bin/kpeg
 examples/calculator/calculator.kpeg
 examples/calculator/calculator.rb

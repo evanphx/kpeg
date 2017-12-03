@@ -39,4 +39,3 @@ class TestKPegStringEscape < Minitest::Test
   end
 
 end
-

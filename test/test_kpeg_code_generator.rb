@@ -1079,7 +1079,7 @@ end
 
     code = cg.make("")
     assert code.parse
-    assert_equal nil, code.result
+    assert_nil code.result
   end
 
 

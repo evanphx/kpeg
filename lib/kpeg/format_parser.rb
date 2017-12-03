@@ -914,7 +914,7 @@ class KPeg::FormatParser
               break
             end
             _tmp = apply(:_dbl_escapes)
-            s = @result
+# warning unused s = @result
             unless _tmp
               self.pos = _save3
             end
@@ -924,7 +924,7 @@ class KPeg::FormatParser
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_dbl_seq)
-          s = @result
+# warning unused s = @result
           break if _tmp
           self.pos = _save2
           break
