@@ -129,6 +129,12 @@ module KPeg
             end
           end
         end
+        # Windows - force to UTF-8 if reg contains a Unicode character property
+        # of the \p{**} style
+        if reg =~ /\{[LMNPSZC][c-u]?\}/ && RUBY_PLATFORM =~ /mswin|mingw/ &&
+            reg.encoding == Encoding::IBM437
+          reg.force_encoding('UTF-8')
+        end
 
         @regexp = Regexp.new(reg, flags, lang)
       else

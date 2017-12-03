@@ -1,0 +1,35 @@
+version: '{build}'
+skip_tags: true
+clone_depth: 5
+build: off
+deploy: off
+
+init:
+  - mklink /d C:\git "C:\Program Files\Git"
+  - if %ruby_version%==_trunk (
+      appveyor DownloadFile https://ci.appveyor.com/api/projects/MSP-Greg/ruby-loco/artifacts/ruby_trunk.7z -FileName C:\ruby_trunk.7z &
+      7z x C:\ruby_trunk.7z -oC:\ruby_trunk )
+
+install:
+  - gem install hoe --no-document
+  - if "%ruby_version%" LSS "22" ( gem update minitest )
+
+test_script:
+- rake test
+on_finish:
+- ruby -v
+
+environment:
+  PATH: C:/ruby%ruby_version%/bin;C:/Program Files/7-Zip;C:/Program Files/AppVeyor/BuildAgent;C:/git/cmd;C:/Program Files (x86)/GNU/GnuPG/pub;C:/Windows/system32;C:\Windows;
+  matrix:
+  - ruby_version: 200
+  - ruby_version: 200-x64
+  - ruby_version: 21
+  - ruby_version: 21-x64
+  - ruby_version: 22
+  - ruby_version: 22-x64
+  - ruby_version: 23
+  - ruby_version: 23-x64
+  - ruby_version: 24
+  - ruby_version: 24-x64
+  - ruby_version: _trunk
