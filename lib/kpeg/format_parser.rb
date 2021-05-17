@@ -1510,7 +1510,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
+  # curly = "{" < (spaces | /[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
   def _curly
 
     _save = self.pos
@@ -1525,6 +1525,9 @@ class KPeg::FormatParser
 
         _save2 = self.pos
         while true # choice
+          _tmp = apply(:_spaces)
+          break if _tmp
+          self.pos = _save2
           _tmp = scan(/\A(?-mix:[^{}"']+)/)
           break if _tmp
           self.pos = _save2
@@ -3156,7 +3159,7 @@ class KPeg::FormatParser
   Rules[:_range_elem] = rule_info("range_elem", "< (range_num | kleene) > { text }")
   Rules[:_mult_range] = rule_info("mult_range", "(\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] } | \"[\" - range_num:e - \"]\" { [e.to_i, e.to_i] })")
   Rules[:_curly_block] = rule_info("curly_block", "curly")
-  Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
+  Rules[:_curly] = rule_info("curly", "\"{\" < (spaces | /[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()\"']+/ | string | nested_paren)* \")\"")
   Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name < nested_paren? > !(- \"=\") { @g.invoke(name, text.empty? ? nil : text) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
