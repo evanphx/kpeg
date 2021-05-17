@@ -155,9 +155,8 @@ class KPeg::FormatParser
     end
 
     def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
+      if m = reg.match(@string, @pos)
+        @pos = m.end(0)
         return true
       end
 
@@ -522,7 +521,7 @@ class KPeg::FormatParser
         _tmp = match_string("-")
         break if _tmp
         self.pos = _save1
-        _tmp = scan(/\A(?i-mx:[a-z][\w-]*)/)
+        _tmp = scan(/\G(?i-mx:[a-z][\w-]*)/)
         break if _tmp
         self.pos = _save1
         break
@@ -553,7 +552,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
+      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -817,7 +816,7 @@ class KPeg::FormatParser
       _save1 = self.pos
       while true # sequence
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[0-7]{1,3})/)
+        _tmp = scan(/\G(?-mix:[0-7]{1,3})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -844,7 +843,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?i-mx:[a-f\d]{2})/)
+        _tmp = scan(/\G(?i-mx:[a-f\d]{2})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -875,7 +874,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[^\\"]+)/)
+      _tmp = scan(/\G(?-mix:[^\\"]+)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1013,7 +1012,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[^'])/)
+      _tmp = scan(/\G(?-mix:[^'])/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1138,7 +1137,7 @@ class KPeg::FormatParser
         _tmp = match_string("\\/")
         break if _tmp
         self.pos = _save2
-        _tmp = scan(/\A(?-mix:[^\/])/)
+        _tmp = scan(/\G(?-mix:[^\/])/)
         break if _tmp
         self.pos = _save2
         break
@@ -1152,7 +1151,7 @@ class KPeg::FormatParser
             _tmp = match_string("\\/")
             break if _tmp
             self.pos = _save3
-            _tmp = scan(/\A(?-mix:[^\/])/)
+            _tmp = scan(/\G(?-mix:[^\/])/)
             break if _tmp
             self.pos = _save3
             break
@@ -1265,7 +1264,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z\d])/)
+      _tmp = scan(/\G(?i-mx:[a-z\d])/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1335,7 +1334,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[1-9]\d*)/)
+      _tmp = scan(/\G(?-mix:[1-9]\d*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1528,7 +1527,7 @@ class KPeg::FormatParser
           _tmp = apply(:_spaces)
           break if _tmp
           self.pos = _save2
-          _tmp = scan(/\A(?-mix:[^{}"']+)/)
+          _tmp = scan(/\G(?-mix:[^{}"']+)/)
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_string)
@@ -1581,7 +1580,7 @@ class KPeg::FormatParser
 
         _save2 = self.pos
         while true # choice
-          _tmp = scan(/\A(?-mix:[^()"']+)/)
+          _tmp = scan(/\G(?-mix:[^()"']+)/)
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_string)
@@ -2618,7 +2617,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[:\w]+)/)
+        _tmp = scan(/\G(?-mix:[:\w]+)/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -2916,7 +2915,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[A-Z]\w*)/)
+      _tmp = scan(/\G(?-mix:[A-Z]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -2942,7 +2941,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
+      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end

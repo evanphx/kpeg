@@ -112,7 +112,7 @@ module KPeg
           # Let default ruby string handling figure it out
           lang = ""
         end
-        code << indentify("_tmp = scan(/\\A#{op.regexp}/#{lang})\n", indent)
+        code << indentify("_tmp = scan(/\\G#{op.regexp}/#{lang})\n", indent)
       when CharRange
         ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1
