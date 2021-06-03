@@ -150,9 +150,8 @@ module KPeg
     end
 
     def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
+      if m = reg.match(@string, @pos)
+        @pos = m.end(0)
         return true
       end
 

@@ -80,7 +80,7 @@ class Test < KPeg::CompiledParser
 
   # root = /[0-9]/
   def _root
-    _tmp = scan(/\\A(?-mix:[0-9])/)
+    _tmp = scan(/\\G(?-mix:[0-9])/)
     set_failed_rule :_root unless _tmp
     return _tmp
   end
@@ -114,7 +114,7 @@ class Test < KPeg::CompiledParser
 
   # root = /./
   def _root
-    _tmp = scan(/\\A(?-mix:.)/)
+    _tmp = scan(/\\G(?-mix:.)/)
     set_failed_rule :_root unless _tmp
     return _tmp
   end
@@ -133,7 +133,7 @@ class Test < KPeg::CompiledParser
 
   # root = /./u
   def _root
-    _tmp = scan(/\\A(?-mix:.)/u)
+    _tmp = scan(/\\G(?-mix:.)/u)
     set_failed_rule :_root unless _tmp
     return _tmp
   end

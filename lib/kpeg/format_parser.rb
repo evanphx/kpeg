@@ -155,9 +155,8 @@ class KPeg::FormatParser
     end
 
     def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
+      if m = reg.match(@string, @pos)
+        @pos = m.end(0)
         return true
       end
 
@@ -522,7 +521,7 @@ class KPeg::FormatParser
         _tmp = match_string("-")
         break if _tmp
         self.pos = _save1
-        _tmp = scan(/\A(?i-mx:[a-z][\w-]*)/)
+        _tmp = scan(/\G(?i-mx:[a-z][\w-]*)/)
         break if _tmp
         self.pos = _save1
         break
@@ -553,7 +552,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
+      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -817,7 +816,7 @@ class KPeg::FormatParser
       _save1 = self.pos
       while true # sequence
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[0-7]{1,3})/)
+        _tmp = scan(/\G(?-mix:[0-7]{1,3})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -844,7 +843,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?i-mx:[a-f\d]{2})/)
+        _tmp = scan(/\G(?i-mx:[a-f\d]{2})/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -875,7 +874,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[^\\"]+)/)
+      _tmp = scan(/\G(?-mix:[^\\"]+)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1013,7 +1012,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[^'])/)
+      _tmp = scan(/\G(?-mix:[^'])/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1138,7 +1137,7 @@ class KPeg::FormatParser
         _tmp = match_string("\\/")
         break if _tmp
         self.pos = _save2
-        _tmp = scan(/\A(?-mix:[^\/])/)
+        _tmp = scan(/\G(?-mix:[^\/])/)
         break if _tmp
         self.pos = _save2
         break
@@ -1152,7 +1151,7 @@ class KPeg::FormatParser
             _tmp = match_string("\\/")
             break if _tmp
             self.pos = _save3
-            _tmp = scan(/\A(?-mix:[^\/])/)
+            _tmp = scan(/\G(?-mix:[^\/])/)
             break if _tmp
             self.pos = _save3
             break
@@ -1265,7 +1264,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z\d])/)
+      _tmp = scan(/\G(?i-mx:[a-z\d])/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1335,7 +1334,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[1-9]\d*)/)
+      _tmp = scan(/\G(?-mix:[1-9]\d*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -1510,7 +1509,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # curly = "{" < (/[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
+  # curly = "{" < (spaces | /[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
   def _curly
 
     _save = self.pos
@@ -1525,7 +1524,10 @@ class KPeg::FormatParser
 
         _save2 = self.pos
         while true # choice
-          _tmp = scan(/\A(?-mix:[^{}"']+)/)
+          _tmp = apply(:_spaces)
+          break if _tmp
+          self.pos = _save2
+          _tmp = scan(/\G(?-mix:[^{}"']+)/)
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_string)
@@ -1578,7 +1580,7 @@ class KPeg::FormatParser
 
         _save2 = self.pos
         while true # choice
-          _tmp = scan(/\A(?-mix:[^()"']+)/)
+          _tmp = scan(/\G(?-mix:[^()"']+)/)
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_string)
@@ -2615,7 +2617,7 @@ class KPeg::FormatParser
           break
         end
         _text_start = self.pos
-        _tmp = scan(/\A(?-mix:[:\w]+)/)
+        _tmp = scan(/\G(?-mix:[:\w]+)/)
         if _tmp
           text = get_text(_text_start)
         end
@@ -2913,7 +2915,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[A-Z]\w*)/)
+      _tmp = scan(/\G(?-mix:[A-Z]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -2939,7 +2941,7 @@ class KPeg::FormatParser
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?i-mx:[a-z_]\w*)/)
+      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
       if _tmp
         text = get_text(_text_start)
       end
@@ -3156,7 +3158,7 @@ class KPeg::FormatParser
   Rules[:_range_elem] = rule_info("range_elem", "< (range_num | kleene) > { text }")
   Rules[:_mult_range] = rule_info("mult_range", "(\"[\" - range_elem:l - \",\" - range_elem:r - \"]\" { [l == \"*\" ? nil : l.to_i, r == \"*\" ? nil : r.to_i] } | \"[\" - range_num:e - \"]\" { [e.to_i, e.to_i] })")
   Rules[:_curly_block] = rule_info("curly_block", "curly")
-  Rules[:_curly] = rule_info("curly", "\"{\" < (/[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
+  Rules[:_curly] = rule_info("curly", "\"{\" < (spaces | /[^{}\"']+/ | string | curly)* > \"}\" { @g.action(text) }")
   Rules[:_nested_paren] = rule_info("nested_paren", "\"(\" (/[^()\"']+/ | string | nested_paren)* \")\"")
   Rules[:_value] = rule_info("value", "(value:v \":\" var:n { @g.t(v,n) } | value:v \"?\" { @g.maybe(v) } | value:v \"+\" { @g.many(v) } | value:v \"*\" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | \"&\" value:v { @g.andp(v) } | \"!\" value:v { @g.notp(v) } | \"(\" - expression:o - \")\" { o } | \"@<\" - expression:o - \">\" { @g.bounds(o) } | \"<\" - expression:o - \">\" { @g.collect(o) } | curly_block | \"~\" method:m < nested_paren? > { @g.action(\"\#{m}\#{text}\") } | \".\" { @g.dot } | \"@\" var:name < nested_paren? > !(- \"=\") { @g.invoke(name, text.empty? ? nil : text) } | \"^\" var:name < nested_paren? > { @g.foreign_invoke(\"parent\", name, text) } | \"%\" var:gram \".\" var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- \"=\") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)")
   Rules[:_spaces] = rule_info("spaces", "(space | comment)+")
