@@ -21,6 +21,7 @@ class TestKPegCompiledParser < Minitest::Test
 
   def test_current_column
     r = TestParser.new "hello\nsir"
+    assert_equal 1, r.current_column(0)
     assert_equal 2, r.current_column(1)
     assert_equal 6, r.current_column(5)
     assert_equal 1, r.current_column(7)

@@ -19,7 +19,7 @@ class KPeg::FormatParser
     attr_accessor :result, :pos
 
     def current_column(target=pos)
-      if c = string.rindex("\n", target-1)
+      if target > 0 && c = string.rindex("\n", target-1)
         return target - c - 1
       end
 
