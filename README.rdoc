@@ -240,15 +240,15 @@ For a good example of usage check out Talon[https://github.com/evanphx/talon]
 There are several examples available in the /examples directory. The upper
 parser has a readme with a step by step description of the grammar.
 
-== Projects using kpeg
+== Projects
 
-Dang[https://github.com/veganstraightedge/dang]
+{Dang}[https://github.com/veganstraightedge/dang]
 
 {Email Address Validator}[https://github.com/larb/email_address_validator]
 
-Callisto[https://github.com/dwaite/Callisto]
+{Callisto}[https://github.com/dwaite/Callisto]
 
-Doodle[https://github.com/vito/doodle]
+{Doodle}[https://github.com/vito/doodle]
 
-Kanbanpad[https://kanbanpad.com] (uses kpeg for parsing of the 'enter
+{Kanbanpad}[https://kanbanpad.com] (uses kpeg for parsing of the 'enter
 something' bar)
