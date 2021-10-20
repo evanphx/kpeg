@@ -1,3 +1,10 @@
+=== 1.2.0 / 2021-10-20
+
+* Speed up current_line
+
+
+=== (entries lost to time)
+
 === 0.10 / 2012-04-16
 
 * Minor enhancements
