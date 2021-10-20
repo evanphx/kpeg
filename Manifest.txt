@@ -1,6 +1,5 @@
 .autotest
 .hoeignore
-.travis.yml
 Gemfile
 History.txt
 LICENSE
