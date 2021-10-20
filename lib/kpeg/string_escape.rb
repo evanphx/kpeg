@@ -18,6 +18,7 @@ class KPeg::StringEscape
       @result = nil
       @failed_rule = nil
       @failing_rule_offset = -1
+      @line_offsets = nil
 
       setup_foreign_grammar
     end
@@ -34,17 +35,33 @@ class KPeg::StringEscape
       target + 1
     end
 
-    def current_line(target=pos)
-      cur_offset = 0
-      cur_line = 0
+    if [].respond_to? :bsearch_index
+      def current_line(target=pos)
+        unless @line_offsets
+          @line_offsets = [-1]
+          total = 0
+          string.each_line do |line|
+            @line_offsets << total
+            total += line.size
+          end
+          @line_offsets << total
+        end
 
-      string.each_line do |line|
-        cur_line += 1
-        cur_offset += line.size
-        return cur_line if cur_offset >= target
+        @line_offsets.bsearch_index {|x| x >= target } || -1
       end
+    else
+      def current_line(target=pos)
+        cur_offset = 0
+        cur_line = 0
 
-      -1
+        string.each_line do |line|
+          cur_line += 1
+          cur_offset += line.size
+          return cur_line if cur_offset >= target
+        end
+
+        -1
+      end
     end
 
     def lines
