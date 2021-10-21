@@ -30,7 +30,7 @@ class KPeg::FormatParser
     if [].respond_to? :bsearch_index
       def current_line(target=pos)
         unless @line_offsets
-          @line_offsets = [-1]
+          @line_offsets = []
           total = 0
           string.each_line do |line|
             @line_offsets << total
@@ -39,7 +39,7 @@ class KPeg::FormatParser
           @line_offsets << total
         end
 
-        @line_offsets.bsearch_index {|x| x >= target } || -1
+        @line_offsets.bsearch_index {|x| x >= target } + 1 || -1
       end
     else
       def current_line(target=pos)
