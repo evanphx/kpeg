@@ -16,10 +16,9 @@ module KPeg
           @line_offsets = []
           total = 0
           string.each_line do |line|
-            @line_offsets << total
             total += line.size
+            @line_offsets << total
           end
-          @line_offsets << total
         end
 
         @line_offsets.bsearch_index {|x| x >= target } + 1 || -1
