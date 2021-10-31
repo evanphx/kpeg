@@ -7,6 +7,7 @@ class TestKPegCompiledParser < Minitest::Test
 
   gram = <<-GRAM
   letter = [a-z]
+  number = [0-9]
   root = letter
   GRAM
 
@@ -14,7 +15,7 @@ class TestKPegCompiledParser < Minitest::Test
 
   gram = <<-GRAM
   %test = TestKPegCompiledParser::TestParser
-  root = %test.letter "!"
+  root = %test.letter %test.number? "!"
   GRAM
 
   KPeg.compile gram, "CompTestParser", self
@@ -75,6 +76,14 @@ class TestKPegCompiledParser < Minitest::Test
     assert !r.parse, "should parse"
 
     expected = "@1:1 failed rule 'TestKPegCompiledParser::TestParser#_letter', got '9'"
+    assert_equal expected, r.failure_oneline
+  end
+
+  def test_composite_two_char_error
+    r = CompTestParser.new "aa"
+    assert_nil r.parse, "should not parse"
+
+    expected = "@1:2 failed rule 'TestKPegCompiledParser::TestParser#_number', got 'a'"
     assert_equal expected, r.failure_oneline
   end
 
