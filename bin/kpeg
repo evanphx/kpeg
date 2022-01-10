@@ -53,7 +53,7 @@ end
 
 file = ARGV.shift
 
-unless File.exists?(file)
+unless File.exist?(file)
   puts "File '#{file}' does not exist"
   exit 1
 end
@@ -75,7 +75,7 @@ if options[:reformat]
   end
 
   output = options[:output]
-  if File.exists?(output) and !options[:force]
+  if File.exist?(output) and !options[:force]
     puts "Output '#{output}' already exists, not overwriting (use -f)"
     exit 1
   end
@@ -107,7 +107,7 @@ else
   new_path = "#{file}.rb"
 end
 
-if !options[:test] and File.exists?(new_path) and !options[:force]
+if !options[:test] and File.exist?(new_path) and !options[:force]
   puts "Path #{new_path} already exists, not overwriting\n"
   exit 1
 end
