@@ -22,7 +22,7 @@ class TestKPeg < Minitest::Test
     end
 
     assert_match KPeg.match("hello", gram), "hello"
-    assert_equal nil, KPeg.match("vador", gram)
+    assert_nil KPeg.match("vador", gram)
   end
 
   def test_reg
@@ -48,7 +48,7 @@ class TestKPeg < Minitest::Test
 
     assert_match KPeg.match("hello", gram), "hello"
     assert_match KPeg.match("chicken", gram), "chicken"
-    assert_equal nil, KPeg.match("vador", gram)
+    assert_nil KPeg.match("vador", gram)
   end
 
   def test_maybe
@@ -78,7 +78,7 @@ class TestKPeg < Minitest::Test
       assert_match sm, "run"
     end
 
-    assert_equal nil, KPeg.match("vador", gram)
+    assert_nil KPeg.match("vador", gram)
   end
 
   def test_kleene
@@ -124,9 +124,9 @@ class TestKPeg < Minitest::Test
       assert_match sm, "run"
     end
 
-    assert_equal nil, KPeg.match("run", gram) 
-    assert_equal nil, KPeg.match("runrunrunrunrun", gram) 
-    assert_equal nil, KPeg.match("vador", gram) 
+    assert_nil KPeg.match("run", gram) 
+    assert_nil KPeg.match("runrunrunrunrun", gram) 
+    assert_nil KPeg.match("vador", gram) 
   end
 
   def test_seq
@@ -141,8 +141,8 @@ class TestKPeg < Minitest::Test
 
     assert_equal m.value, ["hello", ", world"]
 
-    assert_equal nil, KPeg.match("vador", gram)
-    assert_equal nil, KPeg.match("hello, vador", gram)
+    assert_nil KPeg.match("vador", gram)
+    assert_nil KPeg.match("hello, vador", gram)
   end
 
   def test_andp
@@ -346,7 +346,7 @@ class TestKPeg < Minitest::Test
     parser = KPeg::Parser.new "hello", gram
     m = parser.parse
 
-    assert_equal nil, m
+    assert_nil m
   end
 
   def test_math_grammar
