@@ -20,6 +20,15 @@ class TestKPegCompiledParser < Minitest::Test
 
   KPeg.compile gram, "CompTestParser", self
 
+  gram = <<-GRAM
+  letter = < [a-z] > { text }
+  number = [0-9]
+  n_or_l = letter | number
+  root = letter:l n_or_l*:n { [l, n] }
+  GRAM
+
+  KPeg.compile gram, "ProdTestParser", self
+
   def test_current_column
     r = TestParser.new "hello\nsir"
     assert_equal 2, r.current_column(1)
@@ -87,4 +96,52 @@ class TestKPegCompiledParser < Minitest::Test
     assert_equal expected, r.failure_oneline
   end
 
+  def test_producing_parser_one_product
+    r = ProdTestParser.new "a"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", []], r.result
+  end
+
+  def test_producing_parser_two_products
+    r = ProdTestParser.new "ab"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", ["b"]], r.result
+  end
+
+  def test_producing_parser_three_products
+    r = ProdTestParser.new "abc"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", ["b", "c"]], r.result
+  end
+
+  def test_producing_parser_product_and_nil
+    r = ProdTestParser.new "a1"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", [nil]], r.result
+  end
+
+  def test_producing_parser_product_and_nil2
+    r = ProdTestParser.new "a1b"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", [nil, "b"]], r.result
+  end
+
+  def test_producing_parser_product_and_nil3
+    r = ProdTestParser.new "ab1"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", ["b", nil]], r.result
+  end
+
+  def test_producing_parser_product_and_nil4
+    r = ProdTestParser.new "a12"
+    assert r.parse, "should parse"
+
+    assert_equal ["a", [nil, nil]], r.result
+  end
 end
