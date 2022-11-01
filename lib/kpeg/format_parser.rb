@@ -910,7 +910,7 @@ class KPeg::FormatParser
     return _tmp
   end
 
-  # dbl_not_quote = ("\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
+  # dbl_not_quote = ("\\" dbl_escapes | dbl_seq)*:ary { Array(ary) }
   def _dbl_not_quote
 
     _save = self.pos
@@ -929,7 +929,6 @@ class KPeg::FormatParser
               break
             end
             _tmp = apply(:_dbl_escapes)
-            s = @result
             unless _tmp
               self.pos = _save3
             end
@@ -939,7 +938,6 @@ class KPeg::FormatParser
           break if _tmp
           self.pos = _save2
           _tmp = apply(:_dbl_seq)
-          s = @result
           break if _tmp
           self.pos = _save2
           break
@@ -3158,7 +3156,7 @@ class KPeg::FormatParser
   Rules[:_dbl_escapes] = rule_info("dbl_escapes", "(\"n\" { \"\\n\" } | \"s\" { \" \" } | \"r\" { \"\\r\" } | \"t\" { \"\\t\" } | \"v\" { \"\\v\" } | \"f\" { \"\\f\" } | \"b\" { \"\\b\" } | \"a\" { \"\\a\" } | \"e\" { \"\\e\" } | \"\\\\\" { \"\\\\\" } | \"\\\"\" { \"\\\"\" } | num_escapes | < . > { text })")
   Rules[:_num_escapes] = rule_info("num_escapes", "(< /[0-7]{1,3}/ > { [text.to_i(8)].pack(\"U\") } | \"x\" < /[a-f\\d]{2}/i > { [text.to_i(16)].pack(\"U\") })")
   Rules[:_dbl_seq] = rule_info("dbl_seq", "< /[^\\\\\"]+/ > { text }")
-  Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(\"\\\\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }")
+  Rules[:_dbl_not_quote] = rule_info("dbl_not_quote", "(\"\\\\\" dbl_escapes | dbl_seq)*:ary { Array(ary) }")
   Rules[:_dbl_string] = rule_info("dbl_string", "\"\\\"\" dbl_not_quote:s \"\\\"\" { @g.str(s.join) }")
   Rules[:_sgl_escape_quote] = rule_info("sgl_escape_quote", "\"\\\\'\" { \"'\" }")
   Rules[:_sgl_seq] = rule_info("sgl_seq", "< /[^']/ > { text }")

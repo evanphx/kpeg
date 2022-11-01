@@ -53,7 +53,7 @@ require 'kpeg/grammar'
                  | "x" < /[a-f\d]{2}/i > { [text.to_i(16)].pack("U") }
                  # TODO use /\h{2}/ after 1.8 support is dropped
          dbl_seq = < /[^\\"]+/ > { text }
-   dbl_not_quote = ("\\" dbl_escapes:s | dbl_seq:s)*:ary { Array(ary) }
+   dbl_not_quote = ("\\" dbl_escapes | dbl_seq)*:ary { Array(ary) }
       dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
 sgl_escape_quote = "\\'" { "'" }
          sgl_seq = < /[^']/ > { text }

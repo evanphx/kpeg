@@ -39,6 +39,7 @@ PARSER_FILES.map do |parser_file|
   file parser_file => 'lib/kpeg/compiled_parser.rb'
   file parser_file => 'lib/kpeg/code_generator.rb'
   file parser_file => 'lib/kpeg/position.rb'
+  file parser_file => parser_file.sub(/\.rb$/, '.kpeg')
 end
 
 desc "build the parser"
