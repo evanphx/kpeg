@@ -3,45 +3,75 @@ module KPeg
     # STANDALONE START
 
     def current_column(target=pos)
-      if c = string.rindex("\n", target-1)
-        return target - c - 1
+      if string[target] == "\n" && (c = string.rindex("\n", target-1) || -1)
+        return target - c
+      elsif c = string.rindex("\n", target)
+        return target - c
       end
 
       target + 1
     end
 
+    def position_line_offsets
+      unless @position_line_offsets
+        @position_line_offsets = []
+        total = 0
+        string.each_line do |line|
+          total += line.size
+          @position_line_offsets << total
+        end
+      end
+      @position_line_offsets
+    end
+
     if [].respond_to? :bsearch_index
       def current_line(target=pos)
-        unless @line_offsets
-          @line_offsets = []
-          total = 0
-          string.each_line do |line|
-            total += line.size
-            @line_offsets << total
-          end
+        if line = position_line_offsets.bsearch_index {|x| x > target }
+          return line + 1
         end
-
-        @line_offsets.bsearch_index {|x| x >= target } + 1 || -1
+        raise "Target position #{target} is outside of string"
       end
     else
       def current_line(target=pos)
-        cur_offset = 0
-        cur_line = 0
-
-        string.each_line do |line|
-          cur_line += 1
-          cur_offset += line.size
-          return cur_line if cur_offset >= target
+        if line = position_line_offsets.index {|x| x > target }
+          return line + 1
         end
 
-        -1
+        raise "Target position #{target} is outside of string"
       end
     end
 
+    def current_character(target=pos)
+      if target < 0 || target >= string.size
+        raise "Target position #{target} is outside of string"
+      end
+      string[target, 1]
+    end
+
+    KpegPosInfo = Struct.new(:pos, :lno, :col, :line, :char)
+
+    def current_pos_info(target=pos)
+      l = current_line target
+      c = current_column target
+      ln = get_line(l-1)
+      chr = string[target,1]
+      KpegPosInfo.new(target, l, c, ln, chr)
+    end
+
     def lines
-      lines = []
-      string.each_line { |l| lines << l }
-      lines
+      string.lines
+    end
+
+    def get_line(no)
+      loff = position_line_offsets
+      if no < 0
+        raise "Line No is out of range: #{no} < 0"
+      elsif no >= loff.size
+        raise "Line No is out of range: #{no} >= #{loff.size}"
+      end
+      lend = loff[no]-1
+      lstart = no > 0 ? loff[no-1] : 0
+      string[lstart..lend]
     end
 
     # STANDALONE END
