@@ -285,6 +285,7 @@ class KPeg::StringEscape
     end
 
     def apply_with_args(rule, *args)
+      @result = nil
       memo_key = [rule, args]
       if m = @memoizations[memo_key][@pos]
         @pos = m.pos
@@ -318,6 +319,7 @@ class KPeg::StringEscape
     end
 
     def apply(rule)
+      @result = nil
       if m = @memoizations[rule][@pos]
         @pos = m.pos
         if !m.set
