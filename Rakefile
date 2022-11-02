@@ -1,19 +1,6 @@
 # -*- ruby -*-
 
 require 'rubygems'
-require 'hoe'
-
-Hoe.plugin :gemspec
-Hoe.plugin :git
-Hoe.plugin :minitest
-Hoe.plugin :travis
-
-Hoe.spec 'kpeg' do
-  self.readme_file = "README.rdoc"
-  developer 'Evan Phoenix', 'evan@fallingsnow.net'
-
-  dependency 'minitest', '~> 5.0', :dev
-end
 
 task :test => :parser
 
@@ -44,5 +31,9 @@ end
 
 desc "build the parser"
 task :parser => PARSER_FILES
+
+task :gem do
+  sh "gem build"
+end
 
 # vim: syntax=ruby
