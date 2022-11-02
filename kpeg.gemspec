@@ -27,8 +27,10 @@ Gem::Specification.new do |s|
   if s.respond_to? :add_runtime_dependency then
     s.add_development_dependency(%q<minitest>, ["~> 5.16"])
     s.add_development_dependency(%q<rdoc>, [">= 4.0", "< 7"])
+    s.add_development_dependency(%q<rake>, [">= 0.8", "< 15.0"])
   else
     s.add_dependency(%q<minitest>, ["~> 5.16"])
     s.add_dependency(%q<rdoc>, [">= 4.0", "< 7"])
+    s.add_dependency(%q<rake>, [">= 0.8", "< 15.0"])
   end
 end
