@@ -1,3 +1,12 @@
+=== 1.3.3 / 2023-03-06
+
+* Remove 3rd argument to Regexp.new
+
+=== 1.3.2 / 2022-11-02
+
+* Fix column calculation
+* General improvement in line/column calculation
+
 === 1.3.1 / 2022-01-10
 
 * File.exists? => File.exist?

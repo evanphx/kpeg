@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = "kpeg"
-  s.version = "1.3.2"
+  s.version = "1.3.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.metadata = { "bug_tracker_uri" => "https://github.com/evanphx/kpeg/issues", "homepage_uri" => "https://github.com/evanphx/kpeg" } if s.respond_to? :metadata=
