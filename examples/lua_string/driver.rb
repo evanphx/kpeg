@@ -1,4 +1,4 @@
-require 'lua_string.kpeg.rb'
+require_relative 'lua_string.kpeg'
 
 ls = LuaString.new("[[blah]]")
 ls.parse

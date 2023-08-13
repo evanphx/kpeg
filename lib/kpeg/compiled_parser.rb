@@ -127,6 +127,7 @@ module KPeg
         @failed_rule = name
         @failing_rule_offset = @pos
       end
+      nil
     end
 
     attr_reader :failed_rule
@@ -169,6 +170,32 @@ module KPeg
         s = @string[@pos]
         @pos += 1
         s
+      end
+    end
+
+    def look_ahead(pos, action)
+      @pos = pos
+      action ? true : nil
+    end
+
+    def loop_range(range, store)
+      _ary = [] if store
+      max = range.end && range.max
+      count = 0
+      save = @pos
+      while (!max || count < max) && yield
+        count += 1
+        if store
+          _ary << @result
+          @result = nil
+        end
+      end
+      if range.include?(count)
+        @result = _ary if store
+        true
+      else
+        @pos = save
+        nil
       end
     end
 

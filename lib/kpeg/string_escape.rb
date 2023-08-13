@@ -193,6 +193,7 @@ class KPeg::StringEscape
         @failed_rule = name
         @failing_rule_offset = @pos
       end
+      nil
     end
 
     attr_reader :failed_rule
@@ -235,6 +236,32 @@ class KPeg::StringEscape
         s = @string[@pos]
         @pos += 1
         s
+      end
+    end
+
+    def look_ahead(pos, action)
+      @pos = pos
+      action ? true : nil
+    end
+
+    def loop_range(range, store)
+      _ary = [] if store
+      max = range.end && range.max
+      count = 0
+      save = @pos
+      while (!max || count < max) && yield
+        count += 1
+        if store
+          _ary << @result
+          @result = nil
+        end
+      end
+      if range.include?(count)
+        @result = _ary if store
+        true
+      else
+        @pos = save
+        nil
       end
     end
 
@@ -406,259 +433,92 @@ class KPeg::StringEscape
 
   # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\r" { "\\r" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
   def _segment
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _text_start = self.pos
-        _tmp = scan(/\G(?-mix:[\w ]+)/)
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  text ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = match_string("\\")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  "\\\\" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save3 = self.pos
-      while true # sequence
-        _tmp = match_string("\n")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  "\\n" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save4 = self.pos
-      while true # sequence
-        _tmp = match_string("\r")
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  "\\r" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save5 = self.pos
-      while true # sequence
-        _tmp = match_string("\t")
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        @result = begin;  "\\t" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save5
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save6 = self.pos
-      while true # sequence
-        _tmp = match_string("\b")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        @result = begin;  "\\b" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save6
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save7 = self.pos
-      while true # sequence
-        _tmp = match_string("\"")
-        unless _tmp
-          self.pos = _save7
-          break
-        end
-        @result = begin;  "\\\"" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save7
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save8 = self.pos
-      while true # sequence
-        _text_start = self.pos
-        _tmp = get_byte
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        @result = begin;  text ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save8
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_segment unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        ( _text_start = self.pos
+          scan(/\G(?-mix:[\w ]+)/) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (text); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        match_string("\\") &&
+        ( @result = ("\\\\"); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      ) ||
+      ( _save2 = self.pos  # sequence
+        match_string("\n") &&
+        ( @result = ("\\n"); true ) ||
+        ( self.pos = _save2; nil )  # end sequence
+      ) ||
+      ( _save3 = self.pos  # sequence
+        match_string("\r") &&
+        ( @result = ("\\r"); true ) ||
+        ( self.pos = _save3; nil )  # end sequence
+      ) ||
+      ( _save4 = self.pos  # sequence
+        match_string("\t") &&
+        ( @result = ("\\t"); true ) ||
+        ( self.pos = _save4; nil )  # end sequence
+      ) ||
+      ( _save5 = self.pos  # sequence
+        match_string("\b") &&
+        ( @result = ("\\b"); true ) ||
+        ( self.pos = _save5; nil )  # end sequence
+      ) ||
+      ( _save6 = self.pos  # sequence
+        match_string("\"") &&
+        ( @result = ("\\\""); true ) ||
+        ( self.pos = _save6; nil )  # end sequence
+      ) ||
+      ( _save7 = self.pos  # sequence
+        ( _text_start = self.pos
+          get_byte &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (text); true ) ||
+        ( self.pos = _save7; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_segment
   end
 
   # root = segment*:s { @text = s.join }
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _ary = []
-      while true
-        _tmp = apply(:_segment)
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @text = s.join ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(0.., true) {
+        apply(:_segment)
+      } &&
+      ( s = @result; true ) &&
+      ( @result = (@text = s.join); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   # embed_seg = ("#" { "\\#" } | segment)
   def _embed_seg
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = match_string("#")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  "\\#" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_segment)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_embed_seg unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        match_string("#") &&
+        ( @result = ("\\#"); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      apply(:_segment)
+      # end choice
+    ) or set_failed_rule :_embed_seg
   end
 
   # embed = embed_seg*:s { @text = s.join }
   def _embed
-
-    _save = self.pos
-    while true # sequence
-      _ary = []
-      while true
-        _tmp = apply(:_embed_seg)
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @text = s.join ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_embed unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(0.., true) {
+        apply(:_embed_seg)
+      } &&
+      ( s = @result; true ) &&
+      ( @result = (@text = s.join); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_embed
   end
 
   Rules = {}

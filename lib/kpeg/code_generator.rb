@@ -102,9 +102,9 @@ module KPeg
     def output_op(code, op, indent=2)
       case op
       when Dot
-        code << indentify("_tmp = get_byte\n", indent)
+        code << indentify("get_byte", indent)
       when LiteralString
-        code << indentify("_tmp = match_string(#{op.string.dump})\n", indent)
+        code << indentify("match_string(#{op.string.dump})", indent)
       when LiteralRegexp
         if op.regexp.respond_to?(:kcode)
           lang = op.regexp.kcode.to_s[0,1]
@@ -112,13 +112,12 @@ module KPeg
           # Let default ruby string handling figure it out
           lang = ""
         end
-        code << indentify("_tmp = scan(/\\G#{op.regexp}/#{lang})\n", indent)
+        code << indentify("scan(/\\G#{op.regexp}/#{lang})", indent)
       when CharRange
         ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1
-          code << indentify("#{ss} = self.pos\n", indent)
-          code << indentify("_tmp = get_byte\n", indent)
-          code << indentify("if _tmp\n", indent)
+          code << indentify("( #{ss} = self.pos  # char range\n", indent)
+          code << indentify("  _tmp = get_byte\n", indent)
 
           if op.start.respond_to? :getbyte
             left  = op.start.getbyte 0
@@ -128,187 +127,130 @@ module KPeg
             right = op.fin[0]
           end
 
-          code << indentify("  unless _tmp >= #{left} and _tmp <= #{right}\n", indent)
-          code << indentify("    self.pos = #{ss}\n", indent)
-          code << indentify("    _tmp = nil\n", indent)
-          code << indentify("  end\n", indent)
-          code << indentify("end\n", indent)
+          code << indentify("  _tmp && _tmp >= #{left} && _tmp <= #{right} ||\n", indent)
+          code << indentify("  ( self.pos = #{ss}; nil )  # end char range\n", indent)
+          code << indentify(")", indent)
         else
           raise "Unsupported char range - #{op.inspect}"
         end
       when Choice
-        ss = save()
-        code << "\n"
-        code << indentify("#{ss} = self.pos\n", indent)
-        code << indentify("while true # choice\n", indent)
+        code << indentify("( # choice\n", indent)
         op.ops.each_with_index do |n,idx|
-          output_op code, n, (indent+1)
-
-          code << indentify("  break if _tmp\n", indent)
-          code << indentify("  self.pos = #{ss}\n", indent)
-          if idx == op.ops.size - 1
-            code << indentify("  break\n", indent)
+          if idx > 0
+            code << " ||\n"
           end
+          output_op code, n, indent+1
         end
-        code << indentify("end # end choice\n\n", indent)
+        code << "\n"
+        code << indentify("  # end choice\n", indent)
+        code << indentify(")", indent)
       when Multiple
-        ss = save()
-        if op.min == 0 and op.max == 1
-          code << indentify("#{ss} = self.pos\n", indent)
-          output_op code, op.op, indent
+        if op.min == 0 && op.max == 1
+          ss = save()
+          code << indentify("( #{ss} = self.pos  # optional\n", indent)
+          output_op code, op.op, indent+1
+          code << " ||\n"
+          code << indentify("  ( self.pos = #{ss}", indent)
           if op.save_values
-            code << indentify("@result = nil unless _tmp\n", indent)
+            code << "; @result = nil"
           end
-          code << indentify("unless _tmp\n", indent)
-          code << indentify("  _tmp = true\n", indent)
-          code << indentify("  self.pos = #{ss}\n", indent)
-          code << indentify("end\n", indent)
-        elsif op.min == 0 and !op.max
-          if op.save_values
-            code << indentify("_ary = []\n", indent)
-          end
-
-          code << indentify("while true\n", indent)
-          output_op code, op.op, (indent+1)
-          if op.save_values
-            code << indentify("  _ary << @result if _tmp\n", indent)
-          end
-          code << indentify("  break unless _tmp\n", indent)
-          code << indentify("end\n", indent)
-          code << indentify("_tmp = true\n", indent)
-
-          if op.save_values
-            code << indentify("@result = _ary\n", indent)
-          end
-
-        elsif op.min == 1 and !op.max
-          code << indentify("#{ss} = self.pos\n", indent)
-          if op.save_values
-            code << indentify("_ary = []\n", indent)
-          end
-          output_op code, op.op, indent
-          code << indentify("if _tmp\n", indent)
-          if op.save_values
-            code << indentify("  _ary << @result\n", indent)
-          end
-          code << indentify("  while true\n", indent)
-          output_op code, op.op, (indent+2)
-          if op.save_values
-            code << indentify("    _ary << @result if _tmp\n", indent)
-          end
-          code << indentify("    break unless _tmp\n", indent)
-          code << indentify("  end\n", indent)
-          code << indentify("  _tmp = true\n", indent)
-          if op.save_values
-            code << indentify("  @result = _ary\n", indent)
-          end
-          code << indentify("else\n", indent)
-          code << indentify("  self.pos = #{ss}\n", indent)
-          code << indentify("end\n", indent)
+          code << "; true )  # end optional\n"
+          code << indentify(")", indent)
+        elsif op.min == 0 && !op.max && !op.save_values
+          code << indentify("while true  # kleene\n", indent)
+          output_op code, op.op, indent+1
+          code << " || (break true) # end kleene\n"
+          code << indentify("end", indent)
         else
-          code << indentify("#{ss} = self.pos\n", indent)
-          code << indentify("_count = 0\n", indent)
-          code << indentify("while true\n", indent)
-          output_op code, op.op, (indent+1)
-          code << indentify("  if _tmp\n", indent)
-          code << indentify("    _count += 1\n", indent)
-          code << indentify("    break if _count == #{op.max}\n", indent)
-          code << indentify("  else\n", indent)
-          code << indentify("    break\n", indent)
-          code << indentify("  end\n", indent)
-          code << indentify("end\n", indent)
-          code << indentify("if _count >= #{op.min}\n", indent)
-          code << indentify("  _tmp = true\n", indent)
-          code << indentify("else\n", indent)
-          code << indentify("  self.pos = #{ss}\n", indent)
-          code << indentify("  _tmp = nil\n", indent)
-          code << indentify("end\n", indent)
+          code << indentify("loop_range(#{op.min}..#{op.max}, #{op.save_values ? true : false}) {\n", indent)
+          output_op code, op.op, indent+1
+          code << "\n" << indentify("}", indent)
         end
-
       when Sequence
         ss = save()
-        code << "\n"
-        code << indentify("#{ss} = self.pos\n", indent)
-        code << indentify("while true # sequence\n", indent)
+        code << indentify("( #{ss} = self.pos  # sequence\n", indent)
         op.ops.each_with_index do |n, idx|
-          output_op code, n, (indent+1)
-
-          if idx == op.ops.size - 1
-            code << indentify("  unless _tmp\n", indent)
-            code << indentify("    self.pos = #{ss}\n", indent)
-            code << indentify("  end\n", indent)
-            code << indentify("  break\n", indent)
-          else
-            code << indentify("  unless _tmp\n", indent)
-            code << indentify("    self.pos = #{ss}\n", indent)
-            code << indentify("    break\n", indent)
-            code << indentify("  end\n", indent)
+          if idx > 0
+            code << " &&\n"
           end
+          output_op code, n, indent+1
         end
-        code << indentify("end # end sequence\n\n", indent)
+        code << " ||\n" << indentify("  ( self.pos = #{ss}; nil )  # end sequence\n", indent)
+        code << indentify(")", indent)
       when AndPredicate
         ss = save()
-        code << indentify("#{ss} = self.pos\n", indent)
+        code << indentify("( #{ss} = self.pos\n", indent)
+        code << indentify("  look_ahead(#{ss},\n", indent)
         if op.op.kind_of? Action
-          code << indentify("_tmp = begin; #{op.op.action}; end\n", indent)
+          code << indentify(op.op.action.strip, indent+2)
         else
-          output_op code, op.op, indent
+          output_op code, op.op, indent+2
         end
-        code << indentify("self.pos = #{ss}\n", indent)
+        code << "  # end look ahead\n"
+        code << indentify("))", indent)
       when NotPredicate
         ss = save()
-        code << indentify("#{ss} = self.pos\n", indent)
+        code << indentify("( #{ss} = self.pos\n", indent)
+        code << indentify("  look_ahead(#{ss}, !(\n", indent)
         if op.op.kind_of? Action
-          code << indentify("_tmp = begin; #{op.op.action}; end\n", indent)
+          code << indentify(op.op.action.strip, indent+2)
         else
-          output_op code, op.op, indent
+          output_op code, op.op, indent+2
         end
-        code << indentify("_tmp = _tmp ? nil : true\n", indent)
-        code << indentify("self.pos = #{ss}\n", indent)
+        code << "  # end negation\n"
+        code << indentify(")))", indent)
       when RuleReference
         if op.arguments
-          code << indentify("_tmp = apply_with_args(:#{method_name op.rule_name}, #{op.arguments[1..-2]})\n", indent)
+          code << indentify("apply_with_args(:#{method_name op.rule_name}, #{op.arguments[1..-2]})", indent)
         else
-          code << indentify("_tmp = apply(:#{method_name op.rule_name})\n", indent)
+          code << indentify("apply(:#{method_name op.rule_name})", indent)
         end
       when InvokeRule
         if op.arguments
-          code << indentify("_tmp = #{method_name op.rule_name}#{op.arguments}\n", indent)
+          code << indentify("#{method_name op.rule_name}#{op.arguments}", indent)
         else
-          code << indentify("_tmp = #{method_name op.rule_name}()\n", indent)
+          code << indentify("#{method_name op.rule_name}()", indent)
         end
       when ForeignInvokeRule
         if op.arguments
-          code << indentify("_tmp = @_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name}, #{op.arguments[1..-2]})\n", indent)
+          code << indentify("@_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name}, #{op.arguments[1..-2]})", indent)
         else
-          code << indentify("_tmp = @_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name})\n", indent)
+          code << indentify("@_grammar_#{op.grammar_name}.external_invoke(self, :#{method_name op.rule_name})", indent)
         end
       when Tag
+        output_op code, op.op, indent
         if op.tag_name and !op.tag_name.empty?
-          output_op code, op.op, indent
-          code << indentify("#{op.tag_name} = @result\n", indent)
-        else
-          output_op code, op.op, indent
+          code << " &&\n"
+          code << indentify("( #{op.tag_name} = @result; true )", indent)
         end
       when Action
-        code << indentify("@result = begin; ", indent)
-        code << op.action << "; end\n"
-        if @debug
-          code << indentify("puts \"   => \" #{op.action.dump} \" => \#{@result.inspect} \\n\"\n", indent)
+        action = op.action.strip
+        if action =~ /[\n;]/
+          code << indentify("( @result = begin\n", indent)
+          code << indentify(action, indent+1)
+          code << "\n" << indentify("  end", indent)
+        else
+          code << indentify("( @result = (#{action})", indent)
         end
-        code << indentify("_tmp = true\n", indent)
+        if @debug
+          code << indentify("\n", indent)
+          code << indentify("puts \"   => \" #{op.action.dump} \" => \#{@result.inspect} \\n\"\n", indent)
+          code << indentify("true)", indent)
+        else
+          code << "; true )"
+        end
       when Collect
-        code << indentify("_text_start = self.pos\n", indent)
-        output_op code, op.op, indent
-        code << indentify("if _tmp\n", indent)
-        code << indentify("  text = get_text(_text_start)\n", indent)
-        code << indentify("end\n", indent)
+        code << indentify("( _text_start = self.pos\n", indent)
+        output_op code, op.op, indent+1
+        code << " &&\n"
+        code << indentify("  ( text = get_text(_text_start); true )\n", indent)
+        code << indentify(")", indent)
       when Bounds
-        code << indentify("_bounds_start = self.pos\n", indent)
-        output_op code, op.op, indent
-        code << indentify("if _tmp\n", indent)
-        code << indentify("  bounds = [_bounds_start, self.pos]\n", indent)
-        code << indentify("end\n", indent)
+        code << indentify("( _bounds_start = self.pos\n", indent)
+        output_op code, op.op, indent+1
+        code << " &&\n"
+        code << indentify("  (bounds = [_bounds_start, self.pos]; true )\n", indent)
+        code << indentify(")", indent)
       else
         raise "Unknown op - #{op.class}"
       end
@@ -405,17 +347,18 @@ module KPeg
           code << "    puts \"START #{name} @ \#{show_pos}\\n\"\n"
         end
 
-        output_op code, rule.op
         if @debug
-          code << "    if _tmp\n"
-          code << "      puts \"   OK #{name} @ \#{show_pos}\\n\"\n"
-          code << "    else\n"
-          code << "      puts \" FAIL #{name} @ \#{show_pos}\\n\"\n"
-          code << "    end\n"
+          code << "    _tmp = begin\n"
+          output_op code, rule.op, 3
+          code << "\n"
+          code << "    end or set_failed_rule :#{method_name name}\n"
+          code << "    st= _tmp ? '  OK' : 'FAIL'\n"
+          code << "    puts \" \#{st} #{name} @ \#{show_pos}\\n\"\n"
+          code << "    _tmp\n"
+        else
+          output_op code, rule.op
+          code << " or set_failed_rule :#{method_name name}\n"
         end
-
-        code << "    set_failed_rule :#{method_name name} unless _tmp\n"
-        code << "    return _tmp\n"
         code << "  end\n"
       end
 

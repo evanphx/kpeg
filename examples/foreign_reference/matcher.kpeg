@@ -1,7 +1,7 @@
 %% name = Matcher
 
 %% {
-	require "literals.kpeg.rb"
+	require_relative "literals.kpeg"
 }
 
 %grammer1 = Literal

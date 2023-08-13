@@ -185,6 +185,7 @@ class KPeg::FormatParser
         @failed_rule = name
         @failing_rule_offset = @pos
       end
+      nil
     end
 
     attr_reader :failed_rule
@@ -227,6 +228,32 @@ class KPeg::FormatParser
         s = @string[@pos]
         @pos += 1
         s
+      end
+    end
+
+    def look_ahead(pos, action)
+      @pos = pos
+      action ? true : nil
+    end
+
+    def loop_range(range, store)
+      _ary = [] if store
+      max = range.end && range.max
+      count = 0
+      save = @pos
+      while (!max || count < max) && yield
+        count += 1
+        if store
+          _ary << @result
+          @result = nil
+        end
+      end
+      if range.include?(count)
+        @result = _ary if store
+        true
+      else
+        @pos = save
+        nil
       end
     end
 
@@ -412,2767 +439,976 @@ class KPeg::FormatParser
 
   # eol = "\n"
   def _eol
-    _tmp = match_string("\n")
-    set_failed_rule :_eol unless _tmp
-    return _tmp
+    match_string("\n") or set_failed_rule :_eol
   end
 
   # eof_comment = "#" (!eof .)*
   def _eof_comment
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("#")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
-
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
-          _tmp = apply(:_eof)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
-          break
-        end # end sequence
-
-        break unless _tmp
-      end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_eof_comment unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("#") &&
+      while true  # kleene
+        ( _save1 = self.pos  # sequence
+          ( _save2 = self.pos
+            look_ahead(_save2, !(
+              apply(:_eof)  # end negation
+          ))) &&
+          get_byte ||
+          ( self.pos = _save1; nil )  # end sequence
+        ) || (break true) # end kleene
+      end ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_eof_comment
   end
 
   # comment = "#" (!eol .)* eol
   def _comment
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("#")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
-
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
-          _tmp = apply(:_eol)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
-          break
-        end # end sequence
-
-        break unless _tmp
-      end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_eol)
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_comment unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("#") &&
+      while true  # kleene
+        ( _save1 = self.pos  # sequence
+          ( _save2 = self.pos
+            look_ahead(_save2, !(
+              apply(:_eol)  # end negation
+          ))) &&
+          get_byte ||
+          ( self.pos = _save1; nil )  # end sequence
+        ) || (break true) # end kleene
+      end &&
+      apply(:_eol) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_comment
   end
 
   # space = (" " | "\t" | eol)
   def _space
-
-    _save = self.pos
-    while true # choice
-      _tmp = match_string(" ")
-      break if _tmp
-      self.pos = _save
-      _tmp = match_string("\t")
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_eol)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_space unless _tmp
-    return _tmp
+    ( # choice
+      match_string(" ") ||
+      match_string("\t") ||
+      apply(:_eol)
+      # end choice
+    ) or set_failed_rule :_space
   end
 
   # - = (space | comment)*
   def __hyphen_
-    while true
-
-      _save1 = self.pos
-      while true # choice
-        _tmp = apply(:_space)
-        break if _tmp
-        self.pos = _save1
-        _tmp = apply(:_comment)
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
-
-      break unless _tmp
-    end
-    _tmp = true
-    set_failed_rule :__hyphen_ unless _tmp
-    return _tmp
+    while true  # kleene
+      ( # choice
+        apply(:_space) ||
+        apply(:_comment)
+        # end choice
+      ) || (break true) # end kleene
+    end or set_failed_rule :__hyphen_
   end
 
   # kleene = "*"
   def _kleene
-    _tmp = match_string("*")
-    set_failed_rule :_kleene unless _tmp
-    return _tmp
+    match_string("*") or set_failed_rule :_kleene
   end
 
   # var = < ("-" | /[a-z][\w-]*/i) > { text }
   def _var
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-
-      _save1 = self.pos
-      while true # choice
-        _tmp = match_string("-")
-        break if _tmp
-        self.pos = _save1
-        _tmp = scan(/\G(?i-mx:[a-z][\w-]*)/)
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
-
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_var unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        ( # choice
+          match_string("-") ||
+          scan(/\G(?i-mx:[a-z][\w-]*)/)
+          # end choice
+        ) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_var
   end
 
   # method = < /[a-z_]\w*/i > { text }
   def _method
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_method unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?i-mx:[a-z_]\w*)/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_method
   end
 
   # dbl_escapes = ("n" { "\n" } | "s" { " " } | "r" { "\r" } | "t" { "\t" } | "v" { "\v" } | "f" { "\f" } | "b" { "\b" } | "a" { "\a" } | "e" { "\e" } | "\\" { "\\" } | "\"" { "\"" } | num_escapes | < . > { text })
   def _dbl_escapes
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = match_string("n")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  "\n" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = match_string("s")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  " " ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save3 = self.pos
-      while true # sequence
-        _tmp = match_string("r")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  "\r" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save4 = self.pos
-      while true # sequence
-        _tmp = match_string("t")
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  "\t" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save5 = self.pos
-      while true # sequence
-        _tmp = match_string("v")
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        @result = begin;  "\v" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save5
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save6 = self.pos
-      while true # sequence
-        _tmp = match_string("f")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        @result = begin;  "\f" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save6
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save7 = self.pos
-      while true # sequence
-        _tmp = match_string("b")
-        unless _tmp
-          self.pos = _save7
-          break
-        end
-        @result = begin;  "\b" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save7
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save8 = self.pos
-      while true # sequence
-        _tmp = match_string("a")
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        @result = begin;  "\a" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save8
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save9 = self.pos
-      while true # sequence
-        _tmp = match_string("e")
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        @result = begin;  "\e" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save9
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save10 = self.pos
-      while true # sequence
-        _tmp = match_string("\\")
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        @result = begin;  "\\" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save10
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save11 = self.pos
-      while true # sequence
-        _tmp = match_string("\"")
-        unless _tmp
-          self.pos = _save11
-          break
-        end
-        @result = begin;  "\"" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save11
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_num_escapes)
-      break if _tmp
-      self.pos = _save
-
-      _save12 = self.pos
-      while true # sequence
-        _text_start = self.pos
-        _tmp = get_byte
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save12
-          break
-        end
-        @result = begin;  text ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save12
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_dbl_escapes unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        match_string("n") &&
+        ( @result = ("\n"); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        match_string("s") &&
+        ( @result = (" "); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      ) ||
+      ( _save2 = self.pos  # sequence
+        match_string("r") &&
+        ( @result = ("\r"); true ) ||
+        ( self.pos = _save2; nil )  # end sequence
+      ) ||
+      ( _save3 = self.pos  # sequence
+        match_string("t") &&
+        ( @result = ("\t"); true ) ||
+        ( self.pos = _save3; nil )  # end sequence
+      ) ||
+      ( _save4 = self.pos  # sequence
+        match_string("v") &&
+        ( @result = ("\v"); true ) ||
+        ( self.pos = _save4; nil )  # end sequence
+      ) ||
+      ( _save5 = self.pos  # sequence
+        match_string("f") &&
+        ( @result = ("\f"); true ) ||
+        ( self.pos = _save5; nil )  # end sequence
+      ) ||
+      ( _save6 = self.pos  # sequence
+        match_string("b") &&
+        ( @result = ("\b"); true ) ||
+        ( self.pos = _save6; nil )  # end sequence
+      ) ||
+      ( _save7 = self.pos  # sequence
+        match_string("a") &&
+        ( @result = ("\a"); true ) ||
+        ( self.pos = _save7; nil )  # end sequence
+      ) ||
+      ( _save8 = self.pos  # sequence
+        match_string("e") &&
+        ( @result = ("\e"); true ) ||
+        ( self.pos = _save8; nil )  # end sequence
+      ) ||
+      ( _save9 = self.pos  # sequence
+        match_string("\\") &&
+        ( @result = ("\\"); true ) ||
+        ( self.pos = _save9; nil )  # end sequence
+      ) ||
+      ( _save10 = self.pos  # sequence
+        match_string("\"") &&
+        ( @result = ("\""); true ) ||
+        ( self.pos = _save10; nil )  # end sequence
+      ) ||
+      apply(:_num_escapes) ||
+      ( _save11 = self.pos  # sequence
+        ( _text_start = self.pos
+          get_byte &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (text); true ) ||
+        ( self.pos = _save11; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_dbl_escapes
   end
 
   # num_escapes = (< /[0-7]{1,3}/ > { [text.to_i(8)].pack("U") } | "x" < /[a-f\d]{2}/i > { [text.to_i(16)].pack("U") })
   def _num_escapes
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _text_start = self.pos
-        _tmp = scan(/\G(?-mix:[0-7]{1,3})/)
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  [text.to_i(8)].pack("U") ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = match_string("x")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _text_start = self.pos
-        _tmp = scan(/\G(?i-mx:[a-f\d]{2})/)
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  [text.to_i(16)].pack("U") ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_num_escapes unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        ( _text_start = self.pos
+          scan(/\G(?-mix:[0-7]{1,3})/) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = ([text.to_i(8)].pack("U")); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        match_string("x") &&
+        ( _text_start = self.pos
+          scan(/\G(?i-mx:[a-f\d]{2})/) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = ([text.to_i(16)].pack("U")); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_num_escapes
   end
 
   # dbl_seq = < /[^\\"]+/ > { text }
   def _dbl_seq
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?-mix:[^\\"]+)/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_dbl_seq unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?-mix:[^\\"]+)/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_dbl_seq
   end
 
   # dbl_not_quote = ("\\" dbl_escapes | dbl_seq)*:ary { Array(ary) }
   def _dbl_not_quote
-
-    _save = self.pos
-    while true # sequence
-      _ary = []
-      while true
-
-        _save2 = self.pos
-        while true # choice
-
-          _save3 = self.pos
-          while true # sequence
-            _tmp = match_string("\\")
-            unless _tmp
-              self.pos = _save3
-              break
-            end
-            _tmp = apply(:_dbl_escapes)
-            unless _tmp
-              self.pos = _save3
-            end
-            break
-          end # end sequence
-
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_dbl_seq)
-          break if _tmp
-          self.pos = _save2
-          break
-        end # end choice
-
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      ary = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  Array(ary) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_dbl_not_quote unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(0.., true) {
+        ( # choice
+          ( _save1 = self.pos  # sequence
+            match_string("\\") &&
+            apply(:_dbl_escapes) ||
+            ( self.pos = _save1; nil )  # end sequence
+          ) ||
+          apply(:_dbl_seq)
+          # end choice
+        )
+      } &&
+      ( ary = @result; true ) &&
+      ( @result = (Array(ary)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_dbl_not_quote
   end
 
   # dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
   def _dbl_string
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("\"")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_dbl_not_quote)
-      s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("\"")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @g.str(s.join) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_dbl_string unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("\"") &&
+      apply(:_dbl_not_quote) &&
+      ( s = @result; true ) &&
+      match_string("\"") &&
+      ( @result = (@g.str(s.join)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_dbl_string
   end
 
   # sgl_escape_quote = "\\'" { "'" }
   def _sgl_escape_quote
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("\\'")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  "'" ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_sgl_escape_quote unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("\\'") &&
+      ( @result = ("'"); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_sgl_escape_quote
   end
 
   # sgl_seq = < /[^']/ > { text }
   def _sgl_seq
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?-mix:[^'])/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_sgl_seq unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?-mix:[^'])/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_sgl_seq
   end
 
   # sgl_not_quote = (sgl_escape_quote | sgl_seq)*:segs { Array(segs) }
   def _sgl_not_quote
-
-    _save = self.pos
-    while true # sequence
-      _ary = []
-      while true
-
-        _save2 = self.pos
-        while true # choice
-          _tmp = apply(:_sgl_escape_quote)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_sgl_seq)
-          break if _tmp
-          self.pos = _save2
-          break
-        end # end choice
-
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      segs = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  Array(segs) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_sgl_not_quote unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(0.., true) {
+        ( # choice
+          apply(:_sgl_escape_quote) ||
+          apply(:_sgl_seq)
+          # end choice
+        )
+      } &&
+      ( segs = @result; true ) &&
+      ( @result = (Array(segs)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_sgl_not_quote
   end
 
   # sgl_string = "'" sgl_not_quote:s "'" { @g.str(s.join) }
   def _sgl_string
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("'")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_sgl_not_quote)
-      s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("'")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @g.str(s.join) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_sgl_string unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("'") &&
+      apply(:_sgl_not_quote) &&
+      ( s = @result; true ) &&
+      match_string("'") &&
+      ( @result = (@g.str(s.join)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_sgl_string
   end
 
   # string = (dbl_string | sgl_string)
   def _string
-
-    _save = self.pos
-    while true # choice
-      _tmp = apply(:_dbl_string)
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_sgl_string)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_string unless _tmp
-    return _tmp
+    ( # choice
+      apply(:_dbl_string) ||
+      apply(:_sgl_string)
+      # end choice
+    ) or set_failed_rule :_string
   end
 
   # not_slash = < ("\\/" | /[^\/]/)+ > { text }
   def _not_slash
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _save1 = self.pos
-
-      _save2 = self.pos
-      while true # choice
-        _tmp = match_string("\\/")
-        break if _tmp
-        self.pos = _save2
-        _tmp = scan(/\G(?-mix:[^\/])/)
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
-
-      if _tmp
-        while true
-
-          _save3 = self.pos
-          while true # choice
-            _tmp = match_string("\\/")
-            break if _tmp
-            self.pos = _save3
-            _tmp = scan(/\G(?-mix:[^\/])/)
-            break if _tmp
-            self.pos = _save3
-            break
-          end # end choice
-
-          break unless _tmp
-        end
-        _tmp = true
-      else
-        self.pos = _save1
-      end
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_not_slash unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        loop_range(1.., false) {
+          ( # choice
+            match_string("\\/") ||
+            scan(/\G(?-mix:[^\/])/)
+            # end choice
+          )
+        } &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_not_slash
   end
 
   # regexp_opts = < [a-z]* > { text }
   def _regexp_opts
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      while true
-        _save2 = self.pos
-        _tmp = get_byte
-        if _tmp
-          unless _tmp >= 97 and _tmp <= 122
-            self.pos = _save2
-            _tmp = nil
-          end
-        end
-        break unless _tmp
-      end
-      _tmp = true
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_regexp_opts unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        while true  # kleene
+          ( _save1 = self.pos  # char range
+            _tmp = get_byte
+            _tmp && _tmp >= 97 && _tmp <= 122 ||
+            ( self.pos = _save1; nil )  # end char range
+          ) || (break true) # end kleene
+        end &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_regexp_opts
   end
 
   # regexp = "/" not_slash:body "/" regexp_opts:opts { @g.reg body, opts }
   def _regexp
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("/")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_not_slash)
-      body = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("/")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_regexp_opts)
-      opts = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @g.reg body, opts ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_regexp unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("/") &&
+      apply(:_not_slash) &&
+      ( body = @result; true ) &&
+      match_string("/") &&
+      apply(:_regexp_opts) &&
+      ( opts = @result; true ) &&
+      ( @result = (@g.reg body, opts); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_regexp
   end
 
   # char = < /[a-z\d]/i > { text }
   def _char
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?i-mx:[a-z\d])/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_char unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?i-mx:[a-z\d])/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_char
   end
 
   # char_range = "[" char:l "-" char:r "]" { @g.range(l,r) }
   def _char_range
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_char)
-      l = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("-")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_char)
-      r = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @g.range(l,r) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_char_range unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("[") &&
+      apply(:_char) &&
+      ( l = @result; true ) &&
+      match_string("-") &&
+      apply(:_char) &&
+      ( r = @result; true ) &&
+      match_string("]") &&
+      ( @result = (@g.range(l,r)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_char_range
   end
 
   # range_num = < /[1-9]\d*/ > { text }
   def _range_num
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?-mix:[1-9]\d*)/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_range_num unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?-mix:[1-9]\d*)/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_range_num
   end
 
   # range_elem = < (range_num | kleene) > { text }
   def _range_elem
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-
-      _save1 = self.pos
-      while true # choice
-        _tmp = apply(:_range_num)
-        break if _tmp
-        self.pos = _save1
-        _tmp = apply(:_kleene)
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
-
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_range_elem unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        ( # choice
+          apply(:_range_num) ||
+          apply(:_kleene)
+          # end choice
+        ) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_range_elem
   end
 
   # mult_range = ("[" - range_elem:l - "," - range_elem:r - "]" { [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] } | "[" - range_num:e - "]" { [e.to_i, e.to_i] })
   def _mult_range
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = match_string("[")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_range_elem)
-        l = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(",")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_range_elem)
-        r = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("]")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = match_string("[")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_range_num)
-        e = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = match_string("]")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  [e.to_i, e.to_i] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_mult_range unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        match_string("[") &&
+        apply(:__hyphen_) &&
+        apply(:_range_elem) &&
+        ( l = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string(",") &&
+        apply(:__hyphen_) &&
+        apply(:_range_elem) &&
+        ( r = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string("]") &&
+        ( @result = ([l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i]); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        match_string("[") &&
+        apply(:__hyphen_) &&
+        apply(:_range_num) &&
+        ( e = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string("]") &&
+        ( @result = ([e.to_i, e.to_i]); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_mult_range
   end
 
   # curly_block = curly
   def _curly_block
-    _tmp = apply(:_curly)
-    set_failed_rule :_curly_block unless _tmp
-    return _tmp
+    apply(:_curly) or set_failed_rule :_curly_block
   end
 
   # curly = "{" < (spaces | /[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
   def _curly
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("{")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _text_start = self.pos
-      while true
-
-        _save2 = self.pos
-        while true # choice
-          _tmp = apply(:_spaces)
-          break if _tmp
-          self.pos = _save2
-          _tmp = scan(/\G(?-mix:[^{}"']+)/)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_string)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_curly)
-          break if _tmp
-          self.pos = _save2
-          break
-        end # end choice
-
-        break unless _tmp
-      end
-      _tmp = true
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("}")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @g.action(text) ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_curly unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("{") &&
+      ( _text_start = self.pos
+        while true  # kleene
+          ( # choice
+            apply(:_spaces) ||
+            scan(/\G(?-mix:[^{}"']+)/) ||
+            apply(:_string) ||
+            apply(:_curly)
+            # end choice
+          ) || (break true) # end kleene
+        end &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      match_string("}") &&
+      ( @result = (@g.action(text)); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_curly
   end
 
   # nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
   def _nested_paren
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("(")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
-
-        _save2 = self.pos
-        while true # choice
-          _tmp = scan(/\G(?-mix:[^()"']+)/)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_string)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_nested_paren)
-          break if _tmp
-          self.pos = _save2
-          break
-        end # end choice
-
-        break unless _tmp
-      end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string(")")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_nested_paren unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("(") &&
+      while true  # kleene
+        ( # choice
+          scan(/\G(?-mix:[^()"']+)/) ||
+          apply(:_string) ||
+          apply(:_nested_paren)
+          # end choice
+        ) || (break true) # end kleene
+      end &&
+      match_string(")") ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_nested_paren
   end
 
   # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name < nested_paren? > !(- "=") { @g.invoke(name, text.empty? ? nil : text) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)
   def _value
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(":")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_var)
-        n = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  @g.t(v,n) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = match_string("?")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  @g.maybe(v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save3 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = match_string("+")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  @g.many(v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save4 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        _tmp = match_string("*")
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  @g.kleene(v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save5 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = apply(:_mult_range)
-        r = @result
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        @result = begin;  @g.multiple(v, *r) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save5
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save6 = self.pos
-      while true # sequence
-        _tmp = match_string("&")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        @result = begin;  @g.andp(v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save6
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save7 = self.pos
-      while true # sequence
-        _tmp = match_string("!")
-        unless _tmp
-          self.pos = _save7
-          break
-        end
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save7
-          break
-        end
-        @result = begin;  @g.notp(v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save7
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save8 = self.pos
-      while true # sequence
-        _tmp = match_string("(")
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        _tmp = apply(:_expression)
-        o = @result
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        _tmp = match_string(")")
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        @result = begin;  o ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save8
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save9 = self.pos
-      while true # sequence
-        _tmp = match_string("@<")
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        _tmp = apply(:_expression)
-        o = @result
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        _tmp = match_string(">")
-        unless _tmp
-          self.pos = _save9
-          break
-        end
-        @result = begin;  @g.bounds(o) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save9
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save10 = self.pos
-      while true # sequence
-        _tmp = match_string("<")
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        _tmp = apply(:_expression)
-        o = @result
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        _tmp = match_string(">")
-        unless _tmp
-          self.pos = _save10
-          break
-        end
-        @result = begin;  @g.collect(o) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save10
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_curly_block)
-      break if _tmp
-      self.pos = _save
-
-      _save11 = self.pos
-      while true # sequence
-        _tmp = match_string("~")
-        unless _tmp
-          self.pos = _save11
-          break
-        end
-        _tmp = apply(:_method)
-        m = @result
-        unless _tmp
-          self.pos = _save11
-          break
-        end
-        _text_start = self.pos
-        _save12 = self.pos
-        _tmp = apply(:_nested_paren)
-        unless _tmp
-          _tmp = true
-          self.pos = _save12
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save11
-          break
-        end
-        @result = begin;  @g.action("#{m}#{text}") ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save11
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save13 = self.pos
-      while true # sequence
-        _tmp = match_string(".")
-        unless _tmp
-          self.pos = _save13
-          break
-        end
-        @result = begin;  @g.dot ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save13
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save14 = self.pos
-      while true # sequence
-        _tmp = match_string("@")
-        unless _tmp
-          self.pos = _save14
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save14
-          break
-        end
-        _text_start = self.pos
-        _save15 = self.pos
-        _tmp = apply(:_nested_paren)
-        unless _tmp
-          _tmp = true
-          self.pos = _save15
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save14
-          break
-        end
-        _save16 = self.pos
-
-        _save17 = self.pos
-        while true # sequence
-          _tmp = apply(:__hyphen_)
-          unless _tmp
-            self.pos = _save17
-            break
-          end
-          _tmp = match_string("=")
-          unless _tmp
-            self.pos = _save17
-          end
-          break
-        end # end sequence
-
-        _tmp = _tmp ? nil : true
-        self.pos = _save16
-        unless _tmp
-          self.pos = _save14
-          break
-        end
-        @result = begin;  @g.invoke(name, text.empty? ? nil : text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save14
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save18 = self.pos
-      while true # sequence
-        _tmp = match_string("^")
-        unless _tmp
-          self.pos = _save18
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save18
-          break
-        end
-        _text_start = self.pos
-        _save19 = self.pos
-        _tmp = apply(:_nested_paren)
-        unless _tmp
-          _tmp = true
-          self.pos = _save19
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save18
-          break
-        end
-        @result = begin;  @g.foreign_invoke("parent", name, text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save18
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save20 = self.pos
-      while true # sequence
-        _tmp = match_string("%")
-        unless _tmp
-          self.pos = _save20
-          break
-        end
-        _tmp = apply(:_var)
-        gram = @result
-        unless _tmp
-          self.pos = _save20
-          break
-        end
-        _tmp = match_string(".")
-        unless _tmp
-          self.pos = _save20
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save20
-          break
-        end
-        _text_start = self.pos
-        _save21 = self.pos
-        _tmp = apply(:_nested_paren)
-        unless _tmp
-          _tmp = true
-          self.pos = _save21
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save20
-          break
-        end
-        @result = begin;  @g.foreign_invoke(gram, name, text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save20
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save22 = self.pos
-      while true # sequence
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save22
-          break
-        end
-        _text_start = self.pos
-        _save23 = self.pos
-        _tmp = apply(:_nested_paren)
-        unless _tmp
-          _tmp = true
-          self.pos = _save23
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save22
-          break
-        end
-        _save24 = self.pos
-
-        _save25 = self.pos
-        while true # sequence
-          _tmp = apply(:__hyphen_)
-          unless _tmp
-            self.pos = _save25
-            break
-          end
-          _tmp = match_string("=")
-          unless _tmp
-            self.pos = _save25
-          end
-          break
-        end # end sequence
-
-        _tmp = _tmp ? nil : true
-        self.pos = _save24
-        unless _tmp
-          self.pos = _save22
-          break
-        end
-        @result = begin;  @g.ref(name, nil, text.empty? ? nil : text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save22
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_char_range)
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_regexp)
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_string)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_value unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        match_string(":") &&
+        apply(:_var) &&
+        ( n = @result; true ) &&
+        ( @result = (@g.t(v,n)); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        match_string("?") &&
+        ( @result = (@g.maybe(v)); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      ) ||
+      ( _save2 = self.pos  # sequence
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        match_string("+") &&
+        ( @result = (@g.many(v)); true ) ||
+        ( self.pos = _save2; nil )  # end sequence
+      ) ||
+      ( _save3 = self.pos  # sequence
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        match_string("*") &&
+        ( @result = (@g.kleene(v)); true ) ||
+        ( self.pos = _save3; nil )  # end sequence
+      ) ||
+      ( _save4 = self.pos  # sequence
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        apply(:_mult_range) &&
+        ( r = @result; true ) &&
+        ( @result = (@g.multiple(v, *r)); true ) ||
+        ( self.pos = _save4; nil )  # end sequence
+      ) ||
+      ( _save5 = self.pos  # sequence
+        match_string("&") &&
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        ( @result = (@g.andp(v)); true ) ||
+        ( self.pos = _save5; nil )  # end sequence
+      ) ||
+      ( _save6 = self.pos  # sequence
+        match_string("!") &&
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        ( @result = (@g.notp(v)); true ) ||
+        ( self.pos = _save6; nil )  # end sequence
+      ) ||
+      ( _save7 = self.pos  # sequence
+        match_string("(") &&
+        apply(:__hyphen_) &&
+        apply(:_expression) &&
+        ( o = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string(")") &&
+        ( @result = (o); true ) ||
+        ( self.pos = _save7; nil )  # end sequence
+      ) ||
+      ( _save8 = self.pos  # sequence
+        match_string("@<") &&
+        apply(:__hyphen_) &&
+        apply(:_expression) &&
+        ( o = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string(">") &&
+        ( @result = (@g.bounds(o)); true ) ||
+        ( self.pos = _save8; nil )  # end sequence
+      ) ||
+      ( _save9 = self.pos  # sequence
+        match_string("<") &&
+        apply(:__hyphen_) &&
+        apply(:_expression) &&
+        ( o = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string(">") &&
+        ( @result = (@g.collect(o)); true ) ||
+        ( self.pos = _save9; nil )  # end sequence
+      ) ||
+      apply(:_curly_block) ||
+      ( _save10 = self.pos  # sequence
+        match_string("~") &&
+        apply(:_method) &&
+        ( m = @result; true ) &&
+        ( _text_start = self.pos
+          ( _save11 = self.pos  # optional
+            apply(:_nested_paren) ||
+            ( self.pos = _save11; true )  # end optional
+          ) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (@g.action("#{m}#{text}")); true ) ||
+        ( self.pos = _save10; nil )  # end sequence
+      ) ||
+      ( _save12 = self.pos  # sequence
+        match_string(".") &&
+        ( @result = (@g.dot); true ) ||
+        ( self.pos = _save12; nil )  # end sequence
+      ) ||
+      ( _save13 = self.pos  # sequence
+        match_string("@") &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        ( _text_start = self.pos
+          ( _save14 = self.pos  # optional
+            apply(:_nested_paren) ||
+            ( self.pos = _save14; true )  # end optional
+          ) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( _save15 = self.pos
+          look_ahead(_save15, !(
+            ( _save16 = self.pos  # sequence
+              apply(:__hyphen_) &&
+              match_string("=") ||
+              ( self.pos = _save16; nil )  # end sequence
+            )  # end negation
+        ))) &&
+        ( @result = (@g.invoke(name, text.empty? ? nil : text)); true ) ||
+        ( self.pos = _save13; nil )  # end sequence
+      ) ||
+      ( _save17 = self.pos  # sequence
+        match_string("^") &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        ( _text_start = self.pos
+          ( _save18 = self.pos  # optional
+            apply(:_nested_paren) ||
+            ( self.pos = _save18; true )  # end optional
+          ) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (@g.foreign_invoke("parent", name, text)); true ) ||
+        ( self.pos = _save17; nil )  # end sequence
+      ) ||
+      ( _save19 = self.pos  # sequence
+        match_string("%") &&
+        apply(:_var) &&
+        ( gram = @result; true ) &&
+        match_string(".") &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        ( _text_start = self.pos
+          ( _save20 = self.pos  # optional
+            apply(:_nested_paren) ||
+            ( self.pos = _save20; true )  # end optional
+          ) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (@g.foreign_invoke(gram, name, text)); true ) ||
+        ( self.pos = _save19; nil )  # end sequence
+      ) ||
+      ( _save21 = self.pos  # sequence
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        ( _text_start = self.pos
+          ( _save22 = self.pos  # optional
+            apply(:_nested_paren) ||
+            ( self.pos = _save22; true )  # end optional
+          ) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( _save23 = self.pos
+          look_ahead(_save23, !(
+            ( _save24 = self.pos  # sequence
+              apply(:__hyphen_) &&
+              match_string("=") ||
+              ( self.pos = _save24; nil )  # end sequence
+            )  # end negation
+        ))) &&
+        ( @result = (@g.ref(name, nil, text.empty? ? nil : text)); true ) ||
+        ( self.pos = _save21; nil )  # end sequence
+      ) ||
+      apply(:_char_range) ||
+      apply(:_regexp) ||
+      apply(:_string)
+      # end choice
+    ) or set_failed_rule :_value
   end
 
   # spaces = (space | comment)+
   def _spaces
-    _save = self.pos
-
-    _save1 = self.pos
-    while true # choice
-      _tmp = apply(:_space)
-      break if _tmp
-      self.pos = _save1
-      _tmp = apply(:_comment)
-      break if _tmp
-      self.pos = _save1
-      break
-    end # end choice
-
-    if _tmp
-      while true
-
-        _save2 = self.pos
-        while true # choice
-          _tmp = apply(:_space)
-          break if _tmp
-          self.pos = _save2
-          _tmp = apply(:_comment)
-          break if _tmp
-          self.pos = _save2
-          break
-        end # end choice
-
-        break unless _tmp
-      end
-      _tmp = true
-    else
-      self.pos = _save
-    end
-    set_failed_rule :_spaces unless _tmp
-    return _tmp
+    loop_range(1.., false) {
+      ( # choice
+        apply(:_space) ||
+        apply(:_comment)
+        # end choice
+      )
+    } or set_failed_rule :_spaces
   end
 
   # values = (values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)
   def _values
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_values)
-        s = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_spaces)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_value)
-        v = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  @g.seq(s, v) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_value)
-        l = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_spaces)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_value)
-        r = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  @g.seq(l, r) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_value)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_values unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_values) &&
+        ( s = @result; true ) &&
+        apply(:_spaces) &&
+        apply(:_value) &&
+        ( v = @result; true ) &&
+        ( @result = (@g.seq(s, v)); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:_value) &&
+        ( l = @result; true ) &&
+        apply(:_spaces) &&
+        apply(:_value) &&
+        ( r = @result; true ) &&
+        ( @result = (@g.seq(l, r)); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      ) ||
+      apply(:_value)
+      # end choice
+    ) or set_failed_rule :_values
   end
 
   # choose_cont = - "|" - values:v { v }
   def _choose_cont
-
-    _save = self.pos
-    while true # sequence
-      _tmp = apply(:__hyphen_)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("|")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:__hyphen_)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_values)
-      v = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  v ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_choose_cont unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      apply(:__hyphen_) &&
+      match_string("|") &&
+      apply(:__hyphen_) &&
+      apply(:_values) &&
+      ( v = @result; true ) &&
+      ( @result = (v); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_choose_cont
   end
 
   # expression = (values:v choose_cont+:alts { @g.any(v, *alts) } | values)
   def _expression
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_values)
-        v = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _save2 = self.pos
-        _ary = []
-        _tmp = apply(:_choose_cont)
-        if _tmp
-          _ary << @result
-          while true
-            _tmp = apply(:_choose_cont)
-            _ary << @result if _tmp
-            break unless _tmp
-          end
-          _tmp = true
-          @result = _ary
-        else
-          self.pos = _save2
-        end
-        alts = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  @g.any(v, *alts) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      _tmp = apply(:_values)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_expression unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_values) &&
+        ( v = @result; true ) &&
+        loop_range(1.., true) {
+          apply(:_choose_cont)
+        } &&
+        ( alts = @result; true ) &&
+        ( @result = (@g.any(v, *alts)); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      apply(:_values)
+      # end choice
+    ) or set_failed_rule :_expression
   end
 
   # args = (args:a "," - var:n - { a + [n] } | - var:n - { [n] })
   def _args
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_args)
-        a = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(",")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_var)
-        n = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  a + [n] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_var)
-        n = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  [n] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_args unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_args) &&
+        ( a = @result; true ) &&
+        match_string(",") &&
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( n = @result; true ) &&
+        apply(:__hyphen_) &&
+        ( @result = (a + [n]); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( n = @result; true ) &&
+        apply(:__hyphen_) &&
+        ( @result = ([n]); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_args
   end
 
   # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[:\w]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - curly:act { @g.add_directive name, act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_var)
-        v = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("(")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_args)
-        a = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(")")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("=")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_expression)
-        o = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  @g.set(v, o, a) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_var)
-        v = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = match_string("=")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_expression)
-        o = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  @g.set(v, o) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save3 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = match_string("%")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = match_string("=")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _text_start = self.pos
-        _tmp = scan(/\G(?-mix:[:\w]+)/)
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  @g.add_foreign_grammar(name, text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save4 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        _tmp = match_string("%%")
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        _tmp = apply(:_curly)
-        act = @result
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  @g.add_setup act ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save5 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = match_string("%%")
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        _tmp = apply(:_curly)
-        act = @result
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        @result = begin;  @g.add_directive name, act ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save5
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save6 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = match_string("%%")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = apply(:_var)
-        name = @result
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = match_string("=")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        _text_start = self.pos
-        _save7 = self.pos
-
-        _save8 = self.pos
-        while true # sequence
-          _save9 = self.pos
-          _tmp = match_string("\n")
-          _tmp = _tmp ? nil : true
-          self.pos = _save9
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save8
-          end
-          break
-        end # end sequence
-
-        if _tmp
-          while true
-
-            _save10 = self.pos
-            while true # sequence
-              _save11 = self.pos
-              _tmp = match_string("\n")
-              _tmp = _tmp ? nil : true
-              self.pos = _save11
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              _tmp = get_byte
-              unless _tmp
-                self.pos = _save10
-              end
-              break
-            end # end sequence
-
-            break unless _tmp
-          end
-          _tmp = true
-        else
-          self.pos = _save7
-        end
-        if _tmp
-          text = get_text(_text_start)
-        end
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        @result = begin;  @g.set_variable(name, text) ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save6
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_statement unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( v = @result; true ) &&
+        match_string("(") &&
+        apply(:_args) &&
+        ( a = @result; true ) &&
+        match_string(")") &&
+        apply(:__hyphen_) &&
+        match_string("=") &&
+        apply(:__hyphen_) &&
+        apply(:_expression) &&
+        ( o = @result; true ) &&
+        ( @result = (@g.set(v, o, a)); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( v = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string("=") &&
+        apply(:__hyphen_) &&
+        apply(:_expression) &&
+        ( o = @result; true ) &&
+        ( @result = (@g.set(v, o)); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      ) ||
+      ( _save2 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        match_string("%") &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string("=") &&
+        apply(:__hyphen_) &&
+        ( _text_start = self.pos
+          scan(/\G(?-mix:[:\w]+)/) &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (@g.add_foreign_grammar(name, text)); true ) ||
+        ( self.pos = _save2; nil )  # end sequence
+      ) ||
+      ( _save3 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        match_string("%%") &&
+        apply(:__hyphen_) &&
+        apply(:_curly) &&
+        ( act = @result; true ) &&
+        ( @result = (@g.add_setup act); true ) ||
+        ( self.pos = _save3; nil )  # end sequence
+      ) ||
+      ( _save4 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        match_string("%%") &&
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        apply(:__hyphen_) &&
+        apply(:_curly) &&
+        ( act = @result; true ) &&
+        ( @result = (@g.add_directive name, act); true ) ||
+        ( self.pos = _save4; nil )  # end sequence
+      ) ||
+      ( _save5 = self.pos  # sequence
+        apply(:__hyphen_) &&
+        match_string("%%") &&
+        apply(:__hyphen_) &&
+        apply(:_var) &&
+        ( name = @result; true ) &&
+        apply(:__hyphen_) &&
+        match_string("=") &&
+        apply(:__hyphen_) &&
+        ( _text_start = self.pos
+          loop_range(1.., false) {
+            ( _save6 = self.pos  # sequence
+              ( _save7 = self.pos
+                look_ahead(_save7, !(
+                  match_string("\n")  # end negation
+              ))) &&
+              get_byte ||
+              ( self.pos = _save6; nil )  # end sequence
+            )
+          } &&
+          ( text = get_text(_text_start); true )
+        ) &&
+        ( @result = (@g.set_variable(name, text)); true ) ||
+        ( self.pos = _save5; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_statement
   end
 
   # statements = statement (- statements)?
   def _statements
-
-    _save = self.pos
-    while true # sequence
-      _tmp = apply(:_statement)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_statements)
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_statements unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      apply(:_statement) &&
+      ( _save1 = self.pos  # optional
+        ( _save2 = self.pos  # sequence
+          apply(:__hyphen_) &&
+          apply(:_statements) ||
+          ( self.pos = _save2; nil )  # end sequence
+        ) ||
+        ( self.pos = _save1; true )  # end optional
+      ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_statements
   end
 
   # eof = !.
   def _eof
-    _save = self.pos
-    _tmp = get_byte
-    _tmp = _tmp ? nil : true
-    self.pos = _save
-    set_failed_rule :_eof unless _tmp
-    return _tmp
+    ( _save = self.pos
+      look_ahead(_save, !(
+        get_byte  # end negation
+    ))) or set_failed_rule :_eof
   end
 
   # root = statements - eof_comment? eof
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _tmp = apply(:_statements)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:__hyphen_)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
-      _tmp = apply(:_eof_comment)
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_eof)
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      apply(:_statements) &&
+      apply(:__hyphen_) &&
+      ( _save1 = self.pos  # optional
+        apply(:_eof_comment) ||
+        ( self.pos = _save1; true )  # end optional
+      ) &&
+      apply(:_eof) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   # ast_constant = < /[A-Z]\w*/ > { text }
   def _ast_constant
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?-mix:[A-Z]\w*)/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_ast_constant unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?-mix:[A-Z]\w*)/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_ast_constant
   end
 
   # ast_word = < /[a-z_]\w*/i > { text }
   def _ast_word
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = scan(/\G(?i-mx:[a-z_]\w*)/)
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_ast_word unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        scan(/\G(?i-mx:[a-z_]\w*)/) &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_ast_word
   end
 
   # ast_sp = (" " | "\t")*
   def _ast_sp
-    while true
-
-      _save1 = self.pos
-      while true # choice
-        _tmp = match_string(" ")
-        break if _tmp
-        self.pos = _save1
-        _tmp = match_string("\t")
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
-
-      break unless _tmp
-    end
-    _tmp = true
-    set_failed_rule :_ast_sp unless _tmp
-    return _tmp
+    while true  # kleene
+      ( # choice
+        match_string(" ") ||
+        match_string("\t")
+        # end choice
+      ) || (break true) # end kleene
+    end or set_failed_rule :_ast_sp
   end
 
   # ast_words = (ast_words:r ast_sp "," ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })
   def _ast_words
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_ast_words)
-        r = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_ast_sp)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(",")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_ast_sp)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_ast_word)
-        w = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  r + [w] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_ast_word)
-        w = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  [w] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_ast_words unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_ast_words) &&
+        ( r = @result; true ) &&
+        apply(:_ast_sp) &&
+        match_string(",") &&
+        apply(:_ast_sp) &&
+        apply(:_ast_word) &&
+        ( w = @result; true ) &&
+        ( @result = (r + [w]); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:_ast_word) &&
+        ( w = @result; true ) &&
+        ( @result = ([w]); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_ast_words
   end
 
   # ast_root = (ast_constant:c "(" ast_words:w ")" { [c, w] } | ast_constant:c "()"? { [c, []] })
   def _ast_root
-
-    _save = self.pos
-    while true # choice
-
-      _save1 = self.pos
-      while true # sequence
-        _tmp = apply(:_ast_constant)
-        c = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("(")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_ast_words)
-        w = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string(")")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  [c, w] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_ast_constant)
-        c = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _save3 = self.pos
-        _tmp = match_string("()")
-        unless _tmp
-          _tmp = true
-          self.pos = _save3
-        end
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  [c, []] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_ast_root unless _tmp
-    return _tmp
+    ( # choice
+      ( _save = self.pos  # sequence
+        apply(:_ast_constant) &&
+        ( c = @result; true ) &&
+        match_string("(") &&
+        apply(:_ast_words) &&
+        ( w = @result; true ) &&
+        match_string(")") &&
+        ( @result = ([c, w]); true ) ||
+        ( self.pos = _save; nil )  # end sequence
+      ) ||
+      ( _save1 = self.pos  # sequence
+        apply(:_ast_constant) &&
+        ( c = @result; true ) &&
+        ( _save2 = self.pos  # optional
+          match_string("()") ||
+          ( self.pos = _save2; true )  # end optional
+        ) &&
+        ( @result = ([c, []]); true ) ||
+        ( self.pos = _save1; nil )  # end sequence
+      )
+      # end choice
+    ) or set_failed_rule :_ast_root
   end
 
   Rules = {}

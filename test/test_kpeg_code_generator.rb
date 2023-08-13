@@ -18,9 +18,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -49,9 +47,7 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"
   def _root
-    _tmp = match_string("hello")
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    match_string("hello") or set_failed_rule :_root
   end
 
   Rules = {}
@@ -80,9 +76,7 @@ class Test < KPeg::CompiledParser
 
   # root = /[0-9]/
   def _root
-    _tmp = scan(/\\G(?-mix:[0-9])/)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    scan(/\\G(?-mix:[0-9])/) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -114,9 +108,7 @@ class Test < KPeg::CompiledParser
 
   # root = /./
   def _root
-    _tmp = scan(/\\G(?-mix:.)/)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    scan(/\\G(?-mix:.)/) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -133,9 +125,7 @@ class Test < KPeg::CompiledParser
 
   # root = /./u
   def _root
-    _tmp = scan(/\\G(?-mix:.)/u)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    scan(/\\G(?-mix:.)/u) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -165,16 +155,11 @@ class Test < KPeg::CompiledParser
 
   # root = [a-z]
   def _root
-    _save = self.pos
-    _tmp = get_byte
-    if _tmp
-      unless _tmp >= 97 and _tmp <= 122
-        self.pos = _save
-        _tmp = nil
-      end
-    end
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # char range
+      _tmp = get_byte
+      _tmp && _tmp >= 97 && _tmp <= 122 ||
+      ( self.pos = _save; nil )  # end char range
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -205,30 +190,15 @@ class Test < KPeg::CompiledParser
 
   # root = [a-z] "hello"
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _save1 = self.pos
-      _tmp = get_byte
-      if _tmp
-        unless _tmp >= 97 and _tmp <= 122
-          self.pos = _save1
-          _tmp = nil
-        end
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("hello")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _save1 = self.pos  # char range
+        _tmp = get_byte
+        _tmp && _tmp >= 97 && _tmp <= 122 ||
+        ( self.pos = _save1; nil )  # end char range
+      ) &&
+      match_string("hello") ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -260,20 +230,11 @@ class Test < KPeg::CompiledParser
 
   # root = ("hello" | "world")
   def _root
-
-    _save = self.pos
-    while true # choice
-      _tmp = match_string("hello")
-      break if _tmp
-      self.pos = _save
-      _tmp = match_string("world")
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( # choice
+      match_string("hello") ||
+      match_string("world")
+      # end choice
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -318,14 +279,10 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"?
   def _root
-    _save = self.pos
-    _tmp = match_string("hello")
-    unless _tmp
-      _tmp = true
-      self.pos = _save
-    end
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # optional
+      match_string("hello") ||
+      ( self.pos = _save; true )  # end optional
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -369,13 +326,9 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"*
   def _root
-    while true
-      _tmp = match_string("hello")
-      break unless _tmp
-    end
-    _tmp = true
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    while true  # kleene
+      match_string("hello") || (break true) # end kleene
+    end or set_failed_rule :_root
   end
 
   Rules = {}
@@ -422,19 +375,9 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"+
   def _root
-    _save = self.pos
-    _tmp = match_string("hello")
-    if _tmp
-      while true
-        _tmp = match_string("hello")
-        break unless _tmp
-      end
-      _tmp = true
-    else
-      self.pos = _save
-    end
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    loop_range(1.., false) {
+      match_string("hello")
+    } or set_failed_rule :_root
   end
 
   Rules = {}
@@ -488,25 +431,9 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"[5, 9]
   def _root
-    _save = self.pos
-    _count = 0
-    while true
-      _tmp = match_string("hello")
-      if _tmp
-        _count += 1
-        break if _count == 9
-      else
-        break
-      end
-    end
-    if _count >= 5
-      _tmp = true
-    else
-      self.pos = _save
-      _tmp = nil
-    end
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    loop_range(5..9, false) {
+      match_string("hello")
+    } or set_failed_rule :_root
   end
 
   Rules = {}
@@ -533,23 +460,11 @@ class Test < KPeg::CompiledParser
 
   # root = "hello" "world"
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("hello")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("world")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("hello") &&
+      match_string("world") ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -591,11 +506,10 @@ class Test < KPeg::CompiledParser
 
   # root = &"hello"
   def _root
-    _save = self.pos
-    _tmp = match_string("hello")
-    self.pos = _save
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos
+      look_ahead(_save,
+        match_string("hello")  # end look ahead
+    )) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -630,11 +544,10 @@ class Test < KPeg::CompiledParser
 
   # root = &{ !defined? @fail }
   def _root
-    _save = self.pos
-    _tmp = begin;  !defined? @fail ; end
-    self.pos = _save
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos
+      look_ahead(_save,
+        !defined? @fail  # end look ahead
+    )) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -670,12 +583,10 @@ class Test < KPeg::CompiledParser
 
   # root = !"hello"
   def _root
-    _save = self.pos
-    _tmp = match_string("hello")
-    _tmp = _tmp ? nil : true
-    self.pos = _save
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos
+      look_ahead(_save, !(
+        match_string("hello")  # end negation
+    ))) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -710,12 +621,10 @@ class Test < KPeg::CompiledParser
 
   # root = !{ defined? @fail }
   def _root
-    _save = self.pos
-    _tmp = begin;  defined? @fail ; end
-    _tmp = _tmp ? nil : true
-    self.pos = _save
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos
+      look_ahead(_save, !(
+        defined? @fail  # end negation
+    ))) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -753,16 +662,12 @@ class Test < KPeg::CompiledParser
 
   # greeting = "hello"
   def _greeting
-    _tmp = match_string("hello")
-    set_failed_rule :_greeting unless _tmp
-    return _tmp
+    match_string("hello") or set_failed_rule :_greeting
   end
 
   # root = greeting
   def _root
-    _tmp = apply(:_greeting)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    apply(:_greeting) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -793,16 +698,12 @@ class Test < KPeg::CompiledParser
 
   # greeting = "hello"
   def _greeting
-    _tmp = match_string("hello")
-    set_failed_rule :_greeting unless _tmp
-    return _tmp
+    match_string("hello") or set_failed_rule :_greeting
   end
 
   # root = @greeting
   def _root
-    _tmp = _greeting()
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    _greeting() or set_failed_rule :_root
   end
 
   Rules = {}
@@ -833,16 +734,12 @@ class Test < KPeg::CompiledParser
 
   # greeting = "hello"
   def _greeting(a,b)
-    _tmp = match_string("hello")
-    set_failed_rule :_greeting unless _tmp
-    return _tmp
+    match_string("hello") or set_failed_rule :_greeting
   end
 
   # root = @greeting(1,2)
   def _root
-    _tmp = _greeting(1,2)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    _greeting(1,2) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -883,9 +780,7 @@ class Test < KPeg::CompiledParser
 
   # root = %blah.greeting
   def _root
-    _tmp = @_grammar_blah.external_invoke(self, :_greeting)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    @_grammar_blah.external_invoke(self, :_greeting) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -918,9 +813,7 @@ class Test < KPeg::CompiledParser
 
   # root = %blah.greeting2(1,2)
   def _root
-    _tmp = @_grammar_blah.external_invoke(self, :_greeting2, 1,2)
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    @_grammar_blah.external_invoke(self, :_greeting2, 1,2) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -949,10 +842,8 @@ class Test < KPeg::CompiledParser
 
   # root = "hello":t
   def _root
-    _tmp = match_string("hello")
-    t = @result
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    match_string("hello") &&
+    ( t = @result; true ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -979,9 +870,7 @@ class Test < KPeg::CompiledParser
 
   # root = "hello"
   def _root
-    _tmp = match_string("hello")
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    match_string("hello") or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1009,57 +898,27 @@ class Test < KPeg::CompiledParser
 
   # hello = < "hello" > {text}
   def _hello
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = match_string("hello")
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; text; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_hello unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        match_string("hello") &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_hello
   end
 
   # root = hello?:lots {lots}
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _save1 = self.pos
-      _tmp = apply(:_hello)
-      @result = nil unless _tmp
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      lots = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; lots; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _save1 = self.pos  # optional
+        apply(:_hello) ||
+        ( self.pos = _save1; @result = nil; true )  # end optional
+      ) &&
+      ( lots = @result; true ) &&
+      ( @result = (lots); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1097,58 +956,26 @@ class Test < KPeg::CompiledParser
 
   # hello = < "hello" > {text}
   def _hello
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = match_string("hello")
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; text; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_hello unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        match_string("hello") &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_hello
   end
 
   # root = hello*:lots {lots}
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _ary = []
-      while true
-        _tmp = apply(:_hello)
-        _ary << @result if _tmp
-        break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      lots = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; lots; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(0.., true) {
+        apply(:_hello)
+      } &&
+      ( lots = @result; true ) &&
+      ( @result = (lots); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1189,65 +1016,26 @@ class Test < KPeg::CompiledParser
 
   # hello = < "hello" > {text}
   def _hello
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = match_string("hello")
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; text; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_hello unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        match_string("hello") &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_hello
   end
 
   # root = hello+:lots {lots}
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _save1 = self.pos
-      _ary = []
-      _tmp = apply(:_hello)
-      if _tmp
-        _ary << @result
-        while true
-          _tmp = apply(:_hello)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
-      end
-      lots = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; lots; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      loop_range(1.., true) {
+        apply(:_hello)
+      } &&
+      ( lots = @result; true ) &&
+      ( @result = (lots); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1286,10 +1074,7 @@ class Test < KPeg::CompiledParser
 
   # root = {3 + 4}
   def _root
-    @result = begin; 3 + 4; end
-    _tmp = true
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( @result = (3 + 4); true ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1320,28 +1105,14 @@ class Test < KPeg::CompiledParser
 
   # root = < "hello" > { text }
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      _tmp = match_string("hello")
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        match_string("hello") &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1372,28 +1143,14 @@ class Test < KPeg::CompiledParser
 
   # root = @< "hello" > { bounds }
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _bounds_start = self.pos
-      _tmp = match_string("hello")
-      if _tmp
-        bounds = [_bounds_start, self.pos]
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  bounds ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _bounds_start = self.pos
+        match_string("hello") &&
+        (bounds = [_bounds_start, self.pos]; true )
+      ) &&
+      ( @result = (bounds); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1466,9 +1223,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1501,9 +1256,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1534,9 +1287,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1581,9 +1332,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1676,9 +1425,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}
@@ -1727,9 +1474,7 @@ class Test < KPeg::CompiledParser
 
   # root = .
   def _root
-    _tmp = get_byte
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    get_byte or set_failed_rule :_root
   end
 
   Rules = {}

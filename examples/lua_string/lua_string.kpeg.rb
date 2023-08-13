@@ -193,6 +193,7 @@ class LuaString
         @failed_rule = name
         @failing_rule_offset = @pos
       end
+      nil
     end
 
     attr_reader :failed_rule
@@ -235,6 +236,32 @@ class LuaString
         s = @string[@pos]
         @pos += 1
         s
+      end
+    end
+
+    def look_ahead(pos, action)
+      @pos = pos
+      action ? true : nil
+    end
+
+    def loop_range(range, store)
+      _ary = [] if store
+      max = range.end && range.max
+      count = 0
+      save = @pos
+      while (!max || count < max) && yield
+        count += 1
+        if store
+          _ary << @result
+          @result = nil
+        end
+      end
+      if range.include?(count)
+        @result = _ary if store
+        true
+      else
+        @pos = save
+        nil
       end
     end
 
@@ -406,136 +433,57 @@ class LuaString
 
   # equals = < "="* > { text }
   def _equals
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      while true
-        _tmp = match_string("=")
-        break unless _tmp
-      end
-      _tmp = true
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_equals unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      ( _text_start = self.pos
+        while true  # kleene
+          match_string("=") || (break true) # end kleene
+        end &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      ( @result = (text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_equals
   end
 
   # equal_ending = "]" equals:x &{ x == start } "]"
   def _equal_ending(start)
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      x = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
-      _tmp = begin;  x == start ; end
-      self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_equal_ending unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("]") &&
+      apply(:_equals) &&
+      ( x = @result; true ) &&
+      ( _save1 = self.pos
+        look_ahead(_save1,
+          x == start  # end look ahead
+      )) &&
+      match_string("]") ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_equal_ending
   end
 
   # root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }
   def _root
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      e = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _text_start = self.pos
-      while true
-
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
-          _tmp = apply_with_args(:_equal_ending, e)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
-          break
-        end # end sequence
-
-        break unless _tmp
-      end
-      _tmp = true
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply_with_args(:_equal_ending, e)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; 
-         @result = text
-       ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_root unless _tmp
-    return _tmp
+    ( _save = self.pos  # sequence
+      match_string("[") &&
+      apply(:_equals) &&
+      ( e = @result; true ) &&
+      match_string("[") &&
+      ( _text_start = self.pos
+        while true  # kleene
+          ( _save1 = self.pos  # sequence
+            ( _save2 = self.pos
+              look_ahead(_save2, !(
+                apply_with_args(:_equal_ending, e)  # end negation
+            ))) &&
+            get_byte ||
+            ( self.pos = _save1; nil )  # end sequence
+          ) || (break true) # end kleene
+        end &&
+        ( text = get_text(_text_start); true )
+      ) &&
+      apply_with_args(:_equal_ending, e) &&
+      ( @result = (@result = text); true ) ||
+      ( self.pos = _save; nil )  # end sequence
+    ) or set_failed_rule :_root
   end
 
   Rules = {}

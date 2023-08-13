@@ -16,5 +16,5 @@ suffix = < digit[4] > { text }
 
 phone_number = LP? area_code:ac RP? space* prefix:p space* dash? space* suffix:s space* { "(#{ac}) #{p}-#{s}" } 
 
-root = phone_number:pn { @phone_number = pn }
-		| country_code:c space* phone_number:pn { @phone_number = "+#{c} #{pn}" }
+root = country_code:c space* phone_number:pn { @phone_number = "+#{c} #{pn}" }
+		 | phone_number:pn { @phone_number = pn }
