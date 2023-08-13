@@ -1,60 +1,124 @@
 class LuaString
-# STANDALONE START
-    def setup_parser(str, debug=false)
-      @string = str
-      @pos = 0
-      @memoizations = Hash.new { |h,k| h[k] = {} }
-      @result = nil
-      @failed_rule = nil
-      @failing_rule_offset = -1
-
-      setup_foreign_grammar
-    end
+  # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
     # can redefine #initialize and still have access to the proper
     # parser setup code.
-    #
     def initialize(str, debug=false)
       setup_parser(str, debug)
     end
 
-    attr_reader :string
-    attr_reader :result, :failing_rule_offset
-    attr_accessor :pos
 
-    # STANDALONE START
+
+    # Prepares for parsing +str+.  If you define a custom initialize you must
+    # call this method before #parse
+    def setup_parser(str, debug=false)
+      set_string str, 0
+      @memoizations = Hash.new { |h,k| h[k] = {} }
+      @result = nil
+      @failed_rule = nil
+      @failing_rule_offset = -1
+      @line_offsets = nil
+
+      setup_foreign_grammar
+    end
+
+    attr_reader :string
+    attr_reader :failing_rule_offset
+    attr_accessor :result, :pos
+
     def current_column(target=pos)
-      if c = string.rindex("\n", target-1)
-        return target - c - 1
+      if string[target] == "\n" && (c = string.rindex("\n", target-1) || -1)
+        return target - c
+      elsif c = string.rindex("\n", target)
+        return target - c
       end
 
       target + 1
     end
 
-    def current_line(target=pos)
-      cur_offset = 0
-      cur_line = 0
-
-      string.each_line do |line|
-        cur_line += 1
-        cur_offset += line.size
-        return cur_line if cur_offset >= target
+    def position_line_offsets
+      unless @position_line_offsets
+        @position_line_offsets = []
+        total = 0
+        string.each_line do |line|
+          total += line.size
+          @position_line_offsets << total
+        end
       end
+      @position_line_offsets
+    end
 
-      -1
+    if [].respond_to? :bsearch_index
+      def current_line(target=pos)
+        if line = position_line_offsets.bsearch_index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    else
+      def current_line(target=pos)
+        if line = position_line_offsets.index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    end
+
+    def current_character(target=pos)
+      if target < 0 || target > string.size
+        raise "Target position #{target} is outside of string"
+      elsif target == string.size
+        ""
+      else
+        string[target, 1]
+      end
+    end
+
+    KpegPosInfo = Struct.new(:pos, :lno, :col, :line, :char)
+
+    def current_pos_info(target=pos)
+      l = current_line target
+      c = current_column target
+      ln = get_line(l-1)
+      chr = string[target,1]
+      KpegPosInfo.new(target, l, c, ln, chr)
     end
 
     def lines
-      lines = []
-      string.each_line { |l| lines << l }
-      lines
+      string.lines
     end
 
-    #
+    def get_line(no)
+      loff = position_line_offsets
+      if no < 0
+        raise "Line No is out of range: #{no} < 0"
+      elsif no >= loff.size
+        raise "Line No is out of range: #{no} >= #{loff.size}"
+      end
+      lend = loff[no]-1
+      lstart = no > 0 ? loff[no-1] : 0
+      string[lstart..lend]
+    end
+
+
 
     def get_text(start)
       @string[start..@pos-1]
+    end
+
+    # Sets the string and current parsing position for the parser.
+    def set_string string, pos
+      @string = string
+      @string_size = string ? string.size : 0
+      @pos = pos
+      @position_line_offsets = nil
     end
 
     def show_pos
@@ -79,30 +143,22 @@ class LuaString
     end
 
     def failure_caret
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      line = lines[l-1]
-      "#{line}\n#{' ' * (c - 1)}^"
+      p = current_pos_info @failing_rule_offset
+      "#{p.line.chomp}\n#{' ' * (p.col - 1)}^"
     end
 
     def failure_character
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-      lines[l-1][c-1, 1]
+      current_character @failing_rule_offset
     end
 
     def failure_oneline
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      char = lines[l-1][c-1, 1]
+      p = current_pos_info @failing_rule_offset
 
       if @failed_rule.kind_of? Symbol
         info = self.class::Rules[@failed_rule]
-        "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+        "@#{p.lno}:#{p.col} failed rule '#{info.name}', got '#{p.char}'"
       else
-        "@#{l}:#{c} failed rule '#{@failed_rule}', got '#{char}'"
+        "@#{p.lno}:#{p.col} failed rule '#{@failed_rule}', got '#{p.char}'"
       end
     end
 
@@ -115,10 +171,9 @@ class LuaString
 
     def show_error(io=STDOUT)
       error_pos = @failing_rule_offset
-      line_no = current_line(error_pos)
-      col_no = current_column(error_pos)
+      p = current_pos_info(error_pos)
 
-      io.puts "On line #{line_no}, column #{col_no}:"
+      io.puts "On line #{p.lno}, column #{p.col}:"
 
       if @failed_rule.kind_of? Symbol
         info = self.class::Rules[@failed_rule]
@@ -127,10 +182,9 @@ class LuaString
         io.puts "Failed to match rule '#{@failed_rule}'"
       end
 
-      io.puts "Got: #{string[error_pos,1].inspect}"
-      line = lines[line_no-1]
-      io.puts "=> #{line}"
-      io.print(" " * (col_no + 3))
+      io.puts "Got: #{p.char.inspect}"
+      io.puts "=> #{p.line}"
+      io.print(" " * (p.col + 2))
       io.puts "^"
     end
 
@@ -154,28 +208,27 @@ class LuaString
     end
 
     def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
+      if m = reg.match(@string, @pos)
+        @pos = m.end(0)
         return true
       end
 
       return nil
     end
 
-    if "".respond_to? :getbyte
+    if "".respond_to? :ord
       def get_byte
-        if @pos >= @string.size
+        if @pos >= @string_size
           return nil
         end
 
-        s = @string.getbyte @pos
+        s = @string[@pos].ord
         @pos += 1
         s
       end
     else
       def get_byte
-        if @pos >= @string.size
+        if @pos >= @string_size
           return nil
         end
 
@@ -186,41 +239,37 @@ class LuaString
     end
 
     def parse(rule=nil)
+      # We invoke the rules indirectly via apply
+      # instead of by just calling them as methods because
+      # if the rules use left recursion, apply needs to
+      # manage that.
+
       if !rule
-        _root ? true : false
+        apply(:_root)
       else
-        # This is not shared with code_generator.rb so this can be standalone
         method = rule.gsub("-","_hyphen_")
-        __send__("_#{method}") ? true : false
+        apply :"_#{method}"
       end
-    end
-
-    class LeftRecursive
-      def initialize(detected=false)
-        @detected = detected
-      end
-
-      attr_accessor :detected
     end
 
     class MemoEntry
       def initialize(ans, pos)
         @ans = ans
         @pos = pos
-        @uses = 1
         @result = nil
+        @set = false
+        @left_rec = false
       end
 
-      attr_reader :ans, :pos, :uses, :result
-
-      def inc!
-        @uses += 1
-      end
+      attr_reader :ans, :pos, :result, :set
+      attr_accessor :left_rec
 
       def move!(ans, pos, result)
         @ans = ans
         @pos = pos
         @result = result
+        @set = true
+        @left_rec = false
       end
     end
 
@@ -228,30 +277,28 @@ class LuaString
       old_pos = @pos
       old_string = @string
 
-      @pos = other.pos
-      @string = other.string
+      set_string other.string, other.pos
 
       begin
         if val = __send__(rule, *args)
           other.pos = @pos
+          other.result = @result
         else
           other.set_failed_rule "#{self.class}##{rule}"
         end
         val
       ensure
-        @pos = old_pos
-        @string = old_string
+        set_string old_string, old_pos
       end
     end
 
-    def apply(rule)
-      if m = @memoizations[rule][@pos]
-        m.inc!
-
-        prev = @pos
+    def apply_with_args(rule, *args)
+      @result = nil
+      memo_key = [rule, args]
+      if m = @memoizations[memo_key][@pos]
         @pos = m.pos
-        if m.ans.kind_of? LeftRecursive
-          m.ans.detected = true
+        if !m.set
+          m.left_rec = true
           return nil
         end
 
@@ -259,31 +306,69 @@ class LuaString
 
         return m.ans
       else
-        lr = LeftRecursive.new(false)
-        m = MemoEntry.new(lr, @pos)
-        @memoizations[rule][@pos] = m
+        m = MemoEntry.new(nil, @pos)
+        @memoizations[memo_key][@pos] = m
         start_pos = @pos
 
-        ans = __send__ rule
+        ans = __send__ rule, *args
+
+        lr = m.left_rec
 
         m.move! ans, @pos, @result
 
         # Don't bother trying to grow the left recursion
         # if it's failing straight away (thus there is no seed)
-        if ans and lr.detected
-          return grow_lr(rule, start_pos, m)
+        if ans and lr
+          return grow_lr(rule, args, start_pos, m)
         else
           return ans
         end
       end
     end
 
-    def grow_lr(rule, start_pos, m)
+    def apply(rule)
+      @result = nil
+      if m = @memoizations[rule][@pos]
+        @pos = m.pos
+        if !m.set
+          m.left_rec = true
+          return nil
+        end
+
+        @result = m.result
+
+        return m.ans
+      else
+        m = MemoEntry.new(nil, @pos)
+        @memoizations[rule][@pos] = m
+        start_pos = @pos
+
+        ans = __send__ rule
+
+        lr = m.left_rec
+
+        m.move! ans, @pos, @result
+
+        # Don't bother trying to grow the left recursion
+        # if it's failing straight away (thus there is no seed)
+        if ans and lr
+          return grow_lr(rule, nil, start_pos, m)
+        else
+          return ans
+        end
+      end
+    end
+
+    def grow_lr(rule, args, start_pos, m)
       while true
         @pos = start_pos
         @result = m.result
 
-        ans = __send__ rule
+        if args
+          ans = __send__ rule, *args
+        else
+          ans = __send__ rule
+        end
         return nil unless ans
 
         break if @pos <= m.pos
@@ -309,12 +394,14 @@ class LuaString
       RuleInfo.new(name, rendered)
     end
 
-    #
+
+  # :startdoc:
 
 
   attr_accessor :result
 
 
+  # :stopdoc:
   def setup_foreign_grammar; end
 
   # equals = < "="* > { text }
@@ -408,7 +495,7 @@ class LuaString
         _save2 = self.pos
         while true # sequence
           _save3 = self.pos
-          _tmp = _equal_ending(e)
+          _tmp = apply_with_args(:_equal_ending, e)
           _tmp = _tmp ? nil : true
           self.pos = _save3
           unless _tmp
@@ -432,7 +519,7 @@ class LuaString
         self.pos = _save
         break
       end
-      _tmp = _equal_ending(e)
+      _tmp = apply_with_args(:_equal_ending, e)
       unless _tmp
         self.pos = _save
         break
@@ -455,4 +542,5 @@ class LuaString
   Rules[:_equals] = rule_info("equals", "< \"=\"* > { text }")
   Rules[:_equal_ending] = rule_info("equal_ending", "\"]\" equals:x &{ x == start } \"]\"")
   Rules[:_root] = rule_info("root", "\"[\" equals:e \"[\" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }")
+  # :startdoc:
 end
