@@ -1,4 +1,4 @@
-class LuaString
+class Matcher
   # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
@@ -390,136 +390,71 @@ class LuaString
   # :startdoc:
 
 
-  attr_accessor :result
+	require "literals.kpeg.rb"
 
 
   # :stopdoc:
-  def setup_foreign_grammar; end
-
-  # equals = < "="* > { text }
-  def _equals
-
-    _save = self.pos
-    while true # sequence
-      _text_start = self.pos
-      while true
-        _tmp = match_string("=")
-        break unless _tmp
-      end
-      _tmp = true
-      if _tmp
-        text = get_text(_text_start)
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_equals unless _tmp
-    return _tmp
+  def setup_foreign_grammar
+    @_grammar_grammer1 = Literal.new(nil)
   end
 
-  # equal_ending = "]" equals:x &{ x == start } "]"
-  def _equal_ending(start)
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      x = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
-      _tmp = begin;  x == start ; end
-      self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_equal_ending unless _tmp
-    return _tmp
-  end
-
-  # root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }
+  # root = (%grammer1.alpha %grammer1.space*)+ %grammer1.period
   def _root
 
     _save = self.pos
     while true # sequence
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      e = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _text_start = self.pos
-      while true
+      _save1 = self.pos
 
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
-          _tmp = apply_with_args(:_equal_ending, e)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
+      _save2 = self.pos
+      while true # sequence
+        _tmp = @_grammar_grammer1.external_invoke(self, :_alpha)
+        unless _tmp
+          self.pos = _save2
           break
-        end # end sequence
+        end
+        while true
+          _tmp = @_grammar_grammer1.external_invoke(self, :_space)
+          break unless _tmp
+        end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
 
-        break unless _tmp
-      end
-      _tmp = true
       if _tmp
-        text = get_text(_text_start)
+        while true
+
+          _save4 = self.pos
+          while true # sequence
+            _tmp = @_grammar_grammer1.external_invoke(self, :_alpha)
+            unless _tmp
+              self.pos = _save4
+              break
+            end
+            while true
+              _tmp = @_grammar_grammer1.external_invoke(self, :_space)
+              break unless _tmp
+            end
+            _tmp = true
+            unless _tmp
+              self.pos = _save4
+            end
+            break
+          end # end sequence
+
+          break unless _tmp
+        end
+        _tmp = true
+      else
+        self.pos = _save1
       end
       unless _tmp
         self.pos = _save
         break
       end
-      _tmp = apply_with_args(:_equal_ending, e)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; 
-         @result = text
-       ; end
-      _tmp = true
+      _tmp = @_grammar_grammer1.external_invoke(self, :_period)
       unless _tmp
         self.pos = _save
       end
@@ -531,8 +466,6 @@ class LuaString
   end
 
   Rules = {}
-  Rules[:_equals] = rule_info("equals", "< \"=\"* > { text }")
-  Rules[:_equal_ending] = rule_info("equal_ending", "\"]\" equals:x &{ x == start } \"]\"")
-  Rules[:_root] = rule_info("root", "\"[\" equals:e \"[\" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }")
+  Rules[:_root] = rule_info("root", "(%grammer1.alpha %grammer1.space*)+ %grammer1.period")
   # :startdoc:
 end

@@ -1,4 +1,4 @@
-class LuaString
+class PhoneNumber
   # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
@@ -390,23 +390,61 @@ class LuaString
   # :startdoc:
 
 
-  attr_accessor :result
+	attr_accessor :phone_number
 
 
   # :stopdoc:
   def setup_foreign_grammar; end
 
-  # equals = < "="* > { text }
-  def _equals
+  # digit = [0-9]
+  def _digit
+    _save = self.pos
+    _tmp = get_byte
+    if _tmp
+      unless _tmp >= 48 and _tmp <= 57
+        self.pos = _save
+        _tmp = nil
+      end
+    end
+    set_failed_rule :_digit unless _tmp
+    return _tmp
+  end
+
+  # space = " "
+  def _space
+    _tmp = match_string(" ")
+    set_failed_rule :_space unless _tmp
+    return _tmp
+  end
+
+  # dash = "-"
+  def _dash
+    _tmp = match_string("-")
+    set_failed_rule :_dash unless _tmp
+    return _tmp
+  end
+
+  # LP = "("
+  def _LP
+    _tmp = match_string("(")
+    set_failed_rule :_LP unless _tmp
+    return _tmp
+  end
+
+  # RP = ")"
+  def _RP
+    _tmp = match_string(")")
+    set_failed_rule :_RP unless _tmp
+    return _tmp
+  end
+
+  # country_code = < digit > { text }
+  def _country_code
 
     _save = self.pos
     while true # sequence
       _text_start = self.pos
-      while true
-        _tmp = match_string("=")
-        break unless _tmp
-      end
-      _tmp = true
+      _tmp = apply(:_digit)
       if _tmp
         text = get_text(_text_start)
       end
@@ -422,88 +460,33 @@ class LuaString
       break
     end # end sequence
 
-    set_failed_rule :_equals unless _tmp
+    set_failed_rule :_country_code unless _tmp
     return _tmp
   end
 
-  # equal_ending = "]" equals:x &{ x == start } "]"
-  def _equal_ending(start)
+  # area_code = < digit[3, 3] > { text }
+  def _area_code
 
     _save = self.pos
     while true # sequence
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      x = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
-      _tmp = begin;  x == start ; end
-      self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-      end
-      break
-    end # end sequence
-
-    set_failed_rule :_equal_ending unless _tmp
-    return _tmp
-  end
-
-  # root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }
-  def _root
-
-    _save = self.pos
-    while true # sequence
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_equals)
-      e = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
       _text_start = self.pos
+      _save1 = self.pos
+      _count = 0
       while true
-
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
-          _tmp = apply_with_args(:_equal_ending, e)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
+        _tmp = apply(:_digit)
+        if _tmp
+          _count += 1
+          break if _count == 3
+        else
           break
-        end # end sequence
-
-        break unless _tmp
+        end
       end
-      _tmp = true
+      if _count >= 3
+        _tmp = true
+      else
+        self.pos = _save1
+        _tmp = nil
+      end
       if _tmp
         text = get_text(_text_start)
       end
@@ -511,14 +494,7 @@ class LuaString
         self.pos = _save
         break
       end
-      _tmp = apply_with_args(:_equal_ending, e)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; 
-         @result = text
-       ; end
+      @result = begin;  text ; end
       _tmp = true
       unless _tmp
         self.pos = _save
@@ -526,13 +502,271 @@ class LuaString
       break
     end # end sequence
 
+    set_failed_rule :_area_code unless _tmp
+    return _tmp
+  end
+
+  # prefix = < digit[3, 3] > { text }
+  def _prefix
+
+    _save = self.pos
+    while true # sequence
+      _text_start = self.pos
+      _save1 = self.pos
+      _count = 0
+      while true
+        _tmp = apply(:_digit)
+        if _tmp
+          _count += 1
+          break if _count == 3
+        else
+          break
+        end
+      end
+      if _count >= 3
+        _tmp = true
+      else
+        self.pos = _save1
+        _tmp = nil
+      end
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_prefix unless _tmp
+    return _tmp
+  end
+
+  # suffix = < digit[4, 4] > { text }
+  def _suffix
+
+    _save = self.pos
+    while true # sequence
+      _text_start = self.pos
+      _save1 = self.pos
+      _count = 0
+      while true
+        _tmp = apply(:_digit)
+        if _tmp
+          _count += 1
+          break if _count == 4
+        else
+          break
+        end
+      end
+      if _count >= 4
+        _tmp = true
+      else
+        self.pos = _save1
+        _tmp = nil
+      end
+      if _tmp
+        text = get_text(_text_start)
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  text ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_suffix unless _tmp
+    return _tmp
+  end
+
+  # phone_number = LP? area_code:ac RP? space* prefix:p space* dash? space* suffix:s space* { "(#{ac}) #{p}-#{s}" }
+  def _phone_number
+
+    _save = self.pos
+    while true # sequence
+      _save1 = self.pos
+      _tmp = apply(:_LP)
+      unless _tmp
+        _tmp = true
+        self.pos = _save1
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_area_code)
+      ac = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _save2 = self.pos
+      _tmp = apply(:_RP)
+      unless _tmp
+        _tmp = true
+        self.pos = _save2
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
+        _tmp = apply(:_space)
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_prefix)
+      p = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
+        _tmp = apply(:_space)
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _save5 = self.pos
+      _tmp = apply(:_dash)
+      unless _tmp
+        _tmp = true
+        self.pos = _save5
+      end
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
+        _tmp = apply(:_space)
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      _tmp = apply(:_suffix)
+      s = @result
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      while true
+        _tmp = apply(:_space)
+        break unless _tmp
+      end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+        break
+      end
+      @result = begin;  "(#{ac}) #{p}-#{s}" ; end
+      _tmp = true
+      unless _tmp
+        self.pos = _save
+      end
+      break
+    end # end sequence
+
+    set_failed_rule :_phone_number unless _tmp
+    return _tmp
+  end
+
+  # root = (phone_number:pn { @phone_number = pn } | country_code:c space* phone_number:pn { @phone_number = "+#{c} #{pn}" })
+  def _root
+
+    _save = self.pos
+    while true # choice
+
+      _save1 = self.pos
+      while true # sequence
+        _tmp = apply(:_phone_number)
+        pn = @result
+        unless _tmp
+          self.pos = _save1
+          break
+        end
+        @result = begin;  @phone_number = pn ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save1
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+
+      _save2 = self.pos
+      while true # sequence
+        _tmp = apply(:_country_code)
+        c = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        while true
+          _tmp = apply(:_space)
+          break unless _tmp
+        end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        _tmp = apply(:_phone_number)
+        pn = @result
+        unless _tmp
+          self.pos = _save2
+          break
+        end
+        @result = begin;  @phone_number = "+#{c} #{pn}" ; end
+        _tmp = true
+        unless _tmp
+          self.pos = _save2
+        end
+        break
+      end # end sequence
+
+      break if _tmp
+      self.pos = _save
+      break
+    end # end choice
+
     set_failed_rule :_root unless _tmp
     return _tmp
   end
 
   Rules = {}
-  Rules[:_equals] = rule_info("equals", "< \"=\"* > { text }")
-  Rules[:_equal_ending] = rule_info("equal_ending", "\"]\" equals:x &{ x == start } \"]\"")
-  Rules[:_root] = rule_info("root", "\"[\" equals:e \"[\" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }")
+  Rules[:_digit] = rule_info("digit", "[0-9]")
+  Rules[:_space] = rule_info("space", "\" \"")
+  Rules[:_dash] = rule_info("dash", "\"-\"")
+  Rules[:_LP] = rule_info("LP", "\"(\"")
+  Rules[:_RP] = rule_info("RP", "\")\"")
+  Rules[:_country_code] = rule_info("country_code", "< digit > { text }")
+  Rules[:_area_code] = rule_info("area_code", "< digit[3, 3] > { text }")
+  Rules[:_prefix] = rule_info("prefix", "< digit[3, 3] > { text }")
+  Rules[:_suffix] = rule_info("suffix", "< digit[4, 4] > { text }")
+  Rules[:_phone_number] = rule_info("phone_number", "LP? area_code:ac RP? space* prefix:p space* dash? space* suffix:s space* { \"(\#{ac}) \#{p}-\#{s}\" }")
+  Rules[:_root] = rule_info("root", "(phone_number:pn { @phone_number = pn } | country_code:c space* phone_number:pn { @phone_number = \"+\#{c} \#{pn}\" })")
   # :startdoc:
 end
