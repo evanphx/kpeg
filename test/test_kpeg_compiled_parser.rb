@@ -29,6 +29,12 @@ class TestKPegCompiledParser < Minitest::Test
 
   KPeg.compile gram, "ProdTestParser", self
 
+  gram = <<-GRAM
+  root = [a-z] "\n"
+  GRAM
+
+  KPeg.compile gram, "TestNLParser", self
+
   def test_current_column
     r = TestParser.new "hello\nsir\nand goodbye"
     assert_equal 1, r.current_column(0)
@@ -102,6 +108,24 @@ class TestKPegCompiledParser < Minitest::Test
 
     expected = "@1:1 failed rule 'letter', got '9'"
     assert_equal expected, r.failure_oneline
+  end
+
+  def test_position_at_the_end
+    r = TestParser.new "l"
+    assert r.parse, "should parse"
+
+    assert_equal 1, r.pos
+    assert_equal 1, r.current_line
+    assert_equal 2, r.current_column
+  end
+
+  def test_position_at_the_end_after_nl
+    r = TestNLParser.new "l\n"
+    assert r.parse, "should parse"
+
+    assert_equal 2, r.pos
+    assert_equal 2, r.current_line
+    assert_equal 1, r.current_column
   end
 
   def test_composite_grammar
