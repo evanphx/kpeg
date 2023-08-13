@@ -114,9 +114,8 @@ module KPeg
         end
         code << indentify("scan(/\\G#{op.regexp}/#{lang})", indent)
       when CharRange
-        ss = save()
         if op.start.bytesize == 1 and op.fin.bytesize == 1
-          code << indentify("( #{ss} = self.pos  # char range\n", indent)
+          code << indentify("sequence(self.pos, (  # char range\n", indent)
           code << indentify("  _tmp = get_byte\n", indent)
 
           if op.start.respond_to? :getbyte
@@ -127,9 +126,8 @@ module KPeg
             right = op.fin[0]
           end
 
-          code << indentify("  _tmp && _tmp >= #{left} && _tmp <= #{right} ||\n", indent)
-          code << indentify("  ( self.pos = #{ss}; nil )  # end char range\n", indent)
-          code << indentify(")", indent)
+          code << indentify("  _tmp && _tmp >= #{left} && _tmp <= #{right}\n", indent)
+          code << indentify("))", indent)
         else
           raise "Unsupported char range - #{op.inspect}"
         end
@@ -146,15 +144,14 @@ module KPeg
         code << indentify(")", indent)
       when Multiple
         if op.min == 0 && op.max == 1
-          ss = save()
-          code << indentify("( #{ss} = self.pos  # optional\n", indent)
+          code << indentify("(  # optional\n", indent)
           output_op code, op.op, indent+1
           code << " ||\n"
-          code << indentify("  ( self.pos = #{ss}", indent)
           if op.save_values
-            code << "; @result = nil"
+            code << indentify("  ( @result = nil; true )  # end optional\n", indent)
+          else
+            code << indentify("  true  # end optional\n", indent)
           end
-          code << "; true )  # end optional\n"
           code << indentify(")", indent)
         elsif op.min == 0 && !op.max && !op.save_values
           code << indentify("while true  # kleene\n", indent)
@@ -167,38 +164,33 @@ module KPeg
           code << "\n" << indentify("}", indent)
         end
       when Sequence
-        ss = save()
-        code << indentify("( #{ss} = self.pos  # sequence\n", indent)
+        code << indentify("sequence(self.pos,  # sequence\n", indent)
         op.ops.each_with_index do |n, idx|
           if idx > 0
             code << " &&\n"
           end
           output_op code, n, indent+1
         end
-        code << " ||\n" << indentify("  ( self.pos = #{ss}; nil )  # end sequence\n", indent)
+        code << "  # end sequence\n"
         code << indentify(")", indent)
       when AndPredicate
-        ss = save()
-        code << indentify("( #{ss} = self.pos\n", indent)
-        code << indentify("  look_ahead(#{ss},\n", indent)
+        code << indentify("look_ahead(self.pos,\n", indent)
         if op.op.kind_of? Action
-          code << indentify(op.op.action.strip, indent+2)
+          code << indentify(op.op.action.strip, indent+1)
         else
-          output_op code, op.op, indent+2
+          output_op code, op.op, indent+1
         end
         code << "  # end look ahead\n"
-        code << indentify("))", indent)
+        code << indentify(")", indent)
       when NotPredicate
-        ss = save()
-        code << indentify("( #{ss} = self.pos\n", indent)
-        code << indentify("  look_ahead(#{ss}, !(\n", indent)
+        code << indentify("look_negation(self.pos,\n", indent)
         if op.op.kind_of? Action
-          code << indentify(op.op.action.strip, indent+2)
+          code << indentify(op.op.action.strip, indent+1)
         else
-          output_op code, op.op, indent+2
+          output_op code, op.op, indent+1
         end
         code << "  # end negation\n"
-        code << indentify(")))", indent)
+        code << indentify(")", indent)
       when RuleReference
         if op.arguments
           code << indentify("apply_with_args(:#{method_name op.rule_name}, #{op.arguments[1..-2]})", indent)

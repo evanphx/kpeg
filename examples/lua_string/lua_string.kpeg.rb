@@ -239,9 +239,19 @@ class LuaString
       end
     end
 
+    def sequence(pos, action)
+      @pos = pos  unless action
+      action ? true : nil
+    end
+
     def look_ahead(pos, action)
       @pos = pos
       action ? true : nil
+    end
+
+    def look_negation(pos, action)
+      @pos = pos
+      action ? nil : true
     end
 
     def loop_range(range, store)
@@ -433,56 +443,50 @@ class LuaString
 
   # equals = < "="* > { text }
   def _equals
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         while true  # kleene
           match_string("=") || (break true) # end kleene
         end &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_equals
   end
 
   # equal_ending = "]" equals:x &{ x == start } "]"
   def _equal_ending(start)
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("]") &&
       apply(:_equals) &&
       ( x = @result; true ) &&
-      ( _save1 = self.pos
-        look_ahead(_save1,
-          x == start  # end look ahead
-      )) &&
-      match_string("]") ||
-      ( self.pos = _save; nil )  # end sequence
+      look_ahead(self.pos,
+        x == start  # end look ahead
+      ) &&
+      match_string("]")  # end sequence
     ) or set_failed_rule :_equal_ending
   end
 
   # root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }
   def _root
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("[") &&
       apply(:_equals) &&
       ( e = @result; true ) &&
       match_string("[") &&
       ( _text_start = self.pos
         while true  # kleene
-          ( _save1 = self.pos  # sequence
-            ( _save2 = self.pos
-              look_ahead(_save2, !(
-                apply_with_args(:_equal_ending, e)  # end negation
-            ))) &&
-            get_byte ||
-            ( self.pos = _save1; nil )  # end sequence
+          sequence(self.pos,  # sequence
+            look_negation(self.pos,
+              apply_with_args(:_equal_ending, e)  # end negation
+            ) &&
+            get_byte  # end sequence
           ) || (break true) # end kleene
         end &&
         ( text = get_text(_text_start); true )
       ) &&
       apply_with_args(:_equal_ending, e) &&
-      ( @result = (@result = text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@result = text); true )  # end sequence
     ) or set_failed_rule :_root
   end
 

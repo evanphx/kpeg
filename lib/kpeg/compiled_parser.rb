@@ -173,9 +173,19 @@ module KPeg
       end
     end
 
+    def sequence(pos, action)
+      @pos = pos  unless action
+      action ? true : nil
+    end
+
     def look_ahead(pos, action)
       @pos = pos
       action ? true : nil
+    end
+
+    def look_negation(pos, action)
+      @pos = pos
+      action ? nil : true
     end
 
     def loop_range(range, store)

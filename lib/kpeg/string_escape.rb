@@ -239,9 +239,19 @@ class KPeg::StringEscape
       end
     end
 
+    def sequence(pos, action)
+      @pos = pos  unless action
+      action ? true : nil
+    end
+
     def look_ahead(pos, action)
       @pos = pos
       action ? true : nil
+    end
+
+    def look_negation(pos, action)
+      @pos = pos
+      action ? nil : true
     end
 
     def loop_range(range, store)
@@ -434,51 +444,43 @@ class KPeg::StringEscape
   # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\r" { "\\r" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
   def _segment
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         ( _text_start = self.pos
           scan(/\G(?-mix:[\w ]+)/) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (text); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (text); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\\") &&
-        ( @result = ("\\\\"); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ("\\\\"); true )  # end sequence
       ) ||
-      ( _save2 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\n") &&
-        ( @result = ("\\n"); true ) ||
-        ( self.pos = _save2; nil )  # end sequence
+        ( @result = ("\\n"); true )  # end sequence
       ) ||
-      ( _save3 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\r") &&
-        ( @result = ("\\r"); true ) ||
-        ( self.pos = _save3; nil )  # end sequence
+        ( @result = ("\\r"); true )  # end sequence
       ) ||
-      ( _save4 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\t") &&
-        ( @result = ("\\t"); true ) ||
-        ( self.pos = _save4; nil )  # end sequence
+        ( @result = ("\\t"); true )  # end sequence
       ) ||
-      ( _save5 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\b") &&
-        ( @result = ("\\b"); true ) ||
-        ( self.pos = _save5; nil )  # end sequence
+        ( @result = ("\\b"); true )  # end sequence
       ) ||
-      ( _save6 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\"") &&
-        ( @result = ("\\\""); true ) ||
-        ( self.pos = _save6; nil )  # end sequence
+        ( @result = ("\\\""); true )  # end sequence
       ) ||
-      ( _save7 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         ( _text_start = self.pos
           get_byte &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (text); true ) ||
-        ( self.pos = _save7; nil )  # end sequence
+        ( @result = (text); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_segment
@@ -486,23 +488,21 @@ class KPeg::StringEscape
 
   # root = segment*:s { @text = s.join }
   def _root
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       loop_range(0.., true) {
         apply(:_segment)
       } &&
       ( s = @result; true ) &&
-      ( @result = (@text = s.join); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@text = s.join); true )  # end sequence
     ) or set_failed_rule :_root
   end
 
   # embed_seg = ("#" { "\\#" } | segment)
   def _embed_seg
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("#") &&
-        ( @result = ("\\#"); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = ("\\#"); true )  # end sequence
       ) ||
       apply(:_segment)
       # end choice
@@ -511,13 +511,12 @@ class KPeg::StringEscape
 
   # embed = embed_seg*:s { @text = s.join }
   def _embed
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       loop_range(0.., true) {
         apply(:_embed_seg)
       } &&
       ( s = @result; true ) &&
-      ( @result = (@text = s.join); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@text = s.join); true )  # end sequence
     ) or set_failed_rule :_embed
   end
 

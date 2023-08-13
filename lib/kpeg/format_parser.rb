@@ -231,9 +231,19 @@ class KPeg::FormatParser
       end
     end
 
+    def sequence(pos, action)
+      @pos = pos  unless action
+      action ? true : nil
+    end
+
     def look_ahead(pos, action)
       @pos = pos
       action ? true : nil
+    end
+
+    def look_negation(pos, action)
+      @pos = pos
+      action ? nil : true
     end
 
     def loop_range(range, store)
@@ -444,38 +454,32 @@ class KPeg::FormatParser
 
   # eof_comment = "#" (!eof .)*
   def _eof_comment
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("#") &&
       while true  # kleene
-        ( _save1 = self.pos  # sequence
-          ( _save2 = self.pos
-            look_ahead(_save2, !(
-              apply(:_eof)  # end negation
-          ))) &&
-          get_byte ||
-          ( self.pos = _save1; nil )  # end sequence
+        sequence(self.pos,  # sequence
+          look_negation(self.pos,
+            apply(:_eof)  # end negation
+          ) &&
+          get_byte  # end sequence
         ) || (break true) # end kleene
-      end ||
-      ( self.pos = _save; nil )  # end sequence
+      end  # end sequence
     ) or set_failed_rule :_eof_comment
   end
 
   # comment = "#" (!eol .)* eol
   def _comment
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("#") &&
       while true  # kleene
-        ( _save1 = self.pos  # sequence
-          ( _save2 = self.pos
-            look_ahead(_save2, !(
-              apply(:_eol)  # end negation
-          ))) &&
-          get_byte ||
-          ( self.pos = _save1; nil )  # end sequence
+        sequence(self.pos,  # sequence
+          look_negation(self.pos,
+            apply(:_eol)  # end negation
+          ) &&
+          get_byte  # end sequence
         ) || (break true) # end kleene
       end &&
-      apply(:_eol) ||
-      ( self.pos = _save; nil )  # end sequence
+      apply(:_eol)  # end sequence
     ) or set_failed_rule :_comment
   end
 
@@ -507,7 +511,7 @@ class KPeg::FormatParser
 
   # var = < ("-" | /[a-z][\w-]*/i) > { text }
   def _var
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         ( # choice
           match_string("-") ||
@@ -516,89 +520,75 @@ class KPeg::FormatParser
         ) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_var
   end
 
   # method = < /[a-z_]\w*/i > { text }
   def _method
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?i-mx:[a-z_]\w*)/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_method
   end
 
   # dbl_escapes = ("n" { "\n" } | "s" { " " } | "r" { "\r" } | "t" { "\t" } | "v" { "\v" } | "f" { "\f" } | "b" { "\b" } | "a" { "\a" } | "e" { "\e" } | "\\" { "\\" } | "\"" { "\"" } | num_escapes | < . > { text })
   def _dbl_escapes
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("n") &&
-        ( @result = ("\n"); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = ("\n"); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("s") &&
-        ( @result = (" "); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = (" "); true )  # end sequence
       ) ||
-      ( _save2 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("r") &&
-        ( @result = ("\r"); true ) ||
-        ( self.pos = _save2; nil )  # end sequence
+        ( @result = ("\r"); true )  # end sequence
       ) ||
-      ( _save3 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("t") &&
-        ( @result = ("\t"); true ) ||
-        ( self.pos = _save3; nil )  # end sequence
+        ( @result = ("\t"); true )  # end sequence
       ) ||
-      ( _save4 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("v") &&
-        ( @result = ("\v"); true ) ||
-        ( self.pos = _save4; nil )  # end sequence
+        ( @result = ("\v"); true )  # end sequence
       ) ||
-      ( _save5 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("f") &&
-        ( @result = ("\f"); true ) ||
-        ( self.pos = _save5; nil )  # end sequence
+        ( @result = ("\f"); true )  # end sequence
       ) ||
-      ( _save6 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("b") &&
-        ( @result = ("\b"); true ) ||
-        ( self.pos = _save6; nil )  # end sequence
+        ( @result = ("\b"); true )  # end sequence
       ) ||
-      ( _save7 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("a") &&
-        ( @result = ("\a"); true ) ||
-        ( self.pos = _save7; nil )  # end sequence
+        ( @result = ("\a"); true )  # end sequence
       ) ||
-      ( _save8 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("e") &&
-        ( @result = ("\e"); true ) ||
-        ( self.pos = _save8; nil )  # end sequence
+        ( @result = ("\e"); true )  # end sequence
       ) ||
-      ( _save9 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\\") &&
-        ( @result = ("\\"); true ) ||
-        ( self.pos = _save9; nil )  # end sequence
+        ( @result = ("\\"); true )  # end sequence
       ) ||
-      ( _save10 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("\"") &&
-        ( @result = ("\""); true ) ||
-        ( self.pos = _save10; nil )  # end sequence
+        ( @result = ("\""); true )  # end sequence
       ) ||
       apply(:_num_escapes) ||
-      ( _save11 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         ( _text_start = self.pos
           get_byte &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (text); true ) ||
-        ( self.pos = _save11; nil )  # end sequence
+        ( @result = (text); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_dbl_escapes
@@ -607,22 +597,20 @@ class KPeg::FormatParser
   # num_escapes = (< /[0-7]{1,3}/ > { [text.to_i(8)].pack("U") } | "x" < /[a-f\d]{2}/i > { [text.to_i(16)].pack("U") })
   def _num_escapes
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         ( _text_start = self.pos
           scan(/\G(?-mix:[0-7]{1,3})/) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = ([text.to_i(8)].pack("U")); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = ([text.to_i(8)].pack("U")); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("x") &&
         ( _text_start = self.pos
           scan(/\G(?i-mx:[a-f\d]{2})/) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = ([text.to_i(16)].pack("U")); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ([text.to_i(16)].pack("U")); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_num_escapes
@@ -630,72 +618,66 @@ class KPeg::FormatParser
 
   # dbl_seq = < /[^\\"]+/ > { text }
   def _dbl_seq
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?-mix:[^\\"]+)/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_dbl_seq
   end
 
   # dbl_not_quote = ("\\" dbl_escapes | dbl_seq)*:ary { Array(ary) }
   def _dbl_not_quote
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       loop_range(0.., true) {
         ( # choice
-          ( _save1 = self.pos  # sequence
+          sequence(self.pos,  # sequence
             match_string("\\") &&
-            apply(:_dbl_escapes) ||
-            ( self.pos = _save1; nil )  # end sequence
+            apply(:_dbl_escapes)  # end sequence
           ) ||
           apply(:_dbl_seq)
           # end choice
         )
       } &&
       ( ary = @result; true ) &&
-      ( @result = (Array(ary)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (Array(ary)); true )  # end sequence
     ) or set_failed_rule :_dbl_not_quote
   end
 
   # dbl_string = "\"" dbl_not_quote:s "\"" { @g.str(s.join) }
   def _dbl_string
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("\"") &&
       apply(:_dbl_not_quote) &&
       ( s = @result; true ) &&
       match_string("\"") &&
-      ( @result = (@g.str(s.join)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@g.str(s.join)); true )  # end sequence
     ) or set_failed_rule :_dbl_string
   end
 
   # sgl_escape_quote = "\\'" { "'" }
   def _sgl_escape_quote
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("\\'") &&
-      ( @result = ("'"); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = ("'"); true )  # end sequence
     ) or set_failed_rule :_sgl_escape_quote
   end
 
   # sgl_seq = < /[^']/ > { text }
   def _sgl_seq
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?-mix:[^'])/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_sgl_seq
   end
 
   # sgl_not_quote = (sgl_escape_quote | sgl_seq)*:segs { Array(segs) }
   def _sgl_not_quote
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       loop_range(0.., true) {
         ( # choice
           apply(:_sgl_escape_quote) ||
@@ -704,20 +686,18 @@ class KPeg::FormatParser
         )
       } &&
       ( segs = @result; true ) &&
-      ( @result = (Array(segs)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (Array(segs)); true )  # end sequence
     ) or set_failed_rule :_sgl_not_quote
   end
 
   # sgl_string = "'" sgl_not_quote:s "'" { @g.str(s.join) }
   def _sgl_string
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("'") &&
       apply(:_sgl_not_quote) &&
       ( s = @result; true ) &&
       match_string("'") &&
-      ( @result = (@g.str(s.join)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@g.str(s.join)); true )  # end sequence
     ) or set_failed_rule :_sgl_string
   end
 
@@ -732,7 +712,7 @@ class KPeg::FormatParser
 
   # not_slash = < ("\\/" | /[^\/]/)+ > { text }
   def _not_slash
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         loop_range(1.., false) {
           ( # choice
@@ -743,58 +723,53 @@ class KPeg::FormatParser
         } &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_not_slash
   end
 
   # regexp_opts = < [a-z]* > { text }
   def _regexp_opts
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         while true  # kleene
-          ( _save1 = self.pos  # char range
+          sequence(self.pos, (  # char range
             _tmp = get_byte
-            _tmp && _tmp >= 97 && _tmp <= 122 ||
-            ( self.pos = _save1; nil )  # end char range
-          ) || (break true) # end kleene
+            _tmp && _tmp >= 97 && _tmp <= 122
+          )) || (break true) # end kleene
         end &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_regexp_opts
   end
 
   # regexp = "/" not_slash:body "/" regexp_opts:opts { @g.reg body, opts }
   def _regexp
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("/") &&
       apply(:_not_slash) &&
       ( body = @result; true ) &&
       match_string("/") &&
       apply(:_regexp_opts) &&
       ( opts = @result; true ) &&
-      ( @result = (@g.reg body, opts); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@g.reg body, opts); true )  # end sequence
     ) or set_failed_rule :_regexp
   end
 
   # char = < /[a-z\d]/i > { text }
   def _char
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?i-mx:[a-z\d])/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_char
   end
 
   # char_range = "[" char:l "-" char:r "]" { @g.range(l,r) }
   def _char_range
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("[") &&
       apply(:_char) &&
       ( l = @result; true ) &&
@@ -802,26 +777,24 @@ class KPeg::FormatParser
       apply(:_char) &&
       ( r = @result; true ) &&
       match_string("]") &&
-      ( @result = (@g.range(l,r)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@g.range(l,r)); true )  # end sequence
     ) or set_failed_rule :_char_range
   end
 
   # range_num = < /[1-9]\d*/ > { text }
   def _range_num
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?-mix:[1-9]\d*)/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_range_num
   end
 
   # range_elem = < (range_num | kleene) > { text }
   def _range_elem
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         ( # choice
           apply(:_range_num) ||
@@ -830,15 +803,14 @@ class KPeg::FormatParser
         ) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_range_elem
   end
 
   # mult_range = ("[" - range_elem:l - "," - range_elem:r - "]" { [l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i] } | "[" - range_num:e - "]" { [e.to_i, e.to_i] })
   def _mult_range
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("[") &&
         apply(:__hyphen_) &&
         apply(:_range_elem) &&
@@ -850,18 +822,16 @@ class KPeg::FormatParser
         ( r = @result; true ) &&
         apply(:__hyphen_) &&
         match_string("]") &&
-        ( @result = ([l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i]); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = ([l == "*" ? nil : l.to_i, r == "*" ? nil : r.to_i]); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("[") &&
         apply(:__hyphen_) &&
         apply(:_range_num) &&
         ( e = @result; true ) &&
         apply(:__hyphen_) &&
         match_string("]") &&
-        ( @result = ([e.to_i, e.to_i]); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ([e.to_i, e.to_i]); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_mult_range
@@ -874,7 +844,7 @@ class KPeg::FormatParser
 
   # curly = "{" < (spaces | /[^{}"']+/ | string | curly)* > "}" { @g.action(text) }
   def _curly
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("{") &&
       ( _text_start = self.pos
         while true  # kleene
@@ -889,14 +859,13 @@ class KPeg::FormatParser
         ( text = get_text(_text_start); true )
       ) &&
       match_string("}") &&
-      ( @result = (@g.action(text)); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (@g.action(text)); true )  # end sequence
     ) or set_failed_rule :_curly
   end
 
   # nested_paren = "(" (/[^()"']+/ | string | nested_paren)* ")"
   def _nested_paren
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       match_string("(") &&
       while true  # kleene
         ( # choice
@@ -906,153 +875,136 @@ class KPeg::FormatParser
           # end choice
         ) || (break true) # end kleene
       end &&
-      match_string(")") ||
-      ( self.pos = _save; nil )  # end sequence
+      match_string(")")  # end sequence
     ) or set_failed_rule :_nested_paren
   end
 
   # value = (value:v ":" var:n { @g.t(v,n) } | value:v "?" { @g.maybe(v) } | value:v "+" { @g.many(v) } | value:v "*" { @g.kleene(v) } | value:v mult_range:r { @g.multiple(v, *r) } | "&" value:v { @g.andp(v) } | "!" value:v { @g.notp(v) } | "(" - expression:o - ")" { o } | "@<" - expression:o - ">" { @g.bounds(o) } | "<" - expression:o - ">" { @g.collect(o) } | curly_block | "~" method:m < nested_paren? > { @g.action("#{m}#{text}") } | "." { @g.dot } | "@" var:name < nested_paren? > !(- "=") { @g.invoke(name, text.empty? ? nil : text) } | "^" var:name < nested_paren? > { @g.foreign_invoke("parent", name, text) } | "%" var:gram "." var:name < nested_paren? > { @g.foreign_invoke(gram, name, text) } | var:name < nested_paren? > !(- "=") { @g.ref(name, nil, text.empty? ? nil : text) } | char_range | regexp | string)
   def _value
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( v = @result; true ) &&
         match_string(":") &&
         apply(:_var) &&
         ( n = @result; true ) &&
-        ( @result = (@g.t(v,n)); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (@g.t(v,n)); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( v = @result; true ) &&
         match_string("?") &&
-        ( @result = (@g.maybe(v)); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = (@g.maybe(v)); true )  # end sequence
       ) ||
-      ( _save2 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( v = @result; true ) &&
         match_string("+") &&
-        ( @result = (@g.many(v)); true ) ||
-        ( self.pos = _save2; nil )  # end sequence
+        ( @result = (@g.many(v)); true )  # end sequence
       ) ||
-      ( _save3 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( v = @result; true ) &&
         match_string("*") &&
-        ( @result = (@g.kleene(v)); true ) ||
-        ( self.pos = _save3; nil )  # end sequence
+        ( @result = (@g.kleene(v)); true )  # end sequence
       ) ||
-      ( _save4 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( v = @result; true ) &&
         apply(:_mult_range) &&
         ( r = @result; true ) &&
-        ( @result = (@g.multiple(v, *r)); true ) ||
-        ( self.pos = _save4; nil )  # end sequence
+        ( @result = (@g.multiple(v, *r)); true )  # end sequence
       ) ||
-      ( _save5 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("&") &&
         apply(:_value) &&
         ( v = @result; true ) &&
-        ( @result = (@g.andp(v)); true ) ||
-        ( self.pos = _save5; nil )  # end sequence
+        ( @result = (@g.andp(v)); true )  # end sequence
       ) ||
-      ( _save6 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("!") &&
         apply(:_value) &&
         ( v = @result; true ) &&
-        ( @result = (@g.notp(v)); true ) ||
-        ( self.pos = _save6; nil )  # end sequence
+        ( @result = (@g.notp(v)); true )  # end sequence
       ) ||
-      ( _save7 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("(") &&
         apply(:__hyphen_) &&
         apply(:_expression) &&
         ( o = @result; true ) &&
         apply(:__hyphen_) &&
         match_string(")") &&
-        ( @result = (o); true ) ||
-        ( self.pos = _save7; nil )  # end sequence
+        ( @result = (o); true )  # end sequence
       ) ||
-      ( _save8 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("@<") &&
         apply(:__hyphen_) &&
         apply(:_expression) &&
         ( o = @result; true ) &&
         apply(:__hyphen_) &&
         match_string(">") &&
-        ( @result = (@g.bounds(o)); true ) ||
-        ( self.pos = _save8; nil )  # end sequence
+        ( @result = (@g.bounds(o)); true )  # end sequence
       ) ||
-      ( _save9 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("<") &&
         apply(:__hyphen_) &&
         apply(:_expression) &&
         ( o = @result; true ) &&
         apply(:__hyphen_) &&
         match_string(">") &&
-        ( @result = (@g.collect(o)); true ) ||
-        ( self.pos = _save9; nil )  # end sequence
+        ( @result = (@g.collect(o)); true )  # end sequence
       ) ||
       apply(:_curly_block) ||
-      ( _save10 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("~") &&
         apply(:_method) &&
         ( m = @result; true ) &&
         ( _text_start = self.pos
-          ( _save11 = self.pos  # optional
+          (  # optional
             apply(:_nested_paren) ||
-            ( self.pos = _save11; true )  # end optional
+            true  # end optional
           ) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (@g.action("#{m}#{text}")); true ) ||
-        ( self.pos = _save10; nil )  # end sequence
+        ( @result = (@g.action("#{m}#{text}")); true )  # end sequence
       ) ||
-      ( _save12 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string(".") &&
-        ( @result = (@g.dot); true ) ||
-        ( self.pos = _save12; nil )  # end sequence
+        ( @result = (@g.dot); true )  # end sequence
       ) ||
-      ( _save13 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("@") &&
         apply(:_var) &&
         ( name = @result; true ) &&
         ( _text_start = self.pos
-          ( _save14 = self.pos  # optional
+          (  # optional
             apply(:_nested_paren) ||
-            ( self.pos = _save14; true )  # end optional
+            true  # end optional
           ) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( _save15 = self.pos
-          look_ahead(_save15, !(
-            ( _save16 = self.pos  # sequence
-              apply(:__hyphen_) &&
-              match_string("=") ||
-              ( self.pos = _save16; nil )  # end sequence
-            )  # end negation
-        ))) &&
-        ( @result = (@g.invoke(name, text.empty? ? nil : text)); true ) ||
-        ( self.pos = _save13; nil )  # end sequence
+        look_negation(self.pos,
+          sequence(self.pos,  # sequence
+            apply(:__hyphen_) &&
+            match_string("=")  # end sequence
+          )  # end negation
+        ) &&
+        ( @result = (@g.invoke(name, text.empty? ? nil : text)); true )  # end sequence
       ) ||
-      ( _save17 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("^") &&
         apply(:_var) &&
         ( name = @result; true ) &&
         ( _text_start = self.pos
-          ( _save18 = self.pos  # optional
+          (  # optional
             apply(:_nested_paren) ||
-            ( self.pos = _save18; true )  # end optional
+            true  # end optional
           ) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (@g.foreign_invoke("parent", name, text)); true ) ||
-        ( self.pos = _save17; nil )  # end sequence
+        ( @result = (@g.foreign_invoke("parent", name, text)); true )  # end sequence
       ) ||
-      ( _save19 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         match_string("%") &&
         apply(:_var) &&
         ( gram = @result; true ) &&
@@ -1060,35 +1012,31 @@ class KPeg::FormatParser
         apply(:_var) &&
         ( name = @result; true ) &&
         ( _text_start = self.pos
-          ( _save20 = self.pos  # optional
+          (  # optional
             apply(:_nested_paren) ||
-            ( self.pos = _save20; true )  # end optional
+            true  # end optional
           ) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (@g.foreign_invoke(gram, name, text)); true ) ||
-        ( self.pos = _save19; nil )  # end sequence
+        ( @result = (@g.foreign_invoke(gram, name, text)); true )  # end sequence
       ) ||
-      ( _save21 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_var) &&
         ( name = @result; true ) &&
         ( _text_start = self.pos
-          ( _save22 = self.pos  # optional
+          (  # optional
             apply(:_nested_paren) ||
-            ( self.pos = _save22; true )  # end optional
+            true  # end optional
           ) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( _save23 = self.pos
-          look_ahead(_save23, !(
-            ( _save24 = self.pos  # sequence
-              apply(:__hyphen_) &&
-              match_string("=") ||
-              ( self.pos = _save24; nil )  # end sequence
-            )  # end negation
-        ))) &&
-        ( @result = (@g.ref(name, nil, text.empty? ? nil : text)); true ) ||
-        ( self.pos = _save21; nil )  # end sequence
+        look_negation(self.pos,
+          sequence(self.pos,  # sequence
+            apply(:__hyphen_) &&
+            match_string("=")  # end sequence
+          )  # end negation
+        ) &&
+        ( @result = (@g.ref(name, nil, text.empty? ? nil : text)); true )  # end sequence
       ) ||
       apply(:_char_range) ||
       apply(:_regexp) ||
@@ -1111,23 +1059,21 @@ class KPeg::FormatParser
   # values = (values:s spaces value:v { @g.seq(s, v) } | value:l spaces value:r { @g.seq(l, r) } | value)
   def _values
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_values) &&
         ( s = @result; true ) &&
         apply(:_spaces) &&
         apply(:_value) &&
         ( v = @result; true ) &&
-        ( @result = (@g.seq(s, v)); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (@g.seq(s, v)); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_value) &&
         ( l = @result; true ) &&
         apply(:_spaces) &&
         apply(:_value) &&
         ( r = @result; true ) &&
-        ( @result = (@g.seq(l, r)); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = (@g.seq(l, r)); true )  # end sequence
       ) ||
       apply(:_value)
       # end choice
@@ -1136,29 +1082,27 @@ class KPeg::FormatParser
 
   # choose_cont = - "|" - values:v { v }
   def _choose_cont
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       apply(:__hyphen_) &&
       match_string("|") &&
       apply(:__hyphen_) &&
       apply(:_values) &&
       ( v = @result; true ) &&
-      ( @result = (v); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (v); true )  # end sequence
     ) or set_failed_rule :_choose_cont
   end
 
   # expression = (values:v choose_cont+:alts { @g.any(v, *alts) } | values)
   def _expression
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_values) &&
         ( v = @result; true ) &&
         loop_range(1.., true) {
           apply(:_choose_cont)
         } &&
         ( alts = @result; true ) &&
-        ( @result = (@g.any(v, *alts)); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (@g.any(v, *alts)); true )  # end sequence
       ) ||
       apply(:_values)
       # end choice
@@ -1168,7 +1112,7 @@ class KPeg::FormatParser
   # args = (args:a "," - var:n - { a + [n] } | - var:n - { [n] })
   def _args
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_args) &&
         ( a = @result; true ) &&
         match_string(",") &&
@@ -1176,16 +1120,14 @@ class KPeg::FormatParser
         apply(:_var) &&
         ( n = @result; true ) &&
         apply(:__hyphen_) &&
-        ( @result = (a + [n]); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (a + [n]); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         apply(:_var) &&
         ( n = @result; true ) &&
         apply(:__hyphen_) &&
-        ( @result = ([n]); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ([n]); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_args
@@ -1194,7 +1136,7 @@ class KPeg::FormatParser
   # statement = (- var:v "(" args:a ")" - "=" - expression:o { @g.set(v, o, a) } | - var:v - "=" - expression:o { @g.set(v, o) } | - "%" var:name - "=" - < /[:\w]+/ > { @g.add_foreign_grammar(name, text) } | - "%%" - curly:act { @g.add_setup act } | - "%%" - var:name - curly:act { @g.add_directive name, act } | - "%%" - var:name - "=" - < (!"\n" .)+ > { @g.set_variable(name, text) })
   def _statement
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         apply(:_var) &&
         ( v = @result; true ) &&
@@ -1207,10 +1149,9 @@ class KPeg::FormatParser
         apply(:__hyphen_) &&
         apply(:_expression) &&
         ( o = @result; true ) &&
-        ( @result = (@g.set(v, o, a)); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (@g.set(v, o, a)); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         apply(:_var) &&
         ( v = @result; true ) &&
@@ -1219,10 +1160,9 @@ class KPeg::FormatParser
         apply(:__hyphen_) &&
         apply(:_expression) &&
         ( o = @result; true ) &&
-        ( @result = (@g.set(v, o)); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = (@g.set(v, o)); true )  # end sequence
       ) ||
-      ( _save2 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         match_string("%") &&
         apply(:_var) &&
@@ -1234,19 +1174,17 @@ class KPeg::FormatParser
           scan(/\G(?-mix:[:\w]+)/) &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (@g.add_foreign_grammar(name, text)); true ) ||
-        ( self.pos = _save2; nil )  # end sequence
+        ( @result = (@g.add_foreign_grammar(name, text)); true )  # end sequence
       ) ||
-      ( _save3 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         match_string("%%") &&
         apply(:__hyphen_) &&
         apply(:_curly) &&
         ( act = @result; true ) &&
-        ( @result = (@g.add_setup act); true ) ||
-        ( self.pos = _save3; nil )  # end sequence
+        ( @result = (@g.add_setup act); true )  # end sequence
       ) ||
-      ( _save4 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         match_string("%%") &&
         apply(:__hyphen_) &&
@@ -1255,10 +1193,9 @@ class KPeg::FormatParser
         apply(:__hyphen_) &&
         apply(:_curly) &&
         ( act = @result; true ) &&
-        ( @result = (@g.add_directive name, act); true ) ||
-        ( self.pos = _save4; nil )  # end sequence
+        ( @result = (@g.add_directive name, act); true )  # end sequence
       ) ||
-      ( _save5 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:__hyphen_) &&
         match_string("%%") &&
         apply(:__hyphen_) &&
@@ -1269,19 +1206,16 @@ class KPeg::FormatParser
         apply(:__hyphen_) &&
         ( _text_start = self.pos
           loop_range(1.., false) {
-            ( _save6 = self.pos  # sequence
-              ( _save7 = self.pos
-                look_ahead(_save7, !(
-                  match_string("\n")  # end negation
-              ))) &&
-              get_byte ||
-              ( self.pos = _save6; nil )  # end sequence
+            sequence(self.pos,  # sequence
+              look_negation(self.pos,
+                match_string("\n")  # end negation
+              ) &&
+              get_byte  # end sequence
             )
           } &&
           ( text = get_text(_text_start); true )
         ) &&
-        ( @result = (@g.set_variable(name, text)); true ) ||
-        ( self.pos = _save5; nil )  # end sequence
+        ( @result = (@g.set_variable(name, text)); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_statement
@@ -1289,63 +1223,57 @@ class KPeg::FormatParser
 
   # statements = statement (- statements)?
   def _statements
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       apply(:_statement) &&
-      ( _save1 = self.pos  # optional
-        ( _save2 = self.pos  # sequence
+      (  # optional
+        sequence(self.pos,  # sequence
           apply(:__hyphen_) &&
-          apply(:_statements) ||
-          ( self.pos = _save2; nil )  # end sequence
+          apply(:_statements)  # end sequence
         ) ||
-        ( self.pos = _save1; true )  # end optional
-      ) ||
-      ( self.pos = _save; nil )  # end sequence
+        true  # end optional
+      )  # end sequence
     ) or set_failed_rule :_statements
   end
 
   # eof = !.
   def _eof
-    ( _save = self.pos
-      look_ahead(_save, !(
-        get_byte  # end negation
-    ))) or set_failed_rule :_eof
+    look_negation(self.pos,
+      get_byte  # end negation
+    ) or set_failed_rule :_eof
   end
 
   # root = statements - eof_comment? eof
   def _root
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       apply(:_statements) &&
       apply(:__hyphen_) &&
-      ( _save1 = self.pos  # optional
+      (  # optional
         apply(:_eof_comment) ||
-        ( self.pos = _save1; true )  # end optional
+        true  # end optional
       ) &&
-      apply(:_eof) ||
-      ( self.pos = _save; nil )  # end sequence
+      apply(:_eof)  # end sequence
     ) or set_failed_rule :_root
   end
 
   # ast_constant = < /[A-Z]\w*/ > { text }
   def _ast_constant
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?-mix:[A-Z]\w*)/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_ast_constant
   end
 
   # ast_word = < /[a-z_]\w*/i > { text }
   def _ast_word
-    ( _save = self.pos  # sequence
+    sequence(self.pos,  # sequence
       ( _text_start = self.pos
         scan(/\G(?i-mx:[a-z_]\w*)/) &&
         ( text = get_text(_text_start); true )
       ) &&
-      ( @result = (text); true ) ||
-      ( self.pos = _save; nil )  # end sequence
+      ( @result = (text); true )  # end sequence
     ) or set_failed_rule :_ast_word
   end
 
@@ -1363,7 +1291,7 @@ class KPeg::FormatParser
   # ast_words = (ast_words:r ast_sp "," ast_sp ast_word:w { r + [w] } | ast_word:w { [w] })
   def _ast_words
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_ast_words) &&
         ( r = @result; true ) &&
         apply(:_ast_sp) &&
@@ -1371,14 +1299,12 @@ class KPeg::FormatParser
         apply(:_ast_sp) &&
         apply(:_ast_word) &&
         ( w = @result; true ) &&
-        ( @result = (r + [w]); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = (r + [w]); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_ast_word) &&
         ( w = @result; true ) &&
-        ( @result = ([w]); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ([w]); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_ast_words
@@ -1387,25 +1313,23 @@ class KPeg::FormatParser
   # ast_root = (ast_constant:c "(" ast_words:w ")" { [c, w] } | ast_constant:c "()"? { [c, []] })
   def _ast_root
     ( # choice
-      ( _save = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_ast_constant) &&
         ( c = @result; true ) &&
         match_string("(") &&
         apply(:_ast_words) &&
         ( w = @result; true ) &&
         match_string(")") &&
-        ( @result = ([c, w]); true ) ||
-        ( self.pos = _save; nil )  # end sequence
+        ( @result = ([c, w]); true )  # end sequence
       ) ||
-      ( _save1 = self.pos  # sequence
+      sequence(self.pos,  # sequence
         apply(:_ast_constant) &&
         ( c = @result; true ) &&
-        ( _save2 = self.pos  # optional
+        (  # optional
           match_string("()") ||
-          ( self.pos = _save2; true )  # end optional
+          true  # end optional
         ) &&
-        ( @result = ([c, []]); true ) ||
-        ( self.pos = _save1; nil )  # end sequence
+        ( @result = ([c, []]); true )  # end sequence
       )
       # end choice
     ) or set_failed_rule :_ast_root
