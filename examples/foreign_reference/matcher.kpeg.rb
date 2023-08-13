@@ -197,6 +197,15 @@ class Matcher
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -217,24 +226,26 @@ class Matcher
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -410,63 +421,37 @@ class Matcher
   def _root
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
+      _count = 0
+      while true
 
-      _save2 = self.pos
-      while true # sequence
-        _tmp = @_grammar_grammer1.external_invoke(self, :_alpha)
+        _save2 = self.pos
+        begin # sequence
+          _tmp = @_grammar_grammer1.external_invoke(self, :_alpha)
+          break unless _tmp
+          while true # kleene
+            _tmp = @_grammar_grammer1.external_invoke(self, :_space)
+            break unless _tmp
+          end
+          _tmp = true # end kleene
+        end while false
         unless _tmp
           self.pos = _save2
-          break
-        end
-        while true
-          _tmp = @_grammar_grammer1.external_invoke(self, :_space)
-          break unless _tmp
-        end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
+        end # end sequence
 
-      if _tmp
-        while true
-
-          _save4 = self.pos
-          while true # sequence
-            _tmp = @_grammar_grammer1.external_invoke(self, :_alpha)
-            unless _tmp
-              self.pos = _save4
-              break
-            end
-            while true
-              _tmp = @_grammar_grammer1.external_invoke(self, :_space)
-              break unless _tmp
-            end
-            _tmp = true
-            unless _tmp
-              self.pos = _save4
-            end
-            break
-          end # end sequence
-
-          break unless _tmp
-        end
-        _tmp = true
-      else
+        break unless _tmp
+        _count += 1
+      end
+      _tmp = _count >= 1
+      unless _tmp
         self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      end # end repetition
+      break unless _tmp
       _tmp = @_grammar_grammer1.external_invoke(self, :_period)
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_root unless _tmp

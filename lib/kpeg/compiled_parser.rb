@@ -131,6 +131,15 @@ module KPeg
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -151,24 +160,26 @@ module KPeg
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 

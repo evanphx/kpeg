@@ -197,6 +197,15 @@ class PhoneNumber
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -217,24 +226,26 @@ class PhoneNumber
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -406,14 +417,7 @@ class PhoneNumber
 
   # digit = [0-9]
   def _digit
-    _save = self.pos
-    _tmp = get_byte
-    if _tmp
-      unless _tmp >= 48 and _tmp <= 57
-        self.pos = _save
-        _tmp = nil
-      end
-    end
+    _tmp = match_char_range(48..57)
     set_failed_rule :_digit unless _tmp
     return _tmp
   end
@@ -450,22 +454,18 @@ class PhoneNumber
   def _country_code
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
       _tmp = apply(:_digit)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_country_code unless _tmp
@@ -476,38 +476,29 @@ class PhoneNumber
   def _area_code
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _save1 = self.pos
+      _save1 = self.pos # repetition
       _count = 0
       while true
         _tmp = apply(:_digit)
-        if _tmp
-          _count += 1
-          break if _count == 3
-        else
-          break
-        end
+        break unless _tmp
+        _count += 1
+        break if _count == 3
       end
-      if _count >= 3
-        _tmp = true
-      else
+      _tmp = _count >= 3
+      unless _tmp
         self.pos = _save1
-        _tmp = nil
-      end
+      end # end repetition
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_area_code unless _tmp
@@ -518,38 +509,29 @@ class PhoneNumber
   def _prefix
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _save1 = self.pos
+      _save1 = self.pos # repetition
       _count = 0
       while true
         _tmp = apply(:_digit)
-        if _tmp
-          _count += 1
-          break if _count == 3
-        else
-          break
-        end
+        break unless _tmp
+        _count += 1
+        break if _count == 3
       end
-      if _count >= 3
-        _tmp = true
-      else
+      _tmp = _count >= 3
+      unless _tmp
         self.pos = _save1
-        _tmp = nil
-      end
+      end # end repetition
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_prefix unless _tmp
@@ -560,38 +542,29 @@ class PhoneNumber
   def _suffix
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _save1 = self.pos
+      _save1 = self.pos # repetition
       _count = 0
       while true
         _tmp = apply(:_digit)
-        if _tmp
-          _count += 1
-          break if _count == 4
-        else
-          break
-        end
+        break unless _tmp
+        _count += 1
+        break if _count == 4
       end
-      if _count >= 4
-        _tmp = true
-      else
+      _tmp = _count >= 4
+      unless _tmp
         self.pos = _save1
-        _tmp = nil
-      end
+      end # end repetition
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_suffix unless _tmp
@@ -602,97 +575,57 @@ class PhoneNumber
   def _phone_number
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      # optional
       _tmp = apply(:_LP)
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end optional
+      break unless _tmp
       _tmp = apply(:_area_code)
       ac = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+      break unless _tmp
+      # optional
       _tmp = apply(:_RP)
-      unless _tmp
-        _tmp = true
-        self.pos = _save2
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
+      _tmp = true # end optional
+      break unless _tmp
+      while true # kleene
         _tmp = apply(:_space)
         break unless _tmp
       end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end kleene
+      break unless _tmp
       _tmp = apply(:_prefix)
       p = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
+      break unless _tmp
+      while true # kleene
         _tmp = apply(:_space)
         break unless _tmp
       end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save5 = self.pos
+      _tmp = true # end kleene
+      break unless _tmp
+      # optional
       _tmp = apply(:_dash)
-      unless _tmp
-        _tmp = true
-        self.pos = _save5
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
+      _tmp = true # end optional
+      break unless _tmp
+      while true # kleene
         _tmp = apply(:_space)
         break unless _tmp
       end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end kleene
+      break unless _tmp
       _tmp = apply(:_suffix)
       s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      while true
+      break unless _tmp
+      while true # kleene
         _tmp = apply(:_space)
         break unless _tmp
       end
+      _tmp = true # end kleene
+      break unless _tmp
+      @result = begin; "(#{ac}) #{p}-#{s}"; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  "(#{ac}) #{p}-#{s}" ; end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_phone_number unless _tmp
@@ -702,63 +635,44 @@ class PhoneNumber
   # root = (phone_number:pn { @phone_number = pn } | country_code:c space* phone_number:pn { @phone_number = "+#{c} #{pn}" })
   def _root
 
-    _save = self.pos
-    while true # choice
+    begin # choice
 
-      _save1 = self.pos
-      while true # sequence
+      _save = self.pos
+      begin # sequence
         _tmp = apply(:_phone_number)
         pn = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  @phone_number = pn ; end
+        break unless _tmp
+        @result = begin; @phone_number = pn; end
         _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
-      _save2 = self.pos
-      while true # sequence
+      _save1 = self.pos
+      begin # sequence
         _tmp = apply(:_country_code)
         c = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        while true
+        break unless _tmp
+        while true # kleene
           _tmp = apply(:_space)
           break unless _tmp
         end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        _tmp = true # end kleene
+        break unless _tmp
         _tmp = apply(:_phone_number)
         pn = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  @phone_number = "+#{c} #{pn}" ; end
+        break unless _tmp
+        @result = begin; @phone_number = "+#{c} #{pn}"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save1
       end # end sequence
 
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_root unless _tmp
     return _tmp

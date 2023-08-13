@@ -197,6 +197,15 @@ class Calculator
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -217,24 +226,26 @@ class Calculator
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -413,11 +424,11 @@ class Calculator
 
   # - = space*
   def __hyphen_
-    while true
+    while true # kleene
       _tmp = apply(:_space)
       break unless _tmp
     end
-    _tmp = true
+    _tmp = true # end kleene
     set_failed_rule :__hyphen_ unless _tmp
     return _tmp
   end
@@ -426,22 +437,18 @@ class Calculator
   def _num
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
       _tmp = scan(/\G(?-mix:[1-9][0-9]*)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text.to_i ; end
+      break unless _tmp
+      @result = begin; text.to_i; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_num unless _tmp
@@ -451,93 +458,55 @@ class Calculator
   # term = (term:t1 - "+" - term:t2 { t1 + t2 } | term:t1 - "-" - term:t2 { t1 - t2 } | fact)
   def _term
 
-    _save = self.pos
-    while true # choice
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_term)
+        t1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("+")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_term)
+        t2 = @result
+        break unless _tmp
+        @result = begin; t1 + t2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
 
       _save1 = self.pos
-      while true # sequence
+      begin # sequence
         _tmp = apply(:_term)
         t1 = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
+        break unless _tmp
         _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("+")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_term)
-        t2 = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  t1 + t2 ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_term)
-        t1 = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = match_string("-")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = apply(:_term)
         t2 = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  t1 - t2 ; end
+        break unless _tmp
+        @result = begin; t1 - t2; end
         _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save1
       end # end sequence
 
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_fact)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_term unless _tmp
     return _tmp
@@ -546,93 +515,55 @@ class Calculator
   # fact = (fact:f1 - "*" - fact:f2 { f1 * f2 } | fact:f1 - "/" - fact:f2 { f1 / f2 } | num)
   def _fact
 
-    _save = self.pos
-    while true # choice
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_fact)
+        f1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("*")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_fact)
+        f2 = @result
+        break unless _tmp
+        @result = begin; f1 * f2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
 
       _save1 = self.pos
-      while true # sequence
+      begin # sequence
         _tmp = apply(:_fact)
         f1 = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
+        break unless _tmp
         _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = match_string("*")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _tmp = apply(:_fact)
-        f2 = @result
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  f1 * f2 ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save2 = self.pos
-      while true # sequence
-        _tmp = apply(:_fact)
-        f1 = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = match_string("/")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = apply(:__hyphen_)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = apply(:_fact)
         f2 = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  f1 / f2 ; end
+        break unless _tmp
+        @result = begin; f1 / f2; end
         _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save1
       end # end sequence
 
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_num)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_fact unless _tmp
     return _tmp
@@ -642,19 +573,15 @@ class Calculator
   def _root
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_term)
       t = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @result = t ; end
+      break unless _tmp
+      @result = begin; @result = t; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_root unless _tmp

@@ -197,6 +197,15 @@ class LuaString
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -217,24 +226,26 @@ class LuaString
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -408,26 +419,22 @@ class LuaString
   def _equals
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      while true
+      while true # kleene
         _tmp = match_string("=")
         break unless _tmp
       end
-      _tmp = true
+      _tmp = true # end kleene
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_equals unless _tmp
@@ -438,30 +445,20 @@ class LuaString
   def _equal_ending(start)
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_equals)
       x = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
-      _tmp = begin;  x == start ; end
+      _tmp = begin; x == start; end
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("]")
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_equal_ending unless _tmp
@@ -472,66 +469,44 @@ class LuaString
   def _root
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_equals)
       e = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("[")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _text_start = self.pos
-      while true
+      while true # kleene
 
-        _save2 = self.pos
-        while true # sequence
-          _save3 = self.pos
+        _save1 = self.pos
+        begin # sequence
+          _save2 = self.pos
           _tmp = apply_with_args(:_equal_ending, e)
-          _tmp = _tmp ? nil : true
-          self.pos = _save3
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = get_byte
-          unless _tmp
-            self.pos = _save2
-          end
-          break
+          _tmp = !_tmp
+          self.pos = _save2
+          break unless _tmp
+          _tmp = match_dot
+        end while false
+        unless _tmp
+          self.pos = _save1
         end # end sequence
 
         break unless _tmp
       end
-      _tmp = true
+      _tmp = true # end kleene
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply_with_args(:_equal_ending, e)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin; 
-         @result = text
-       ; end
+      break unless _tmp
+      @result = begin; @result = text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_root unless _tmp
