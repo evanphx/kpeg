@@ -1,17 +1,5 @@
-require 'kpeg/position'
-
-module KPeg
-  class CompiledParser
-
-    # Must be outside the STANDALONE block because a standalone
-    # parser always injects it's own version of this method.
-    def setup_foreign_grammar
-    end
-
-    # Leave these markers in! They allow us to generate standalone
-    # code automatically!
-
-    # INITIALIZE START
+class Calculator
+  # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
     # can redefine #initialize and still have access to the proper
@@ -20,9 +8,7 @@ module KPeg
       setup_parser(str, debug)
     end
 
-    # INITIALIZE END
 
-    # STANDALONE START
 
     # Prepares for parsing +str+.  If you define a custom initialize you must
     # call this method before #parse
@@ -41,7 +27,87 @@ module KPeg
     attr_reader :failing_rule_offset
     attr_accessor :result, :pos
 
-    include Position
+    def current_column(target=pos)
+      if string[target] == "\n" && (c = string.rindex("\n", target-1) || -1)
+        return target - c
+      elsif c = string.rindex("\n", target)
+        return target - c
+      end
+
+      target + 1
+    end
+
+    def position_line_offsets
+      unless @position_line_offsets
+        @position_line_offsets = []
+        total = 0
+        string.each_line do |line|
+          total += line.size
+          @position_line_offsets << total
+        end
+      end
+      @position_line_offsets
+    end
+
+    if [].respond_to? :bsearch_index
+      def current_line(target=pos)
+        if line = position_line_offsets.bsearch_index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    else
+      def current_line(target=pos)
+        if line = position_line_offsets.index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    end
+
+    def current_character(target=pos)
+      if target < 0 || target > string.size
+        raise "Target position #{target} is outside of string"
+      elsif target == string.size
+        ""
+      else
+        string[target, 1]
+      end
+    end
+
+    KpegPosInfo = Struct.new(:pos, :lno, :col, :line, :char)
+
+    def current_pos_info(target=pos)
+      l = current_line target
+      c = current_column target
+      ln = get_line(l-1)
+      chr = string[target,1]
+      KpegPosInfo.new(target, l, c, ln, chr)
+    end
+
+    def lines
+      string.lines
+    end
+
+    def get_line(no)
+      loff = position_line_offsets
+      if no < 0
+        raise "Line No is out of range: #{no} < 0"
+      elsif no >= loff.size
+        raise "Line No is out of range: #{no} >= #{loff.size}"
+      end
+      lend = loff[no]-1
+      lstart = no > 0 ? loff[no-1] : 0
+      string[lstart..lend]
+    end
+
+
 
     def get_text(start)
       @string[start..@pos-1]
@@ -339,7 +405,195 @@ module KPeg
       RuleInfo.new(name, rendered)
     end
 
-    # STANDALONE END
 
+  # :startdoc:
+
+
+  attr_accessor :result
+
+
+  # :stopdoc:
+  def setup_foreign_grammar; end
+
+  # space = " "
+  def _space
+    _tmp = match_string(" ")
+    set_failed_rule :_space unless _tmp
+    return _tmp
   end
+
+  # - = space*
+  def __hyphen_
+    while true # kleene
+      _tmp = apply(:_space)
+      break unless _tmp
+    end
+    _tmp = true # end kleene
+    set_failed_rule :__hyphen_ unless _tmp
+    return _tmp
+  end
+
+  # num = < /[1-9][0-9]*/ > { text.to_i }
+  def _num
+
+    _save = self.pos
+    begin # sequence
+      _text_start = self.pos
+      _tmp = scan(/\G(?-mix:[1-9][0-9]*)/)
+      if _tmp
+        text = get_text(_text_start)
+      end
+      break unless _tmp
+      @result = begin; text.to_i; end
+      _tmp = true
+    end while false
+    unless _tmp
+      self.pos = _save
+    end # end sequence
+
+    set_failed_rule :_num unless _tmp
+    return _tmp
+  end
+
+  # term = (term:t1 - "+" - term:t2 { t1 + t2 } | term:t1 - "-" - term:t2 { t1 - t2 } | fact)
+  def _term
+
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_term)
+        t1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("+")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_term)
+        t2 = @result
+        break unless _tmp
+        @result = begin; t1 + t2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
+
+      _save1 = self.pos
+      begin # sequence
+        _tmp = apply(:_term)
+        t1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("-")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_term)
+        t2 = @result
+        break unless _tmp
+        @result = begin; t1 - t2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
+
+      break if _tmp
+      _tmp = apply(:_fact)
+    end while false # end choice
+
+    set_failed_rule :_term unless _tmp
+    return _tmp
+  end
+
+  # fact = (fact:f1 - "*" - fact:f2 { f1 * f2 } | fact:f1 - "/" - fact:f2 { f1 / f2 } | num)
+  def _fact
+
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_fact)
+        f1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("*")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_fact)
+        f2 = @result
+        break unless _tmp
+        @result = begin; f1 * f2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
+
+      _save1 = self.pos
+      begin # sequence
+        _tmp = apply(:_fact)
+        f1 = @result
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = match_string("/")
+        break unless _tmp
+        _tmp = apply(:__hyphen_)
+        break unless _tmp
+        _tmp = apply(:_fact)
+        f2 = @result
+        break unless _tmp
+        @result = begin; f1 / f2; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
+
+      break if _tmp
+      _tmp = apply(:_num)
+    end while false # end choice
+
+    set_failed_rule :_fact unless _tmp
+    return _tmp
+  end
+
+  # root = term:t { @result = t }
+  def _root
+
+    _save = self.pos
+    begin # sequence
+      _tmp = apply(:_term)
+      t = @result
+      break unless _tmp
+      @result = begin; @result = t; end
+      _tmp = true
+    end while false
+    unless _tmp
+      self.pos = _save
+    end # end sequence
+
+    set_failed_rule :_root unless _tmp
+    return _tmp
+  end
+
+  Rules = {}
+  Rules[:_space] = rule_info("space", "\" \"")
+  Rules[:__hyphen_] = rule_info("-", "space*")
+  Rules[:_num] = rule_info("num", "< /[1-9][0-9]*/ > { text.to_i }")
+  Rules[:_term] = rule_info("term", "(term:t1 - \"+\" - term:t2 { t1 + t2 } | term:t1 - \"-\" - term:t2 { t1 - t2 } | fact)")
+  Rules[:_fact] = rule_info("fact", "(fact:f1 - \"*\" - fact:f2 { f1 * f2 } | fact:f1 - \"/\" - fact:f2 { f1 / f2 } | num)")
+  Rules[:_root] = rule_info("root", "term:t { @result = t }")
+  # :startdoc:
 end

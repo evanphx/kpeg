@@ -1,4 +1,4 @@
-class LuaString
+class Upper
   # :stopdoc:
 
     # This is distinct from setup_parser so that a standalone parser
@@ -409,100 +409,217 @@ class LuaString
   # :startdoc:
 
 
-  attr_accessor :result
+    attr_accessor :output
 
 
   # :stopdoc:
   def setup_foreign_grammar; end
 
-  # equals = < "="* > { text }
-  def _equals
+  # period = "."
+  def _period
+    _tmp = match_string(".")
+    set_failed_rule :_period unless _tmp
+    return _tmp
+  end
+
+  # space = " "
+  def _space
+    _tmp = match_string(" ")
+    set_failed_rule :_space unless _tmp
+    return _tmp
+  end
+
+  # alpha = < /[A-Za-z]/ > { text.upcase }
+  def _alpha
 
     _save = self.pos
     begin # sequence
       _text_start = self.pos
-      while true # kleene
-        _tmp = match_string("=")
-        break unless _tmp
-      end
-      _tmp = true # end kleene
+      _tmp = scan(/\G(?-mix:[A-Za-z])/)
       if _tmp
         text = get_text(_text_start)
       end
       break unless _tmp
-      @result = begin; text; end
+      @result = begin; text.upcase; end
       _tmp = true
     end while false
     unless _tmp
       self.pos = _save
     end # end sequence
 
-    set_failed_rule :_equals unless _tmp
+    set_failed_rule :_alpha unless _tmp
     return _tmp
   end
 
-  # equal_ending = "]" equals:x &{ x == start } "]"
-  def _equal_ending(start)
+  # word = (alpha:a word:w { "#{a}#{w}" } | alpha:a space { "#{a} "} | alpha:a { a })
+  def _word
 
-    _save = self.pos
-    begin # sequence
-      _tmp = match_string("]")
-      break unless _tmp
-      _tmp = apply(:_equals)
-      x = @result
-      break unless _tmp
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_alpha)
+        a = @result
+        break unless _tmp
+        _tmp = apply(:_word)
+        w = @result
+        break unless _tmp
+        @result = begin; "#{a}#{w}"; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
+
       _save1 = self.pos
-      _tmp = begin; x == start; end
-      self.pos = _save1
-      break unless _tmp
-      _tmp = match_string("]")
-    end while false
-    unless _tmp
-      self.pos = _save
-    end # end sequence
+      begin # sequence
+        _tmp = apply(:_alpha)
+        a = @result
+        break unless _tmp
+        _tmp = apply(:_space)
+        break unless _tmp
+        @result = begin; "#{a} "; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
 
-    set_failed_rule :_equal_ending unless _tmp
+      break if _tmp
+
+      _save2 = self.pos
+      begin # sequence
+        _tmp = apply(:_alpha)
+        a = @result
+        break unless _tmp
+        @result = begin; a; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save2
+      end # end sequence
+
+    end while false # end choice
+
+    set_failed_rule :_word unless _tmp
     return _tmp
   end
 
-  # root = "[" equals:e "[" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }
+  # sentence = (word:w sentence:s { "#{w}#{s}" } | word:w { w })
+  def _sentence
+
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_word)
+        w = @result
+        break unless _tmp
+        _tmp = apply(:_sentence)
+        s = @result
+        break unless _tmp
+        @result = begin; "#{w}#{s}"; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
+
+      _save1 = self.pos
+      begin # sequence
+        _tmp = apply(:_word)
+        w = @result
+        break unless _tmp
+        @result = begin; w; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
+
+    end while false # end choice
+
+    set_failed_rule :_sentence unless _tmp
+    return _tmp
+  end
+
+  # document = (sentence:s period space* document:d { "#{s}. #{d}" } | sentence:s period { "#{s}." } | sentence:s { "#{s}" })
+  def _document
+
+    begin # choice
+
+      _save = self.pos
+      begin # sequence
+        _tmp = apply(:_sentence)
+        s = @result
+        break unless _tmp
+        _tmp = apply(:_period)
+        break unless _tmp
+        while true # kleene
+          _tmp = apply(:_space)
+          break unless _tmp
+        end
+        _tmp = true # end kleene
+        break unless _tmp
+        _tmp = apply(:_document)
+        d = @result
+        break unless _tmp
+        @result = begin; "#{s}. #{d}"; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save
+      end # end sequence
+
+      break if _tmp
+
+      _save1 = self.pos
+      begin # sequence
+        _tmp = apply(:_sentence)
+        s = @result
+        break unless _tmp
+        _tmp = apply(:_period)
+        break unless _tmp
+        @result = begin; "#{s}."; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
+
+      break if _tmp
+
+      _save2 = self.pos
+      begin # sequence
+        _tmp = apply(:_sentence)
+        s = @result
+        break unless _tmp
+        @result = begin; "#{s}"; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save2
+      end # end sequence
+
+    end while false # end choice
+
+    set_failed_rule :_document unless _tmp
+    return _tmp
+  end
+
+  # root = document:d { @output = d }
   def _root
 
     _save = self.pos
     begin # sequence
-      _tmp = match_string("[")
+      _tmp = apply(:_document)
+      d = @result
       break unless _tmp
-      _tmp = apply(:_equals)
-      e = @result
-      break unless _tmp
-      _tmp = match_string("[")
-      break unless _tmp
-      _text_start = self.pos
-      while true # kleene
-
-        _save1 = self.pos
-        begin # sequence
-          _save2 = self.pos
-          _tmp = apply_with_args(:_equal_ending, e)
-          _tmp = !_tmp
-          self.pos = _save2
-          break unless _tmp
-          _tmp = match_dot
-        end while false
-        unless _tmp
-          self.pos = _save1
-        end # end sequence
-
-        break unless _tmp
-      end
-      _tmp = true # end kleene
-      if _tmp
-        text = get_text(_text_start)
-      end
-      break unless _tmp
-      _tmp = apply_with_args(:_equal_ending, e)
-      break unless _tmp
-      @result = begin; @result = text; end
+      @result = begin; @output = d; end
       _tmp = true
     end while false
     unless _tmp
@@ -514,8 +631,12 @@ class LuaString
   end
 
   Rules = {}
-  Rules[:_equals] = rule_info("equals", "< \"=\"* > { text }")
-  Rules[:_equal_ending] = rule_info("equal_ending", "\"]\" equals:x &{ x == start } \"]\"")
-  Rules[:_root] = rule_info("root", "\"[\" equals:e \"[\" < (!equal_ending(e) .)* > equal_ending(e) {          @result = text        }")
+  Rules[:_period] = rule_info("period", "\".\"")
+  Rules[:_space] = rule_info("space", "\" \"")
+  Rules[:_alpha] = rule_info("alpha", "< /[A-Za-z]/ > { text.upcase }")
+  Rules[:_word] = rule_info("word", "(alpha:a word:w { \"\#{a}\#{w}\" } | alpha:a space { \"\#{a} \"} | alpha:a { a })")
+  Rules[:_sentence] = rule_info("sentence", "(word:w sentence:s { \"\#{w}\#{s}\" } | word:w { w })")
+  Rules[:_document] = rule_info("document", "(sentence:s period space* document:d { \"\#{s}. \#{d}\" } | sentence:s period { \"\#{s}.\" } | sentence:s { \"\#{s}\" })")
+  Rules[:_root] = rule_info("root", "document:d { @output = d }")
   # :startdoc:
 end

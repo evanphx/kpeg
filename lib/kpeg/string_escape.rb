@@ -53,6 +53,9 @@ class KPeg::StringEscape
       def current_line(target=pos)
         if line = position_line_offsets.bsearch_index {|x| x > target }
           return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
         end
         raise "Target position #{target} is outside of string"
       end
@@ -60,17 +63,22 @@ class KPeg::StringEscape
       def current_line(target=pos)
         if line = position_line_offsets.index {|x| x > target }
           return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
         end
-
         raise "Target position #{target} is outside of string"
       end
     end
 
     def current_character(target=pos)
-      if target < 0 || target >= string.size
+      if target < 0 || target > string.size
         raise "Target position #{target} is outside of string"
+      elsif target == string.size
+        ""
+      else
+        string[target, 1]
       end
-      string[target, 1]
     end
 
     KpegPosInfo = Struct.new(:pos, :lno, :col, :line, :char)
@@ -189,6 +197,15 @@ class KPeg::StringEscape
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -209,24 +226,26 @@ class KPeg::StringEscape
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -399,162 +418,119 @@ class KPeg::StringEscape
   # segment = (< /[\w ]+/ > { text } | "\\" { "\\\\" } | "\n" { "\\n" } | "\r" { "\\r" } | "\t" { "\\t" } | "\b" { "\\b" } | "\"" { "\\\"" } | < . > { text })
   def _segment
 
-    _save = self.pos
-    while true # choice
+    begin # choice
 
-      _save1 = self.pos
-      while true # sequence
+      _save = self.pos
+      begin # sequence
         _text_start = self.pos
         _tmp = scan(/\G(?-mix:[\w ]+)/)
         if _tmp
           text = get_text(_text_start)
         end
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  text ; end
+        break unless _tmp
+        @result = begin; text; end
         _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save
       end # end sequence
 
       break if _tmp
-      self.pos = _save
+
+      _save1 = self.pos
+      begin # sequence
+        _tmp = match_string("\\")
+        break unless _tmp
+        @result = begin; "\\\\"; end
+        _tmp = true
+      end while false
+      unless _tmp
+        self.pos = _save1
+      end # end sequence
+
+      break if _tmp
 
       _save2 = self.pos
-      while true # sequence
-        _tmp = match_string("\\")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  "\\\\" ; end
+      begin # sequence
+        _tmp = match_string("\n")
+        break unless _tmp
+        @result = begin; "\\n"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save2
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
       _save3 = self.pos
-      while true # sequence
-        _tmp = match_string("\n")
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  "\\n" ; end
+      begin # sequence
+        _tmp = match_string("\r")
+        break unless _tmp
+        @result = begin; "\\r"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save3
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
       _save4 = self.pos
-      while true # sequence
-        _tmp = match_string("\r")
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  "\\r" ; end
+      begin # sequence
+        _tmp = match_string("\t")
+        break unless _tmp
+        @result = begin; "\\t"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save4
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
       _save5 = self.pos
-      while true # sequence
-        _tmp = match_string("\t")
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        @result = begin;  "\\t" ; end
+      begin # sequence
+        _tmp = match_string("\b")
+        break unless _tmp
+        @result = begin; "\\b"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save5
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save5
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
       _save6 = self.pos
-      while true # sequence
-        _tmp = match_string("\b")
-        unless _tmp
-          self.pos = _save6
-          break
-        end
-        @result = begin;  "\\b" ; end
+      begin # sequence
+        _tmp = match_string("\"")
+        break unless _tmp
+        @result = begin; "\\\""; end
         _tmp = true
-        unless _tmp
-          self.pos = _save6
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save6
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
       _save7 = self.pos
-      while true # sequence
-        _tmp = match_string("\"")
-        unless _tmp
-          self.pos = _save7
-          break
-        end
-        @result = begin;  "\\\"" ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save7
-        end
-        break
-      end # end sequence
-
-      break if _tmp
-      self.pos = _save
-
-      _save8 = self.pos
-      while true # sequence
+      begin # sequence
         _text_start = self.pos
-        _tmp = get_byte
+        _tmp = match_dot
         if _tmp
           text = get_text(_text_start)
         end
-        unless _tmp
-          self.pos = _save8
-          break
-        end
-        @result = begin;  text ; end
+        break unless _tmp
+        @result = begin; text; end
         _tmp = true
-        unless _tmp
-          self.pos = _save8
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save7
       end # end sequence
 
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_segment unless _tmp
     return _tmp
@@ -564,26 +540,22 @@ class KPeg::StringEscape
   def _root
 
     _save = self.pos
-    while true # sequence
-      _ary = []
+    begin # sequence
+      _ary = [] # kleene
       while true
         _tmp = apply(:_segment)
-        _ary << @result if _tmp
         break unless _tmp
+        _ary << @result
       end
-      _tmp = true
       @result = _ary
+      _tmp = true # end kleene
       s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @text = s.join ; end
+      break unless _tmp
+      @result = begin; @text = s.join; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_root unless _tmp
@@ -593,31 +565,22 @@ class KPeg::StringEscape
   # embed_seg = ("#" { "\\#" } | segment)
   def _embed_seg
 
-    _save = self.pos
-    while true # choice
+    begin # choice
 
-      _save1 = self.pos
-      while true # sequence
+      _save = self.pos
+      begin # sequence
         _tmp = match_string("#")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        @result = begin;  "\\#" ; end
+        break unless _tmp
+        @result = begin; "\\#"; end
         _tmp = true
-        unless _tmp
-          self.pos = _save1
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save
       end # end sequence
 
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_segment)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_embed_seg unless _tmp
     return _tmp
@@ -627,26 +590,22 @@ class KPeg::StringEscape
   def _embed
 
     _save = self.pos
-    while true # sequence
-      _ary = []
+    begin # sequence
+      _ary = [] # kleene
       while true
         _tmp = apply(:_embed_seg)
-        _ary << @result if _tmp
         break unless _tmp
+        _ary << @result
       end
-      _tmp = true
       @result = _ary
+      _tmp = true # end kleene
       s = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @text = s.join ; end
+      break unless _tmp
+      @result = begin; @text = s.join; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_embed unless _tmp

@@ -18,6 +18,7 @@ class TinyMarkdown::Parser
       @result = nil
       @failed_rule = nil
       @failing_rule_offset = -1
+      @line_offsets = nil
 
       setup_foreign_grammar
     end
@@ -27,30 +28,83 @@ class TinyMarkdown::Parser
     attr_accessor :result, :pos
 
     def current_column(target=pos)
-      if c = string.rindex("\n", target-1)
-        return target - c - 1
+      if string[target] == "\n" && (c = string.rindex("\n", target-1) || -1)
+        return target - c
+      elsif c = string.rindex("\n", target)
+        return target - c
       end
 
       target + 1
     end
 
-    def current_line(target=pos)
-      cur_offset = 0
-      cur_line = 0
-
-      string.each_line do |line|
-        cur_line += 1
-        cur_offset += line.size
-        return cur_line if cur_offset >= target
+    def position_line_offsets
+      unless @position_line_offsets
+        @position_line_offsets = []
+        total = 0
+        string.each_line do |line|
+          total += line.size
+          @position_line_offsets << total
+        end
       end
+      @position_line_offsets
+    end
 
-      -1
+    if [].respond_to? :bsearch_index
+      def current_line(target=pos)
+        if line = position_line_offsets.bsearch_index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    else
+      def current_line(target=pos)
+        if line = position_line_offsets.index {|x| x > target }
+          return line + 1
+        elsif target == string.size
+          past_last = !string.empty? && string[-1]=="\n" ? 1 : 0
+          return position_line_offsets.size + past_last
+        end
+        raise "Target position #{target} is outside of string"
+      end
+    end
+
+    def current_character(target=pos)
+      if target < 0 || target > string.size
+        raise "Target position #{target} is outside of string"
+      elsif target == string.size
+        ""
+      else
+        string[target, 1]
+      end
+    end
+
+    KpegPosInfo = Struct.new(:pos, :lno, :col, :line, :char)
+
+    def current_pos_info(target=pos)
+      l = current_line target
+      c = current_column target
+      ln = get_line(l-1)
+      chr = string[target,1]
+      KpegPosInfo.new(target, l, c, ln, chr)
     end
 
     def lines
-      lines = []
-      string.each_line { |l| lines << l }
-      lines
+      string.lines
+    end
+
+    def get_line(no)
+      loff = position_line_offsets
+      if no < 0
+        raise "Line No is out of range: #{no} < 0"
+      elsif no >= loff.size
+        raise "Line No is out of range: #{no} >= #{loff.size}"
+      end
+      lend = loff[no]-1
+      lstart = no > 0 ? loff[no-1] : 0
+      string[lstart..lend]
     end
 
 
@@ -64,6 +118,7 @@ class TinyMarkdown::Parser
       @string = string
       @string_size = string ? string.size : 0
       @pos = pos
+      @position_line_offsets = nil
     end
 
     def show_pos
@@ -88,30 +143,22 @@ class TinyMarkdown::Parser
     end
 
     def failure_caret
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      line = lines[l-1]
-      "#{line}\n#{' ' * (c - 1)}^"
+      p = current_pos_info @failing_rule_offset
+      "#{p.line.chomp}\n#{' ' * (p.col - 1)}^"
     end
 
     def failure_character
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-      lines[l-1][c-1, 1]
+      current_character @failing_rule_offset
     end
 
     def failure_oneline
-      l = current_line @failing_rule_offset
-      c = current_column @failing_rule_offset
-
-      char = lines[l-1][c-1, 1]
+      p = current_pos_info @failing_rule_offset
 
       if @failed_rule.kind_of? Symbol
         info = self.class::Rules[@failed_rule]
-        "@#{l}:#{c} failed rule '#{info.name}', got '#{char}'"
+        "@#{p.lno}:#{p.col} failed rule '#{info.name}', got '#{p.char}'"
       else
-        "@#{l}:#{c} failed rule '#{@failed_rule}', got '#{char}'"
+        "@#{p.lno}:#{p.col} failed rule '#{@failed_rule}', got '#{p.char}'"
       end
     end
 
@@ -124,10 +171,9 @@ class TinyMarkdown::Parser
 
     def show_error(io=STDOUT)
       error_pos = @failing_rule_offset
-      line_no = current_line(error_pos)
-      col_no = current_column(error_pos)
+      p = current_pos_info(error_pos)
 
-      io.puts "On line #{line_no}, column #{col_no}:"
+      io.puts "On line #{p.lno}, column #{p.col}:"
 
       if @failed_rule.kind_of? Symbol
         info = self.class::Rules[@failed_rule]
@@ -136,10 +182,9 @@ class TinyMarkdown::Parser
         io.puts "Failed to match rule '#{@failed_rule}'"
       end
 
-      io.puts "Got: #{string[error_pos,1].inspect}"
-      line = lines[line_no-1]
-      io.puts "=> #{line}"
-      io.print(" " * (col_no + 3))
+      io.puts "Got: #{p.char.inspect}"
+      io.puts "=> #{p.line}"
+      io.print(" " * (p.col + 2))
       io.puts "^"
     end
 
@@ -152,6 +197,15 @@ class TinyMarkdown::Parser
 
     attr_reader :failed_rule
 
+    def match_dot()
+      if @pos >= @string_size
+        return nil
+      end
+
+      @pos += 1
+      true
+    end
+
     def match_string(str)
       len = str.size
       if @string[pos,len] == str
@@ -163,9 +217,8 @@ class TinyMarkdown::Parser
     end
 
     def scan(reg)
-      if m = reg.match(@string[@pos..-1])
-        width = m.end(0)
-        @pos += width
+      if m = reg.match(@string, @pos)
+        @pos = m.end(0)
         return true
       end
 
@@ -173,24 +226,26 @@ class TinyMarkdown::Parser
     end
 
     if "".respond_to? :ord
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos].ord)
           return nil
         end
 
-        s = @string[@pos].ord
         @pos += 1
-        s
+        true
       end
     else
-      def get_byte
+      def match_char_range(char_range)
         if @pos >= @string_size
+          return nil
+        elsif !char_range.include?(@string[@pos])
           return nil
         end
 
-        s = @string[@pos]
         @pos += 1
-        s
+        true
       end
     end
 
@@ -249,6 +304,7 @@ class TinyMarkdown::Parser
     end
 
     def apply_with_args(rule, *args)
+      @result = nil
       memo_key = [rule, args]
       if m = @memoizations[memo_key][@pos]
         @pos = m.pos
@@ -278,12 +334,11 @@ class TinyMarkdown::Parser
         else
           return ans
         end
-
-        return ans
       end
     end
 
     def apply(rule)
+      @result = nil
       if m = @memoizations[rule][@pos]
         @pos = m.pos
         if !m.set
@@ -312,8 +367,6 @@ class TinyMarkdown::Parser
         else
           return ans
         end
-
-        return ans
       end
     end
 
@@ -562,26 +615,19 @@ class TinyMarkdown::Parser
   def _Start
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
-      _tmp = get_byte
+      _tmp = match_dot
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Doc)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  @ast = c  ; end
+      break unless _tmp
+      @result = begin; @ast = c; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Start unless _tmp
@@ -592,26 +638,22 @@ class TinyMarkdown::Parser
   def _Doc
 
     _save = self.pos
-    while true # sequence
-      _ary = []
+    begin # sequence
+      _ary = [] # kleene
       while true
         _tmp = apply(:_Block)
-        _ary << @result if _tmp
         break unless _tmp
+        _ary << @result
       end
-      _tmp = true
       @result = _ary
+      _tmp = true # end kleene
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; document(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Doc unless _tmp
@@ -622,47 +664,33 @@ class TinyMarkdown::Parser
   def _Block
 
     _save = self.pos
-    while true # sequence
-      while true
+    begin # sequence
+      while true # kleene
         _tmp = apply(:_BlankLine)
         break unless _tmp
       end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end kleene
+      break unless _tmp
 
-      _save2 = self.pos
-      while true # choice
+      begin # choice
         _tmp = apply(:_BlockQuote)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Verbatim)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_HorizontalRule)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Heading)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_BulletList)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Para)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Plain)
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+      end while false # end choice
 
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Block unless _tmp
@@ -673,39 +701,29 @@ class TinyMarkdown::Parser
   def _Para
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_NonindentSpace)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Inlines)
       a = @result
-      unless _tmp
-        self.pos = _save
-        break
+      break unless _tmp
+      _save1 = self.pos # repetition
+      _count = 0
+      while true
+        _tmp = apply(:_BlankLine)
+        break unless _tmp
+        _count += 1
       end
-      _save1 = self.pos
-      _tmp = apply(:_BlankLine)
-      if _tmp
-        while true
-          _tmp = apply(:_BlankLine)
-          break unless _tmp
-        end
-        _tmp = true
-      else
+      _tmp = _count >= 1
+      unless _tmp
         self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      end # end repetition
+      break unless _tmp
       @result = begin; para(self, position, a); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Para unless _tmp
@@ -716,19 +734,15 @@ class TinyMarkdown::Parser
   def _Plain
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Inlines)
       a = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; plain(self, position, a); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Plain unless _tmp
@@ -739,63 +753,43 @@ class TinyMarkdown::Parser
   def _AtxInline
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_Newline)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save2 = self.pos
 
       _save3 = self.pos
-      while true # sequence
+      begin # sequence
         _tmp = apply(:_Sp)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        while true
+        break unless _tmp
+        while true # kleene
           _tmp = match_string("#")
           break unless _tmp
         end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-          break
-        end
+        _tmp = true # end kleene
+        break unless _tmp
         _tmp = apply(:_Sp)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
+        break unless _tmp
         _tmp = apply(:_Newline)
-        unless _tmp
-          self.pos = _save3
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save3
       end # end sequence
 
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save2
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Inline)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  c ; end
+      break unless _tmp
+      @result = begin; c; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_AtxInline unless _tmp
@@ -806,22 +800,18 @@ class TinyMarkdown::Parser
   def _AtxStart
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:######|#####|####|###|##|#)/)
+      _tmp = scan(/\G(?-mix:######|#####|####|###|##|#)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text.length ; end
+      break unless _tmp
+      @result = begin; text.length; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_AtxStart unless _tmp
@@ -832,82 +822,54 @@ class TinyMarkdown::Parser
   def _AtxHeading
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_AtxStart)
       level = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
+      break unless _tmp
+      _save1 = self.pos # repetition
       _ary = []
-      _tmp = apply(:_AtxInline)
-      if _tmp
+      while true
+        _tmp = apply(:_AtxInline)
+        break unless _tmp
         _ary << @result
-        while true
-          _tmp = apply(:_AtxInline)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
       end
-      c = @result
+      @result = _ary
+      _tmp = _ary.size >= 1
       unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+        self.pos = _save1
+        @result = nil
+      end # end repetition
+      c = @result
+      break unless _tmp
+      # optional
 
-      _save3 = self.pos
-      while true # sequence
+      _save2 = self.pos
+      begin # sequence
         _tmp = apply(:_Sp)
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        while true
+        break unless _tmp
+        while true # kleene
           _tmp = match_string("#")
           break unless _tmp
         end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-          break
-        end
+        _tmp = true # end kleene
+        break unless _tmp
         _tmp = apply(:_Sp)
-        unless _tmp
-          self.pos = _save3
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save2
       end # end sequence
 
-      unless _tmp
-        _tmp = true
-        self.pos = _save2
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end optional
+      break unless _tmp
       _tmp = apply(:_Newline)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; headline(self, position, level, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_AtxHeading unless _tmp
@@ -925,19 +887,15 @@ class TinyMarkdown::Parser
   def _BlockQuote
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_BlockQuoteRaw)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; block_quote(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_BlockQuote unless _tmp
@@ -948,95 +906,45 @@ class TinyMarkdown::Parser
   def _BlockQuoteRaw
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
+      while true
 
-      _save2 = self.pos
-      while true # sequence
-        _tmp = match_string(">")
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _save3 = self.pos
-        _tmp = match_string(" ")
-        unless _tmp
-          _tmp = true
-          self.pos = _save3
-        end
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        _tmp = apply(:_Line)
-        c = @result
-        unless _tmp
-          self.pos = _save2
-          break
-        end
-        @result = begin;  c ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save2
-        end
-        break
-      end # end sequence
-
-      if _tmp
-        _ary << @result
-        while true
-
-          _save4 = self.pos
-          while true # sequence
-            _tmp = match_string(">")
-            unless _tmp
-              self.pos = _save4
-              break
-            end
-            _save5 = self.pos
-            _tmp = match_string(" ")
-            unless _tmp
-              _tmp = true
-              self.pos = _save5
-            end
-            unless _tmp
-              self.pos = _save4
-              break
-            end
-            _tmp = apply(:_Line)
-            c = @result
-            unless _tmp
-              self.pos = _save4
-              break
-            end
-            @result = begin;  c ; end
-            _tmp = true
-            unless _tmp
-              self.pos = _save4
-            end
-            break
-          end # end sequence
-
-          _ary << @result if _tmp
+        _save2 = self.pos
+        begin # sequence
+          _tmp = match_string(">")
           break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+          # optional
+          _tmp = match_string(" ")
+          _tmp = true # end optional
+          break unless _tmp
+          _tmp = apply(:_Line)
+          c = @result
+          break unless _tmp
+          @result = begin; c; end
+          _tmp = true
+        end while false
+        unless _tmp
+          self.pos = _save2
+        end # end sequence
+
+        break unless _tmp
+        _ary << @result
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save1
-      end
+        @result = nil
+      end # end repetition
       cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  cc ; end
+      break unless _tmp
+      @result = begin; cc; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_BlockQuoteRaw unless _tmp
@@ -1047,27 +955,20 @@ class TinyMarkdown::Parser
   def _NonblankIndentedLine
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_BlankLine)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_IndentedLine)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  c ; end
+      break unless _tmp
+      @result = begin; c; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_NonblankIndentedLine unless _tmp
@@ -1078,93 +979,60 @@ class TinyMarkdown::Parser
   def _VerbatimChunk
 
     _save = self.pos
-    while true # sequence
-      _ary = []
+    begin # sequence
+      _ary = [] # kleene
       while true
 
-        _save2 = self.pos
-        while true # sequence
+        _save1 = self.pos
+        begin # sequence
           _tmp = apply(:_BlankLine)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          @result = begin;  text(self,position,"\n") ; end
+          break unless _tmp
+          @result = begin; text(self,position,"\n"); end
           _tmp = true
-          unless _tmp
-            self.pos = _save2
-          end
-          break
+        end while false
+        unless _tmp
+          self.pos = _save1
         end # end sequence
 
-        _ary << @result if _tmp
         break unless _tmp
-      end
-      _tmp = true
-      @result = _ary
-      c1 = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save3 = self.pos
-      _ary = []
-
-      _save4 = self.pos
-      while true # sequence
-        _tmp = apply(:_NonblankIndentedLine)
-        c = @result
-        unless _tmp
-          self.pos = _save4
-          break
-        end
-        @result = begin;  [c, text(self,position,"\n")] ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save4
-        end
-        break
-      end # end sequence
-
-      if _tmp
         _ary << @result
-        while true
+      end
+      @result = _ary
+      _tmp = true # end kleene
+      c1 = @result
+      break unless _tmp
+      _save2 = self.pos # repetition
+      _ary1 = []
+      while true
 
-          _save5 = self.pos
-          while true # sequence
-            _tmp = apply(:_NonblankIndentedLine)
-            c = @result
-            unless _tmp
-              self.pos = _save5
-              break
-            end
-            @result = begin;  [c, text(self,position,"\n")] ; end
-            _tmp = true
-            unless _tmp
-              self.pos = _save5
-            end
-            break
-          end # end sequence
-
-          _ary << @result if _tmp
+        _save3 = self.pos
+        begin # sequence
+          _tmp = apply(:_NonblankIndentedLine)
+          c = @result
           break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save3
+          @result = begin; [c, text(self,position,"\n")]; end
+          _tmp = true
+        end while false
+        unless _tmp
+          self.pos = _save3
+        end # end sequence
+
+        break unless _tmp
+        _ary1 << @result
       end
+      @result = _ary1
+      _tmp = _ary1.size >= 1
+      unless _tmp
+        self.pos = _save2
+        @result = nil
+      end # end repetition
       c2 = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  c1 + c2.flatten ; end
+      break unless _tmp
+      @result = begin; c1 + c2.flatten; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_VerbatimChunk unless _tmp
@@ -1175,33 +1043,27 @@ class TinyMarkdown::Parser
   def _Verbatim
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
-      _tmp = apply(:_VerbatimChunk)
-      if _tmp
+      while true
+        _tmp = apply(:_VerbatimChunk)
+        break unless _tmp
         _ary << @result
-        while true
-          _tmp = apply(:_VerbatimChunk)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
       end
-      cc = @result
+      @result = _ary
+      _tmp = _ary.size >= 1
       unless _tmp
-        self.pos = _save
-        break
-      end
+        self.pos = _save1
+        @result = nil
+      end # end repetition
+      cc = @result
+      break unless _tmp
       @result = begin; verbatim(self, position, cc.flatten); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Verbatim unless _tmp
@@ -1212,218 +1074,136 @@ class TinyMarkdown::Parser
   def _HorizontalRule
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_NonindentSpace)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
 
-      _save1 = self.pos
-      while true # choice
+      begin # choice
 
-        _save2 = self.pos
-        while true # sequence
+        _save1 = self.pos
+        begin # sequence
           _tmp = match_string("*")
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = match_string("*")
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = match_string("*")
-          unless _tmp
-            self.pos = _save2
-            break
+          break unless _tmp
+          while true # kleene
+
+            _save2 = self.pos
+            begin # sequence
+              _tmp = apply(:_Sp)
+              break unless _tmp
+              _tmp = match_string("*")
+            end while false
+            unless _tmp
+              self.pos = _save2
+            end # end sequence
+
+            break unless _tmp
           end
-          while true
+          _tmp = true # end kleene
+        end while false
+        unless _tmp
+          self.pos = _save1
+        end # end sequence
+
+        break if _tmp
+
+        _save3 = self.pos
+        begin # sequence
+          _tmp = match_string("-")
+          break unless _tmp
+          _tmp = apply(:_Sp)
+          break unless _tmp
+          _tmp = match_string("-")
+          break unless _tmp
+          _tmp = apply(:_Sp)
+          break unless _tmp
+          _tmp = match_string("-")
+          break unless _tmp
+          while true # kleene
 
             _save4 = self.pos
-            while true # sequence
+            begin # sequence
               _tmp = apply(:_Sp)
-              unless _tmp
-                self.pos = _save4
-                break
-              end
-              _tmp = match_string("*")
-              unless _tmp
-                self.pos = _save4
-              end
-              break
+              break unless _tmp
+              _tmp = match_string("-")
+            end while false
+            unless _tmp
+              self.pos = _save4
             end # end sequence
 
             break unless _tmp
           end
-          _tmp = true
-          unless _tmp
-            self.pos = _save2
-          end
-          break
+          _tmp = true # end kleene
+        end while false
+        unless _tmp
+          self.pos = _save3
         end # end sequence
 
         break if _tmp
-        self.pos = _save1
 
         _save5 = self.pos
-        while true # sequence
-          _tmp = match_string("-")
-          unless _tmp
-            self.pos = _save5
-            break
-          end
-          _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save5
-            break
-          end
-          _tmp = match_string("-")
-          unless _tmp
-            self.pos = _save5
-            break
-          end
-          _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save5
-            break
-          end
-          _tmp = match_string("-")
-          unless _tmp
-            self.pos = _save5
-            break
-          end
-          while true
-
-            _save7 = self.pos
-            while true # sequence
-              _tmp = apply(:_Sp)
-              unless _tmp
-                self.pos = _save7
-                break
-              end
-              _tmp = match_string("-")
-              unless _tmp
-                self.pos = _save7
-              end
-              break
-            end # end sequence
-
-            break unless _tmp
-          end
-          _tmp = true
-          unless _tmp
-            self.pos = _save5
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save1
-
-        _save8 = self.pos
-        while true # sequence
+        begin # sequence
           _tmp = match_string("_")
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _tmp = match_string("_")
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _tmp = match_string("_")
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          while true
-
-            _save10 = self.pos
-            while true # sequence
-              _tmp = apply(:_Sp)
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              _tmp = match_string("_")
-              unless _tmp
-                self.pos = _save10
-              end
-              break
-            end # end sequence
-
-            break unless _tmp
-          end
-          _tmp = true
-          unless _tmp
-            self.pos = _save8
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
-
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _tmp = apply(:_Newline)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save11 = self.pos
-      _tmp = apply(:_BlankLine)
-      if _tmp
-        while true
-          _tmp = apply(:_BlankLine)
           break unless _tmp
-        end
-        _tmp = true
-      else
-        self.pos = _save11
+          _tmp = apply(:_Sp)
+          break unless _tmp
+          _tmp = match_string("_")
+          break unless _tmp
+          _tmp = apply(:_Sp)
+          break unless _tmp
+          _tmp = match_string("_")
+          break unless _tmp
+          while true # kleene
+
+            _save6 = self.pos
+            begin # sequence
+              _tmp = apply(:_Sp)
+              break unless _tmp
+              _tmp = match_string("_")
+            end while false
+            unless _tmp
+              self.pos = _save6
+            end # end sequence
+
+            break unless _tmp
+          end
+          _tmp = true # end kleene
+        end while false
+        unless _tmp
+          self.pos = _save5
+        end # end sequence
+
+      end while false # end choice
+
+      break unless _tmp
+      _tmp = apply(:_Sp)
+      break unless _tmp
+      _tmp = apply(:_Newline)
+      break unless _tmp
+      _save7 = self.pos # repetition
+      _count = 0
+      while true
+        _tmp = apply(:_BlankLine)
+        break unless _tmp
+        _count += 1
       end
+      _tmp = _count >= 1
       unless _tmp
-        self.pos = _save
-        break
-      end
+        self.pos = _save7
+      end # end repetition
+      break unless _tmp
       @result = begin; horizontal_rule(self, position); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_HorizontalRule unless _tmp
@@ -1434,54 +1214,38 @@ class TinyMarkdown::Parser
   def _Bullet
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_HorizontalRule)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_NonindentSpace)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
 
-      _save2 = self.pos
-      while true # choice
+      begin # choice
         _tmp = match_string("+")
         break if _tmp
-        self.pos = _save2
         _tmp = match_string("*")
         break if _tmp
-        self.pos = _save2
         _tmp = match_string("-")
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+      end while false # end choice
 
+      break unless _tmp
+      _save2 = self.pos # repetition
+      _count = 0
+      while true
+        _tmp = apply(:_Spacechar)
+        break unless _tmp
+        _count += 1
+      end
+      _tmp = _count >= 1
       unless _tmp
-        self.pos = _save
-        break
-      end
-      _save3 = self.pos
-      _tmp = apply(:_Spacechar)
-      if _tmp
-        while true
-          _tmp = apply(:_Spacechar)
-          break unless _tmp
-        end
-        _tmp = true
-      else
-        self.pos = _save3
-      end
-      unless _tmp
-        self.pos = _save
-      end
-      break
+        self.pos = _save2
+      end # end repetition
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Bullet unless _tmp
@@ -1492,26 +1256,19 @@ class TinyMarkdown::Parser
   def _BulletList
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_Bullet)
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_ListTight)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; bullet_list(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_BulletList unless _tmp
@@ -1522,50 +1279,38 @@ class TinyMarkdown::Parser
   def _ListTight
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
-      _tmp = apply(:_ListItemTight)
-      if _tmp
-        _ary << @result
-        while true
-          _tmp = apply(:_ListItemTight)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
-      end
-      cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
       while true
+        _tmp = apply(:_ListItemTight)
+        break unless _tmp
+        _ary << @result
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
+        self.pos = _save1
+        @result = nil
+      end # end repetition
+      cc = @result
+      break unless _tmp
+      while true # kleene
         _tmp = apply(:_BlankLine)
         break unless _tmp
       end
-      _tmp = true
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save3 = self.pos
+      _tmp = true # end kleene
+      break unless _tmp
+      _save2 = self.pos
       _tmp = apply(:_Bullet)
-      _tmp = _tmp ? nil : true
-      self.pos = _save3
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  cc ; end
+      _tmp = !_tmp
+      self.pos = _save2
+      break unless _tmp
+      @result = begin; cc; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_ListTight unless _tmp
@@ -1576,24 +1321,17 @@ class TinyMarkdown::Parser
   def _ListItemTight
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Bullet)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_ListBlock)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; bullet_list_item(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_ListItemTight unless _tmp
@@ -1604,40 +1342,30 @@ class TinyMarkdown::Parser
   def _ListBlock
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_BlankLine)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Line)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _ary = []
+      break unless _tmp
+      _ary = [] # kleene
       while true
         _tmp = apply(:_ListBlockLine)
-        _ary << @result if _tmp
         break unless _tmp
+        _ary << @result
       end
-      _tmp = true
       @result = _ary
+      _tmp = true # end kleene
       cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  cc.unshift(c) ; end
+      break unless _tmp
+      @result = begin; cc.unshift(c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_ListBlock unless _tmp
@@ -1648,55 +1376,38 @@ class TinyMarkdown::Parser
   def _ListBlockLine
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_BlankLine)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save2 = self.pos
 
       _save3 = self.pos
-      while true # sequence
-        _save4 = self.pos
+      begin # sequence
+        # optional
         _tmp = apply(:_Indent)
-        unless _tmp
-          _tmp = true
-          self.pos = _save4
-        end
-        unless _tmp
-          self.pos = _save3
-          break
-        end
+        _tmp = true # end optional
+        break unless _tmp
         _tmp = apply(:_Bullet)
-        unless _tmp
-          self.pos = _save3
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save3
       end # end sequence
 
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save2
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save5 = self.pos
+      break unless _tmp
+      _save4 = self.pos
       _tmp = apply(:_HorizontalRule)
-      _tmp = _tmp ? nil : true
-      self.pos = _save5
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = !_tmp
+      self.pos = _save4
+      break unless _tmp
       _tmp = apply(:_OptionallyIndentedLine)
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_ListBlockLine unless _tmp
@@ -1707,159 +1418,70 @@ class TinyMarkdown::Parser
   def _Inlines
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
+      while true
 
-      _save2 = self.pos
-      while true # choice
+        begin # choice
 
-        _save3 = self.pos
-        while true # sequence
+          _save2 = self.pos
+          begin # sequence
+            _save3 = self.pos
+            _tmp = apply(:_Endline)
+            _tmp = !_tmp
+            self.pos = _save3
+            break unless _tmp
+            _tmp = apply(:_Inline)
+            c = @result
+            break unless _tmp
+            @result = begin; c; end
+            _tmp = true
+          end while false
+          unless _tmp
+            self.pos = _save2
+          end # end sequence
+
+          break if _tmp
+
           _save4 = self.pos
-          _tmp = apply(:_Endline)
-          _tmp = _tmp ? nil : true
-          self.pos = _save4
-          unless _tmp
-            self.pos = _save3
-            break
-          end
-          _tmp = apply(:_Inline)
-          c = @result
-          unless _tmp
-            self.pos = _save3
-            break
-          end
-          @result = begin;  c ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save3
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save2
-
-        _save5 = self.pos
-        while true # sequence
-          _tmp = apply(:_Endline)
-          c = @result
-          unless _tmp
+          begin # sequence
+            _tmp = apply(:_Endline)
+            c = @result
+            break unless _tmp
+            _save5 = self.pos
+            _tmp = apply(:_Inline)
             self.pos = _save5
-            break
-          end
-          _save6 = self.pos
-          _tmp = apply(:_Inline)
-          self.pos = _save6
+            break unless _tmp
+            @result = begin; c; end
+            _tmp = true
+          end while false
           unless _tmp
-            self.pos = _save5
-            break
-          end
-          @result = begin;  c ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save5
-          end
-          break
-        end # end sequence
+            self.pos = _save4
+          end # end sequence
 
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+        end while false # end choice
 
-      if _tmp
+        break unless _tmp
         _ary << @result
-        while true
-
-          _save7 = self.pos
-          while true # choice
-
-            _save8 = self.pos
-            while true # sequence
-              _save9 = self.pos
-              _tmp = apply(:_Endline)
-              _tmp = _tmp ? nil : true
-              self.pos = _save9
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              _tmp = apply(:_Inline)
-              c = @result
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              @result = begin;  c ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save8
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-
-            _save10 = self.pos
-            while true # sequence
-              _tmp = apply(:_Endline)
-              c = @result
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              _save11 = self.pos
-              _tmp = apply(:_Inline)
-              self.pos = _save11
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              @result = begin;  c ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save10
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-            break
-          end # end choice
-
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save1
-      end
+        @result = nil
+      end # end repetition
       cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save12 = self.pos
+      break unless _tmp
+      # optional
       _tmp = apply(:_Endline)
-      unless _tmp
-        _tmp = true
-        self.pos = _save12
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  cc ; end
+      _tmp = true # end optional
+      break unless _tmp
+      @result = begin; cc; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Inlines unless _tmp
@@ -1869,31 +1491,21 @@ class TinyMarkdown::Parser
   # Inline = (Str | Endline | Space | Strong | Emph | Code | Symbol)
   def _Inline
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = apply(:_Str)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Endline)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Space)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Strong)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Emph)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Code)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Symbol)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Inline unless _tmp
     return _tmp
@@ -1903,33 +1515,27 @@ class TinyMarkdown::Parser
   def _Space
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
-      _tmp = apply(:_Spacechar)
-      if _tmp
+      while true
+        _tmp = apply(:_Spacechar)
+        break unless _tmp
         _ary << @result
-        while true
-          _tmp = apply(:_Spacechar)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
       end
-      c = @result
+      @result = _ary
+      _tmp = _ary.size >= 1
       unless _tmp
-        self.pos = _save
-        break
-      end
+        self.pos = _save1
+        @result = nil
+      end # end repetition
+      c = @result
+      break unless _tmp
       @result = begin; text(self, position, c.join("")); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Space unless _tmp
@@ -1940,46 +1546,37 @@ class TinyMarkdown::Parser
   def _Str
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
-      _ary = []
-      _tmp = apply(:_NormalChar)
-      if _tmp
-        _ary << @result
-        while true
-          _tmp = apply(:_NormalChar)
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
-        self.pos = _save1
-      end
-      c1 = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
       while true
-        _tmp = apply(:_StrChunk)
-        _ary << @result if _tmp
+        _tmp = apply(:_NormalChar)
         break unless _tmp
+        _ary << @result
       end
-      _tmp = true
       @result = _ary
-      c2 = @result
+      _tmp = _ary.size >= 1
       unless _tmp
-        self.pos = _save
-        break
+        self.pos = _save1
+        @result = nil
+      end # end repetition
+      c1 = @result
+      break unless _tmp
+      _ary1 = [] # kleene
+      while true
+        _tmp = apply(:_StrChunk)
+        break unless _tmp
+        _ary1 << @result
       end
+      @result = _ary1
+      _tmp = true # end kleene
+      c2 = @result
+      break unless _tmp
       @result = begin; text(self, position, (c1+c2).join("")); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Str unless _tmp
@@ -1990,159 +1587,72 @@ class TinyMarkdown::Parser
   def _StrChunk
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      _save1 = self.pos # repetition
       _ary = []
+      while true
 
-      _save2 = self.pos
-      while true # choice
+        begin # choice
 
-        _save3 = self.pos
-        while true # sequence
-          _tmp = apply(:_NormalChar)
-          c = @result
+          _save2 = self.pos
+          begin # sequence
+            _tmp = apply(:_NormalChar)
+            c = @result
+            break unless _tmp
+            @result = begin; [c]; end
+            _tmp = true
+          end while false
           unless _tmp
-            self.pos = _save3
-            break
-          end
-          @result = begin;  [c] ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save3
-          end
-          break
-        end # end sequence
+            self.pos = _save2
+          end # end sequence
 
-        break if _tmp
-        self.pos = _save2
+          break if _tmp
 
-        _save4 = self.pos
-        while true # sequence
-          _save5 = self.pos
-          _ary = []
-          _tmp = match_string("_")
-          if _tmp
-            _ary << @result
+          _save3 = self.pos
+          begin # sequence
+            _save4 = self.pos # repetition
+            _ary1 = []
             while true
               _tmp = match_string("_")
-              _ary << @result if _tmp
               break unless _tmp
+              _ary1 << @result
             end
+            @result = _ary1
+            _tmp = _ary1.size >= 1
+            unless _tmp
+              self.pos = _save4
+              @result = nil
+            end # end repetition
+            c1 = @result
+            break unless _tmp
+            _tmp = apply(:_NormalChar)
+            c2 = @result
+            break unless _tmp
+            @result = begin; c1.push(c2); end
             _tmp = true
-            @result = _ary
-          else
-            self.pos = _save5
-          end
-          c1 = @result
+          end while false
           unless _tmp
-            self.pos = _save4
-            break
-          end
-          _tmp = apply(:_NormalChar)
-          c2 = @result
-          unless _tmp
-            self.pos = _save4
-            break
-          end
-          @result = begin;  c1.push(c2) ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save4
-          end
-          break
-        end # end sequence
+            self.pos = _save3
+          end # end sequence
 
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+        end while false # end choice
 
-      if _tmp
+        break unless _tmp
         _ary << @result
-        while true
-
-          _save6 = self.pos
-          while true # choice
-
-            _save7 = self.pos
-            while true # sequence
-              _tmp = apply(:_NormalChar)
-              c = @result
-              unless _tmp
-                self.pos = _save7
-                break
-              end
-              @result = begin;  [c] ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save7
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save6
-
-            _save8 = self.pos
-            while true # sequence
-              _save9 = self.pos
-              _ary = []
-              _tmp = match_string("_")
-              if _tmp
-                _ary << @result
-                while true
-                  _tmp = match_string("_")
-                  _ary << @result if _tmp
-                  break unless _tmp
-                end
-                _tmp = true
-                @result = _ary
-              else
-                self.pos = _save9
-              end
-              c1 = @result
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              _tmp = apply(:_NormalChar)
-              c2 = @result
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              @result = begin;  c1.push(c2) ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save8
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save6
-            break
-          end # end choice
-
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save1
-      end
+        @result = nil
+      end # end repetition
       cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  cc.flatten ; end
+      break unless _tmp
+      @result = begin; cc.flatten; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_StrChunk unless _tmp
@@ -2152,19 +1662,13 @@ class TinyMarkdown::Parser
   # Endline = (LineBreak | TerminalEndline | NormalEndline)
   def _Endline
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = apply(:_LineBreak)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_TerminalEndline)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_NormalEndline)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Endline unless _tmp
     return _tmp
@@ -2174,105 +1678,74 @@ class TinyMarkdown::Parser
   def _NormalEndline
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Newline)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = apply(:_BlankLine)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save2 = self.pos
       _tmp = match_string(">")
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save2
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save3 = self.pos
       _tmp = apply(:_AtxStart)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save3
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save4 = self.pos
 
       _save5 = self.pos
-      while true # sequence
+      begin # sequence
         _tmp = apply(:_Line)
-        unless _tmp
-          self.pos = _save5
-          break
-        end
+        break unless _tmp
 
-        _save6 = self.pos
-        while true # choice
-          _save7 = self.pos
-          _tmp = match_string("=")
-          if _tmp
-            while true
-              _tmp = match_string("=")
-              break unless _tmp
-            end
-            _tmp = true
-          else
+        begin # choice
+          _save6 = self.pos # repetition
+          _count = 0
+          while true
+            _tmp = match_string("=")
+            break unless _tmp
+            _count += 1
+          end
+          _tmp = _count >= 1
+          unless _tmp
+            self.pos = _save6
+          end # end repetition
+          break if _tmp
+          _save7 = self.pos # repetition
+          _count1 = 0
+          while true
+            _tmp = match_string("-")
+            break unless _tmp
+            _count1 += 1
+          end
+          _tmp = _count1 >= 1
+          unless _tmp
             self.pos = _save7
-          end
-          break if _tmp
-          self.pos = _save6
-          _save8 = self.pos
-          _tmp = match_string("-")
-          if _tmp
-            while true
-              _tmp = match_string("-")
-              break unless _tmp
-            end
-            _tmp = true
-          else
-            self.pos = _save8
-          end
-          break if _tmp
-          self.pos = _save6
-          break
-        end # end choice
+          end # end repetition
+        end while false # end choice
 
-        unless _tmp
-          self.pos = _save5
-          break
-        end
+        break unless _tmp
         _tmp = apply(:_Newline)
-        unless _tmp
-          self.pos = _save5
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save5
       end # end sequence
 
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save4
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; text(self, position, "\n"); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_NormalEndline unless _tmp
@@ -2283,28 +1756,18 @@ class TinyMarkdown::Parser
   def _TerminalEndline
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Newline)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Eof)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; text(self, position, "\n"); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_TerminalEndline unless _tmp
@@ -2315,23 +1778,16 @@ class TinyMarkdown::Parser
   def _LineBreak
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("  ")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_NormalEndline)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; linebreak(self, position); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_LineBreak unless _tmp
@@ -2342,19 +1798,15 @@ class TinyMarkdown::Parser
   def _Symbol
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_SpecialChar)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; text(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Symbol unless _tmp
@@ -2364,16 +1816,11 @@ class TinyMarkdown::Parser
   # Emph = (EmphStar | EmphUl)
   def _Emph
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = apply(:_EmphStar)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_EmphUl)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Emph unless _tmp
     return _tmp
@@ -2382,16 +1829,11 @@ class TinyMarkdown::Parser
   # Whitespace = (Spacechar | Newline)
   def _Whitespace
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = apply(:_Spacechar)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_Newline)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Whitespace unless _tmp
     return _tmp
@@ -2401,153 +1843,71 @@ class TinyMarkdown::Parser
   def _EmphStar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("*")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = apply(:_Whitespace)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+      break unless _tmp
+      _save2 = self.pos # repetition
       _ary = []
+      while true
 
-      _save3 = self.pos
-      while true # choice
+        begin # choice
 
-        _save4 = self.pos
-        while true # sequence
+          _save3 = self.pos
+          begin # sequence
+            _save4 = self.pos
+            _tmp = match_string("*")
+            _tmp = !_tmp
+            self.pos = _save4
+            break unless _tmp
+            _tmp = apply(:_Inline)
+            b = @result
+            break unless _tmp
+            @result = begin; b; end
+            _tmp = true
+          end while false
+          unless _tmp
+            self.pos = _save3
+          end # end sequence
+
+          break if _tmp
+
           _save5 = self.pos
-          _tmp = match_string("*")
-          _tmp = _tmp ? nil : true
-          self.pos = _save5
+          begin # sequence
+            _tmp = apply(:_StrongStar)
+            b = @result
+            break unless _tmp
+            @result = begin; b; end
+            _tmp = true
+          end while false
           unless _tmp
-            self.pos = _save4
-            break
-          end
-          _tmp = apply(:_Inline)
-          b = @result
-          unless _tmp
-            self.pos = _save4
-            break
-          end
-          @result = begin;  b ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save4
-          end
-          break
-        end # end sequence
+            self.pos = _save5
+          end # end sequence
 
-        break if _tmp
-        self.pos = _save3
+        end while false # end choice
 
-        _save6 = self.pos
-        while true # sequence
-          _tmp = apply(:_StrongStar)
-          b = @result
-          unless _tmp
-            self.pos = _save6
-            break
-          end
-          @result = begin;  b ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save6
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save3
-        break
-      end # end choice
-
-      if _tmp
+        break unless _tmp
         _ary << @result
-        while true
-
-          _save7 = self.pos
-          while true # choice
-
-            _save8 = self.pos
-            while true # sequence
-              _save9 = self.pos
-              _tmp = match_string("*")
-              _tmp = _tmp ? nil : true
-              self.pos = _save9
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              _tmp = apply(:_Inline)
-              b = @result
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              @result = begin;  b ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save8
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-
-            _save10 = self.pos
-            while true # sequence
-              _tmp = apply(:_StrongStar)
-              b = @result
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              @result = begin;  b ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save10
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-            break
-          end # end choice
-
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save2
-      end
+        @result = nil
+      end # end repetition
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("*")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; inline_element(self, position, :em, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_EmphStar unless _tmp
@@ -2558,153 +1918,71 @@ class TinyMarkdown::Parser
   def _EmphUl
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("_")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = apply(:_Whitespace)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+      break unless _tmp
+      _save2 = self.pos # repetition
       _ary = []
+      while true
 
-      _save3 = self.pos
-      while true # choice
+        begin # choice
 
-        _save4 = self.pos
-        while true # sequence
+          _save3 = self.pos
+          begin # sequence
+            _save4 = self.pos
+            _tmp = match_string("_")
+            _tmp = !_tmp
+            self.pos = _save4
+            break unless _tmp
+            _tmp = apply(:_Inline)
+            b = @result
+            break unless _tmp
+            @result = begin; b; end
+            _tmp = true
+          end while false
+          unless _tmp
+            self.pos = _save3
+          end # end sequence
+
+          break if _tmp
+
           _save5 = self.pos
-          _tmp = match_string("_")
-          _tmp = _tmp ? nil : true
-          self.pos = _save5
+          begin # sequence
+            _tmp = apply(:_StrongUl)
+            b = @result
+            break unless _tmp
+            @result = begin; b; end
+            _tmp = true
+          end while false
           unless _tmp
-            self.pos = _save4
-            break
-          end
-          _tmp = apply(:_Inline)
-          b = @result
-          unless _tmp
-            self.pos = _save4
-            break
-          end
-          @result = begin;  b ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save4
-          end
-          break
-        end # end sequence
+            self.pos = _save5
+          end # end sequence
 
-        break if _tmp
-        self.pos = _save3
+        end while false # end choice
 
-        _save6 = self.pos
-        while true # sequence
-          _tmp = apply(:_StrongUl)
-          b = @result
-          unless _tmp
-            self.pos = _save6
-            break
-          end
-          @result = begin;  b ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save6
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save3
-        break
-      end # end choice
-
-      if _tmp
+        break unless _tmp
         _ary << @result
-        while true
-
-          _save7 = self.pos
-          while true # choice
-
-            _save8 = self.pos
-            while true # sequence
-              _save9 = self.pos
-              _tmp = match_string("_")
-              _tmp = _tmp ? nil : true
-              self.pos = _save9
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              _tmp = apply(:_Inline)
-              b = @result
-              unless _tmp
-                self.pos = _save8
-                break
-              end
-              @result = begin;  b ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save8
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-
-            _save10 = self.pos
-            while true # sequence
-              _tmp = apply(:_StrongUl)
-              b = @result
-              unless _tmp
-                self.pos = _save10
-                break
-              end
-              @result = begin;  b ; end
-              _tmp = true
-              unless _tmp
-                self.pos = _save10
-              end
-              break
-            end # end sequence
-
-            break if _tmp
-            self.pos = _save7
-            break
-          end # end choice
-
-          _ary << @result if _tmp
-          break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save2
-      end
+        @result = nil
+      end # end repetition
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("_")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; inline_element(self, position, :em, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_EmphUl unless _tmp
@@ -2714,16 +1992,11 @@ class TinyMarkdown::Parser
   # Strong = (StrongStar | StrongUl)
   def _Strong
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = apply(:_StrongStar)
       break if _tmp
-      self.pos = _save
       _tmp = apply(:_StrongUl)
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Strong unless _tmp
     return _tmp
@@ -2733,99 +2006,53 @@ class TinyMarkdown::Parser
   def _StrongStar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("**")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = apply(:_Whitespace)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+      break unless _tmp
+      _save2 = self.pos # repetition
       _ary = []
+      while true
 
-      _save3 = self.pos
-      while true # sequence
-        _save4 = self.pos
-        _tmp = match_string("**")
-        _tmp = _tmp ? nil : true
-        self.pos = _save4
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = apply(:_Inline)
-        b = @result
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  b ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      if _tmp
-        _ary << @result
-        while true
-
-          _save5 = self.pos
-          while true # sequence
-            _save6 = self.pos
-            _tmp = match_string("**")
-            _tmp = _tmp ? nil : true
-            self.pos = _save6
-            unless _tmp
-              self.pos = _save5
-              break
-            end
-            _tmp = apply(:_Inline)
-            b = @result
-            unless _tmp
-              self.pos = _save5
-              break
-            end
-            @result = begin;  b ; end
-            _tmp = true
-            unless _tmp
-              self.pos = _save5
-            end
-            break
-          end # end sequence
-
-          _ary << @result if _tmp
+        _save3 = self.pos
+        begin # sequence
+          _save4 = self.pos
+          _tmp = match_string("**")
+          _tmp = !_tmp
+          self.pos = _save4
           break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+          _tmp = apply(:_Inline)
+          b = @result
+          break unless _tmp
+          @result = begin; b; end
+          _tmp = true
+        end while false
+        unless _tmp
+          self.pos = _save3
+        end # end sequence
+
+        break unless _tmp
+        _ary << @result
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save2
-      end
+        @result = nil
+      end # end repetition
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("**")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; inline_element(self, position, :strong, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_StrongStar unless _tmp
@@ -2836,99 +2063,53 @@ class TinyMarkdown::Parser
   def _StrongUl
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = match_string("__")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = apply(:_Whitespace)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save2 = self.pos
+      break unless _tmp
+      _save2 = self.pos # repetition
       _ary = []
+      while true
 
-      _save3 = self.pos
-      while true # sequence
-        _save4 = self.pos
-        _tmp = match_string("__")
-        _tmp = _tmp ? nil : true
-        self.pos = _save4
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        _tmp = apply(:_Inline)
-        b = @result
-        unless _tmp
-          self.pos = _save3
-          break
-        end
-        @result = begin;  b ; end
-        _tmp = true
-        unless _tmp
-          self.pos = _save3
-        end
-        break
-      end # end sequence
-
-      if _tmp
-        _ary << @result
-        while true
-
-          _save5 = self.pos
-          while true # sequence
-            _save6 = self.pos
-            _tmp = match_string("__")
-            _tmp = _tmp ? nil : true
-            self.pos = _save6
-            unless _tmp
-              self.pos = _save5
-              break
-            end
-            _tmp = apply(:_Inline)
-            b = @result
-            unless _tmp
-              self.pos = _save5
-              break
-            end
-            @result = begin;  b ; end
-            _tmp = true
-            unless _tmp
-              self.pos = _save5
-            end
-            break
-          end # end sequence
-
-          _ary << @result if _tmp
+        _save3 = self.pos
+        begin # sequence
+          _save4 = self.pos
+          _tmp = match_string("__")
+          _tmp = !_tmp
+          self.pos = _save4
           break unless _tmp
-        end
-        _tmp = true
-        @result = _ary
-      else
+          _tmp = apply(:_Inline)
+          b = @result
+          break unless _tmp
+          @result = begin; b; end
+          _tmp = true
+        end while false
+        unless _tmp
+          self.pos = _save3
+        end # end sequence
+
+        break unless _tmp
+        _ary << @result
+      end
+      @result = _ary
+      _tmp = _ary.size >= 1
+      unless _tmp
         self.pos = _save2
-      end
+        @result = nil
+      end # end repetition
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = match_string("__")
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; inline_element(self, position, :strong, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_StrongUl unless _tmp
@@ -2939,30 +2120,23 @@ class TinyMarkdown::Parser
   def _Ticks1
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:`)/)
+      _tmp = scan(/\G(?-mix:`)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = match_string("`")
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Ticks1 unless _tmp
@@ -2973,30 +2147,23 @@ class TinyMarkdown::Parser
   def _Ticks2
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:``)/)
+      _tmp = scan(/\G(?-mix:``)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save1 = self.pos
       _tmp = match_string("`")
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Ticks2 unless _tmp
@@ -3007,198 +2174,111 @@ class TinyMarkdown::Parser
   def _Code
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
 
-      _save1 = self.pos
-      while true # choice
+      begin # choice
 
-        _save2 = self.pos
-        while true # sequence
+        _save1 = self.pos
+        begin # sequence
           _tmp = apply(:_Ticks1)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _save3 = self.pos
+          break unless _tmp
+          _save2 = self.pos # repetition
           _ary = []
+          while true
 
-          _save4 = self.pos
-          while true # sequence
-            _save5 = self.pos
-            _tmp = match_string("`")
-            _tmp = _tmp ? nil : true
-            self.pos = _save5
-            unless _tmp
+            _save3 = self.pos
+            begin # sequence
+              _save4 = self.pos
+              _tmp = match_string("`")
+              _tmp = !_tmp
               self.pos = _save4
-              break
-            end
-            _tmp = apply(:_Nonspacechar)
-            unless _tmp
-              self.pos = _save4
-            end
-            break
-          end # end sequence
-
-          if _tmp
-            _ary << @result
-            while true
-
-              _save6 = self.pos
-              while true # sequence
-                _save7 = self.pos
-                _tmp = match_string("`")
-                _tmp = _tmp ? nil : true
-                self.pos = _save7
-                unless _tmp
-                  self.pos = _save6
-                  break
-                end
-                _tmp = apply(:_Nonspacechar)
-                unless _tmp
-                  self.pos = _save6
-                end
-                break
-              end # end sequence
-
-              _ary << @result if _tmp
               break unless _tmp
-            end
-            _tmp = true
-            @result = _ary
-          else
-            self.pos = _save3
+              _tmp = apply(:_Nonspacechar)
+            end while false
+            unless _tmp
+              self.pos = _save3
+            end # end sequence
+
+            break unless _tmp
+            _ary << @result
           end
+          @result = _ary
+          _tmp = _ary.size >= 1
+          unless _tmp
+            self.pos = _save2
+            @result = nil
+          end # end repetition
           c = @result
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Ticks1)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
+          break unless _tmp
           @result = begin; text(self, position, c.join("")); end
           _tmp = true
-          unless _tmp
-            self.pos = _save2
-          end
-          break
+        end while false
+        unless _tmp
+          self.pos = _save1
         end # end sequence
 
         break if _tmp
-        self.pos = _save1
 
-        _save8 = self.pos
-        while true # sequence
+        _save5 = self.pos
+        begin # sequence
           _tmp = apply(:_Ticks2)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
-          _save9 = self.pos
-          _ary = []
+          break unless _tmp
+          _save6 = self.pos # repetition
+          _ary1 = []
+          while true
 
-          _save10 = self.pos
-          while true # sequence
-            _save11 = self.pos
-            _tmp = match_string("``")
-            _tmp = _tmp ? nil : true
-            self.pos = _save11
-            unless _tmp
-              self.pos = _save10
-              break
-            end
-            _tmp = apply(:_Nonspacechar)
-            unless _tmp
-              self.pos = _save10
-            end
-            break
-          end # end sequence
-
-          if _tmp
-            _ary << @result
-            while true
-
-              _save12 = self.pos
-              while true # sequence
-                _save13 = self.pos
-                _tmp = match_string("``")
-                _tmp = _tmp ? nil : true
-                self.pos = _save13
-                unless _tmp
-                  self.pos = _save12
-                  break
-                end
-                _tmp = apply(:_Nonspacechar)
-                unless _tmp
-                  self.pos = _save12
-                end
-                break
-              end # end sequence
-
-              _ary << @result if _tmp
+            _save7 = self.pos
+            begin # sequence
+              _save8 = self.pos
+              _tmp = match_string("``")
+              _tmp = !_tmp
+              self.pos = _save8
               break unless _tmp
-            end
-            _tmp = true
-            @result = _ary
-          else
-            self.pos = _save9
+              _tmp = apply(:_Nonspacechar)
+            end while false
+            unless _tmp
+              self.pos = _save7
+            end # end sequence
+
+            break unless _tmp
+            _ary1 << @result
           end
+          @result = _ary1
+          _tmp = _ary1.size >= 1
+          unless _tmp
+            self.pos = _save6
+            @result = nil
+          end # end repetition
           c = @result
-          unless _tmp
-            self.pos = _save8
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Sp)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Ticks2)
-          unless _tmp
-            self.pos = _save8
-            break
-          end
+          break unless _tmp
           @result = begin; text(self, position, c.join("")); end
           _tmp = true
-          unless _tmp
-            self.pos = _save8
-          end
-          break
+        end while false
+        unless _tmp
+          self.pos = _save5
         end # end sequence
 
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
+      end while false # end choice
 
       cc = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; inline_element(self, position, :code, [cc]); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Code unless _tmp
@@ -3209,17 +2289,13 @@ class TinyMarkdown::Parser
   def _BlankLine
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Newline)
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_BlankLine unless _tmp
@@ -3229,96 +2305,69 @@ class TinyMarkdown::Parser
   # Quoted = ("\"" (!"\"" .)* "\"" | "'" (!"'" .)* "'")
   def _Quoted
 
-    _save = self.pos
-    while true # choice
+    begin # choice
 
-      _save1 = self.pos
-      while true # sequence
+      _save = self.pos
+      begin # sequence
         _tmp = match_string("\"")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        while true
+        break unless _tmp
+        while true # kleene
 
-          _save3 = self.pos
-          while true # sequence
-            _save4 = self.pos
+          _save1 = self.pos
+          begin # sequence
+            _save2 = self.pos
             _tmp = match_string("\"")
-            _tmp = _tmp ? nil : true
-            self.pos = _save4
-            unless _tmp
-              self.pos = _save3
-              break
-            end
-            _tmp = get_byte
-            unless _tmp
-              self.pos = _save3
-            end
-            break
+            _tmp = !_tmp
+            self.pos = _save2
+            break unless _tmp
+            _tmp = match_dot
+          end while false
+          unless _tmp
+            self.pos = _save1
           end # end sequence
 
           break unless _tmp
         end
-        _tmp = true
-        unless _tmp
-          self.pos = _save1
-          break
-        end
+        _tmp = true # end kleene
+        break unless _tmp
         _tmp = match_string("\"")
-        unless _tmp
-          self.pos = _save1
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save
       end # end sequence
 
       break if _tmp
-      self.pos = _save
 
-      _save5 = self.pos
-      while true # sequence
+      _save3 = self.pos
+      begin # sequence
         _tmp = match_string("'")
-        unless _tmp
-          self.pos = _save5
-          break
-        end
-        while true
+        break unless _tmp
+        while true # kleene
 
-          _save7 = self.pos
-          while true # sequence
-            _save8 = self.pos
+          _save4 = self.pos
+          begin # sequence
+            _save5 = self.pos
             _tmp = match_string("'")
-            _tmp = _tmp ? nil : true
-            self.pos = _save8
-            unless _tmp
-              self.pos = _save7
-              break
-            end
-            _tmp = get_byte
-            unless _tmp
-              self.pos = _save7
-            end
-            break
+            _tmp = !_tmp
+            self.pos = _save5
+            break unless _tmp
+            _tmp = match_dot
+          end while false
+          unless _tmp
+            self.pos = _save4
           end # end sequence
 
           break unless _tmp
         end
-        _tmp = true
-        unless _tmp
-          self.pos = _save5
-          break
-        end
+        _tmp = true # end kleene
+        break unless _tmp
         _tmp = match_string("'")
-        unless _tmp
-          self.pos = _save5
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save3
       end # end sequence
 
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Quoted unless _tmp
     return _tmp
@@ -3327,8 +2376,8 @@ class TinyMarkdown::Parser
   # Eof = !.
   def _Eof
     _save = self.pos
-    _tmp = get_byte
-    _tmp = _tmp ? nil : true
+    _tmp = match_dot
+    _tmp = !_tmp
     self.pos = _save
     set_failed_rule :_Eof unless _tmp
     return _tmp
@@ -3338,22 +2387,18 @@ class TinyMarkdown::Parser
   def _Spacechar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix: |\t)/)
+      _tmp = scan(/\G(?-mix: |\t)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Spacechar unless _tmp
@@ -3364,38 +2409,28 @@ class TinyMarkdown::Parser
   def _Nonspacechar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
       _tmp = apply(:_Spacechar)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _save2 = self.pos
       _tmp = apply(:_Newline)
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save2
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _text_start = self.pos
-      _tmp = get_byte
+      _tmp = match_dot
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Nonspacechar unless _tmp
@@ -3405,35 +2440,23 @@ class TinyMarkdown::Parser
   # Newline = ("\n" | "\r" "\n"?)
   def _Newline
 
-    _save = self.pos
-    while true # choice
+    begin # choice
       _tmp = match_string("\n")
       break if _tmp
-      self.pos = _save
 
-      _save1 = self.pos
-      while true # sequence
+      _save = self.pos
+      begin # sequence
         _tmp = match_string("\r")
-        unless _tmp
-          self.pos = _save1
-          break
-        end
-        _save2 = self.pos
+        break unless _tmp
+        # optional
         _tmp = match_string("\n")
-        unless _tmp
-          _tmp = true
-          self.pos = _save2
-        end
-        unless _tmp
-          self.pos = _save1
-        end
-        break
+        _tmp = true # end optional
+      end while false
+      unless _tmp
+        self.pos = _save
       end # end sequence
 
-      break if _tmp
-      self.pos = _save
-      break
-    end # end choice
+    end while false # end choice
 
     set_failed_rule :_Newline unless _tmp
     return _tmp
@@ -3441,11 +2464,11 @@ class TinyMarkdown::Parser
 
   # Sp = Spacechar*
   def _Sp
-    while true
+    while true # kleene
       _tmp = apply(:_Spacechar)
       break unless _tmp
     end
-    _tmp = true
+    _tmp = true # end kleene
     set_failed_rule :_Sp unless _tmp
     return _tmp
   end
@@ -3454,36 +2477,25 @@ class TinyMarkdown::Parser
   def _Spnl
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Sp)
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      _save1 = self.pos
+      break unless _tmp
+      # optional
 
-      _save2 = self.pos
-      while true # sequence
+      _save1 = self.pos
+      begin # sequence
         _tmp = apply(:_Newline)
-        unless _tmp
-          self.pos = _save2
-          break
-        end
+        break unless _tmp
         _tmp = apply(:_Sp)
-        unless _tmp
-          self.pos = _save2
-        end
-        break
+      end while false
+      unless _tmp
+        self.pos = _save1
       end # end sequence
 
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-      end
-      break
+      _tmp = true # end optional
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Spnl unless _tmp
@@ -3494,22 +2506,18 @@ class TinyMarkdown::Parser
   def _SpecialChar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[~*_`&\[\]()<!#\\'"])/)
+      _tmp = scan(/\G(?-mix:[~*_`&\[\]()<!#\\'"])/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_SpecialChar unless _tmp
@@ -3520,44 +2528,31 @@ class TinyMarkdown::Parser
   def _NormalChar
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _save1 = self.pos
 
-      _save2 = self.pos
-      while true # choice
+      begin # choice
         _tmp = apply(:_SpecialChar)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Spacechar)
         break if _tmp
-        self.pos = _save2
         _tmp = apply(:_Newline)
-        break if _tmp
-        self.pos = _save2
-        break
-      end # end choice
+      end while false # end choice
 
-      _tmp = _tmp ? nil : true
+      _tmp = !_tmp
       self.pos = _save1
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _text_start = self.pos
-      _tmp = get_byte
+      _tmp = match_dot
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_NormalChar unless _tmp
@@ -3568,22 +2563,18 @@ class TinyMarkdown::Parser
   def _AlphanumericAscii
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[A-Za-z0-9])/)
+      _tmp = scan(/\G(?-mix:[A-Za-z0-9])/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_AlphanumericAscii unless _tmp
@@ -3594,22 +2585,18 @@ class TinyMarkdown::Parser
   def _Digit
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:[0-9])/)
+      _tmp = scan(/\G(?-mix:[0-9])/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Digit unless _tmp
@@ -3620,22 +2607,18 @@ class TinyMarkdown::Parser
   def _NonindentSpace
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:   |  | |)/)
+      _tmp = scan(/\G(?-mix:   |  | |)/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_NonindentSpace unless _tmp
@@ -3646,22 +2629,18 @@ class TinyMarkdown::Parser
   def _Indent
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _text_start = self.pos
-      _tmp = scan(/\A(?-mix:\t|    )/)
+      _tmp = scan(/\G(?-mix:\t|    )/)
       if _tmp
         text = get_text(_text_start)
       end
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  text ; end
+      break unless _tmp
+      @result = begin; text; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Indent unless _tmp
@@ -3672,24 +2651,17 @@ class TinyMarkdown::Parser
   def _IndentedLine
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_Indent)
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       _tmp = apply(:_Line)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  c ; end
+      break unless _tmp
+      @result = begin; c; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_IndentedLine unless _tmp
@@ -3700,22 +2672,15 @@ class TinyMarkdown::Parser
   def _OptionallyIndentedLine
 
     _save = self.pos
-    while true # sequence
-      _save1 = self.pos
+    begin # sequence
+      # optional
       _tmp = apply(:_Indent)
-      unless _tmp
-        _tmp = true
-        self.pos = _save1
-      end
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      _tmp = true # end optional
+      break unless _tmp
       _tmp = apply(:_Line)
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_OptionallyIndentedLine unless _tmp
@@ -3726,19 +2691,15 @@ class TinyMarkdown::Parser
   def _Line
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
       _tmp = apply(:_RawLine)
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
-      @result = begin;  c ; end
+      break unless _tmp
+      @result = begin; c; end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_Line unless _tmp
@@ -3749,78 +2710,55 @@ class TinyMarkdown::Parser
   def _RawLine
 
     _save = self.pos
-    while true # sequence
+    begin # sequence
 
-      _save1 = self.pos
-      while true # choice
+      begin # choice
+
+        _save1 = self.pos
+        begin # sequence
+          _text_start = self.pos
+          _tmp = scan(/\G(?-mix:[^\r\n]*)/)
+          if _tmp
+            text = get_text(_text_start)
+          end
+          break unless _tmp
+          _tmp = apply(:_Newline)
+          break unless _tmp
+          @result = begin; text; end
+          _tmp = true
+        end while false
+        unless _tmp
+          self.pos = _save1
+        end # end sequence
+
+        break if _tmp
 
         _save2 = self.pos
-        while true # sequence
+        begin # sequence
           _text_start = self.pos
-          _tmp = scan(/\A(?-mix:[^\r\n]*)/)
+          _tmp = scan(/\G(?-mix:.+)/)
           if _tmp
             text = get_text(_text_start)
           end
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          _tmp = apply(:_Newline)
-          unless _tmp
-            self.pos = _save2
-            break
-          end
-          @result = begin;  text ; end
-          _tmp = true
-          unless _tmp
-            self.pos = _save2
-          end
-          break
-        end # end sequence
-
-        break if _tmp
-        self.pos = _save1
-
-        _save3 = self.pos
-        while true # sequence
-          _text_start = self.pos
-          _tmp = scan(/\A(?-mix:.+)/)
-          if _tmp
-            text = get_text(_text_start)
-          end
-          unless _tmp
-            self.pos = _save3
-            break
-          end
+          break unless _tmp
           _tmp = apply(:_Eof)
-          unless _tmp
-            self.pos = _save3
-            break
-          end
-          @result = begin;  text ; end
+          break unless _tmp
+          @result = begin; text; end
           _tmp = true
-          unless _tmp
-            self.pos = _save3
-          end
-          break
+        end while false
+        unless _tmp
+          self.pos = _save2
         end # end sequence
 
-        break if _tmp
-        self.pos = _save1
-        break
-      end # end choice
+      end while false # end choice
 
       c = @result
-      unless _tmp
-        self.pos = _save
-        break
-      end
+      break unless _tmp
       @result = begin; text(self, position, c); end
       _tmp = true
-      unless _tmp
-        self.pos = _save
-      end
-      break
+    end while false
+    unless _tmp
+      self.pos = _save
     end # end sequence
 
     set_failed_rule :_RawLine unless _tmp
